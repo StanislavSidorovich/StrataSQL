@@ -1,0 +1,191 @@
+// Comparator (SPEC §9, stage 4 acceptance): correct matched / missing / extra on the 3 reference
+// models and on seeded wrong models.
+
+import { describe, expect, it } from 'vitest'
+import { compareModels, matchEntities } from '../src/core/compare'
+import { CARD, type Model } from '../src/core/metamodel'
+import {
+  addAttribute,
+  addEntity,
+  addRelationship,
+  findEntityByName,
+  removeEntity,
+  removeRelationship,
+  setAttributeInPrimary,
+  setDependentSide,
+  updateEntity,
+  updateInheritance,
+  updateRelationship,
+} from '../src/core/ops'
+import { CASES } from '../src/data/cases'
+import { buildRideHailing } from '../src/data/examples/ride-hailing'
+import { buildTimetables } from '../src/data/examples/timetables'
+import { buildTvShows } from '../src/data/examples/tv-shows'
+
+const ent = (m: Model, name: string) => findEntityByName(m, name)!
+const rel = (m: Model, name: string) => m.relationships.find((r) => r.name === name)!
+const tvSyn = CASES.find((c) => c.id === 'tv-shows')!.synonyms
+
+function summary(student: Model, ref: Model, synonyms?: Record<string, string[]>) {
+  const res = compareModels(student, ref, { synonyms })
+  const pick = (status: string) => res.items.filter((i) => i.status === status && i.kind !== 'attribute').map((i) => i.refKey ?? i.message)
+  return { res, missing: pick('missing'), different: pick('different'), extra: pick('extra') }
+}
+
+describe('reference models compared with themselves', () => {
+  it.each([
+    ['TV Shows', buildTvShows],
+    ['Timetables', buildTimetables],
+    ['Ride Hailing', buildRideHailing],
+  ])('%s: everything matched, score 100', (_, build) => {
+    const s = summary(build(), build())
+    expect(s.missing).toEqual([])
+    expect(s.different).toEqual([])
+    expect(s.extra).toEqual([])
+    expect(s.res.items.some((i) => i.kind === 'attribute')).toBe(false)
+    expect(s.res.score).toBe(100)
+    expect(s.res.counts.matched).toBe(build().entities.length + build().relationships.length + build().inheritances.length)
+  })
+
+  it('matching does not depend on ids or on the order of entities', () => {
+    const ref = buildTvShows()
+    const student = buildTvShows()
+    student.entities.reverse()
+    student.entities.forEach((e, k) => (e.id = `other_${k}`))
+    const match = matchEntities(student, ref)
+    for (const e of ref.entities) expect(student.entities.find((s) => s.id === match.get(e.id))?.name).toBe(e.name)
+  })
+
+  it('every case has a reference model and its synonyms name real entities', () => {
+    for (const c of CASES) {
+      const m = c.build()
+      for (const name of Object.keys(c.synonyms)) expect(findEntityByName(m, name), `${c.id}: ${name}`).toBeDefined()
+    }
+  })
+})
+
+describe('seeded wrong models — TV Shows', () => {
+  it('the cycle version: Episode linked to Director instead of ShowDirector', () => {
+    const ref = buildTvShows()
+    const m = buildTvShows()
+    removeRelationship(m, rel(m, 'directs_episode').id)
+    addRelationship(m, ent(m, 'Director').id, ent(m, 'Episode').id, { name: 'directs' })
+    const s = summary(m, ref)
+    expect(s.missing).toEqual(['relationship:directs_episode'])
+    expect(s.extra).toHaveLength(1)
+    expect(s.extra[0]).toContain('Director — Episode')
+    expect(s.res.score).toBeLessThan(100)
+  })
+
+  it('Role drawn as a many-to-many relationship: missing intermediate entity, extra M:N with a hint', () => {
+    const ref = buildTvShows()
+    const m = buildTvShows()
+    removeEntity(m, ent(m, 'Role').id)
+    addRelationship(m, ent(m, 'Actor').id, ent(m, 'Scene').id, { name: 'plays', cardinalityA: CARD.zeroMany, cardinalityB: CARD.zeroMany })
+    const s = summary(m, ref)
+    expect(s.missing).toEqual(['entity:Role', 'relationship:actor_role', 'relationship:scene_role'])
+    expect(s.extra).toHaveLength(1)
+    expect(s.extra[0]).toContain('intermediate entity (Role)')
+  })
+
+  it('Scene not dependent on Episode, and a cardinality turned around', () => {
+    const ref = buildTvShows()
+    const m = buildTvShows()
+    setDependentSide(m, rel(m, 'has_scenes').id, null)
+    updateRelationship(m, rel(m, 'has_episodes').id, { cardinalityA: CARD.oneMany, cardinalityB: CARD.oneOne })
+    const s = summary(m, ref)
+    expect(s.different).toEqual(['relationship:has_episodes', 'relationship:has_scenes'])
+    const msg = s.res.items.find((i) => i.refKey === 'relationship:has_scenes' && i.status === 'different')!.message
+    expect(msg).toContain('Scene should be identified through Episode')
+  })
+
+  it('accepts synonyms and other attribute spellings', () => {
+    const ref = buildTvShows()
+    const m = buildTvShows()
+    updateEntity(m, ent(m, 'Role').id, { name: 'Casting' })
+    updateEntity(m, ent(m, 'TechnicianFunction').id, { name: 'Crew' })
+    updateEntity(m, ent(m, 'TVShow').id, { name: 'Show' })
+    const s = summary(m, ref, tvSyn)
+    expect(s.missing).toEqual([])
+    expect(s.extra).toEqual([])
+    expect(s.res.score).toBe(100)
+  })
+
+  it('finds a renamed intermediate entity without attributes by its neighbours', () => {
+    const ref = buildTvShows()
+    const m = buildTvShows()
+    updateEntity(m, ent(m, 'ShowDirector').id, { name: 'Xyz' })
+    const match = matchEntities(m, ref)
+    expect(match.get(ent(ref, 'ShowDirector').id)).toBe(ent(m, 'Xyz').id)
+  })
+
+  it('TechnicianFunction without its own identifier; Role with one', () => {
+    const ref = buildTvShows()
+    const m = buildTvShows()
+    const tf = ent(m, 'TechnicianFunction')
+    setAttributeInPrimary(m, tf.id, tf.attributes[0].id, false)
+    const role = ent(m, 'Role')
+    addAttribute(m, role.id, { name: 'role_id', dataType: 'Integer', primary: true })
+    const ids = compareModels(m, ref).items.filter((i) => i.kind === 'identifier')
+    expect(ids.map((i) => i.refKey).sort()).toEqual(['entity:Role', 'entity:TechnicianFunction'])
+  })
+
+  it('inheritance: exclusive instead of non-exclusive, a child missing, an extra entity', () => {
+    const ref = buildTvShows()
+    const m = buildTvShows()
+    const person = m.inheritances.find((i) => i.name === 'participant_kind')!
+    updateInheritance(m, person.id, { mutuallyExclusive: true })
+    removeEntity(m, ent(m, 'Technician').id)
+    const genre = addEntity(m, { name: 'Genre' })
+    addAttribute(m, genre.id, { name: 'genre_id', dataType: 'Integer', primary: true })
+    const s = summary(m, ref)
+    expect(s.missing).toContain('entity:Technician')
+    expect(s.different).toEqual(['inheritance:participant_kind'])
+    const msg = s.res.items.find((i) => i.refKey === 'inheritance:participant_kind')!.message
+    expect(msg).toContain('children missing: Technician')
+    expect(msg).toContain('not exclusive')
+    expect(s.extra.some((x) => x.startsWith('Genre'))).toBe(true)
+  })
+
+  it('reports attributes from the text that are missing', () => {
+    const ref = buildTvShows()
+    const m = buildTvShows()
+    const show = ent(m, 'TVShow')
+    m.entities.find((e) => e.id === show.id)!.attributes = show.attributes.filter((a) => a.name !== 'genre')
+    const attr = compareModels(m, ref).items.filter((i) => i.kind === 'attribute')
+    expect(attr).toHaveLength(1)
+    expect(attr[0].answer).toContain('genre')
+  })
+})
+
+describe('seeded wrong models — Timetables and Ride Hailing', () => {
+  it('Class with its own class_id is flagged; level-2 scope ignores entities', () => {
+    const ref = buildTimetables()
+    const m = buildTimetables()
+    const klass = ent(m, 'Class')
+    setAttributeInPrimary(m, klass.id, klass.attributes[0].id, false)
+    const s = compareModels(m, ref)
+    expect(s.items.filter((i) => i.kind === 'identifier').map((i) => i.refKey)).toEqual(['entity:Class'])
+    const links = compareModels(m, ref, { scope: 'links' })
+    expect(links.items.every((i) => i.kind === 'relationship' || i.kind === 'inheritance')).toBe(true)
+    expect(links.score).toBe(100)
+  })
+
+  it('a trip that must always have a shift (1,1 instead of 0,1)', () => {
+    const ref = buildRideHailing()
+    const m = buildRideHailing()
+    updateRelationship(m, rel(m, 'serves').id, { cardinalityA: CARD.oneOne })
+    const s = summary(m, ref)
+    expect(s.different).toEqual(['relationship:serves'])
+    expect(s.res.items.find((i) => i.refKey === 'relationship:serves')!.message).toContain('optional vs mandatory')
+  })
+
+  it('an empty model: everything missing, score 0', () => {
+    const ref = buildRideHailing()
+    const m = buildRideHailing()
+    for (const e of [...m.entities]) removeEntity(m, e.id)
+    const s = summary(m, ref)
+    expect(s.res.score).toBe(0)
+    expect(s.res.counts.missing).toBe(ref.entities.length + ref.relationships.length)
+  })
+})

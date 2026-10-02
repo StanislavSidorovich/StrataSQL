@@ -228,6 +228,60 @@ describe('L10 duplicate names', () => {
   })
 })
 
+describe('L11 attribute that looks like a foreign key', () => {
+  const names = (m: Model) =>
+    only(m, 'L11').map((i) => {
+      const t = i.targets[0] as { entityId: string; attributeId: string }
+      return m.entities.find((e) => e.id === t.entityId)!.attributes.find((a) => a.id === t.attributeId)!.name
+    })
+
+  it('flags an id of an entity that does not exist (the screenshot case)', () => {
+    const m = emptyModel()
+    const books = addEntity(m, { name: 'Books' })
+    addAttribute(m, books.id, { name: 'BookId', dataType: 'Integer', primary: true })
+    addAttribute(m, books.id, { name: 'Name' })
+    addAttribute(m, books.id, { name: 'PublisherID' })
+    expect(names(m)).toEqual(['PublisherID'])
+    expect(only(m, 'L11')[0].message).toContain('add it as an entity')
+  })
+
+  it('names the entity when it exists, by its identifier or by its name', () => {
+    const m = emptyModel()
+    const pub = ent(m, 'Publisher')
+    const show = ent(m, 'TVShow')
+    const book = ent(m, 'Book', ['publisher_id'])
+    const ep = ent(m, 'Episode', ['ShowNo'])
+    const issues = only(m, 'L11')
+    expect(issues).toHaveLength(2)
+    expect(issues[0].targets).toContainEqual({ kind: 'entity', id: pub.id })
+    expect(issues[0].message).toContain('identifier of Publisher')
+    expect(issues[1].targets).toContainEqual({ kind: 'entity', id: show.id })
+    expect([book, ep]).toHaveLength(2)
+  })
+
+  it('flags a parent id copied into a primary identifier', () => {
+    const m = emptyModel()
+    ent(m, 'Episode')
+    const scene = addEntity(m, { name: 'Scene' })
+    addAttribute(m, scene.id, { name: 'episode_id', dataType: 'Integer', primary: true })
+    addAttribute(m, scene.id, { name: 'order_no', dataType: 'Integer', primary: true })
+    expect(names(m)).toEqual(['episode_id'])
+  })
+
+  it('accepts own identifiers, inherited names and ordinary attributes', () => {
+    const m = emptyModel()
+    const shift = addEntity(m, { name: 'Car Shift' })
+    addAttribute(m, shift.id, { name: 'shift_id', dataType: 'Integer', primary: true })
+    const year = addEntity(m, { name: 'AcademicYear' })
+    addAttribute(m, year.id, { name: 'year_id', primary: true })
+    const person = ent(m, 'Person', ['name', 'email', 'code', 'license_no'])
+    const actor = addEntity(m, { name: 'Actor' })
+    addAttribute(m, actor.id, { name: 'idea' })
+    addInheritance(m, person.id, [actor.id])
+    expect(only(m, 'L11').map((i) => i.message)).toEqual([])
+  })
+})
+
 describe('ordering', () => {
   it('lists errors first, then warnings, then info', () => {
     const m = emptyModel()

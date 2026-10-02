@@ -62,7 +62,7 @@ export function IssuesDock() {
           {issues.map((i, n) => (
             <IssueRow key={`${i.rule}-${n}-${i.message}`} issue={i} focused={focused?.message === i.message} />
           ))}
-          {issues.length === 0 && <li className="muted px-3 py-2">The linter checks L01–L10 found nothing. Every issue would link to a help card.</li>}
+          {issues.length === 0 && <li className="muted px-3 py-2">The linter checks L01–L11 found nothing. Every issue would link to a help card.</li>}
         </ul>
       )}
     </div>

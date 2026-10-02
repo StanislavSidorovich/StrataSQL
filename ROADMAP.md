@@ -7,11 +7,11 @@ Stages follow SPEC §12. A stage is done only when its acceptance criteria pass.
 | 1. CDM editor | ✅ done (2026-10-02) · live: https://stanislavsidorovich.github.io/StrataSQL/ | Full TV Shows reference model can be built and saved/reloaded |
 | 2. PDM + SQL Server DDL | ✅ done (2026-10-02) | 3 reference CDMs generate the PDMs in `cases/`; DDL runs on SQL Server |
 | 2.5 SQL sandbox | ✅ done (2026-10-02) | Generated schema runs in the browser; inserting conflicting rows shows the constraint that rejects them |
-| 3. Linter + Help | ✅ done (2026-10-02) | L01–L10 with tests; ≥ 15 help cards; `?` on every property |
-| 4. Trainer | ⏭ next | 3 cases × levels 0–3; comparator correct on references and seeded wrong models |
-| 5. AI review | — | Optional, behind a user-provided API key |
+| 3. Linter + Help | ✅ done (2026-10-02) | L01–L10 with tests; ≥ 15 help cards; `?` on every property (L11 added with stage 4) |
+| 4. Trainer | ✅ done (2026-10-02) | 3 cases × levels 0–3; comparator correct on references and seeded wrong models |
+| 5. AI review | ⏭ optional | Optional, behind a user-provided API key |
 
-**Where we are (2026-10-02):** installable and offline-capable (PWA); usable today for building a CDM, getting the PDM + SQL Server DDL, testing keys in the sandbox, and getting feedback on your own model: the linter checks it live and every warning and property links to a help card. Next is stage 4 (trainer), about 1–2 sprints, which completes the learning loop. Stage 5 is optional.
+**Where we are (2026-10-02, v0.4.0):** the learning loop is complete. Build a CDM, get the PDM + SQL Server DDL, test the keys in the sandbox, get live linter feedback with help cards, and practise on the three course cases in the trainer (worked example → text tagging → complete the model → from scratch, with a structural check and a hint ladder). Stage 5 (AI review) is optional; the polish candidates are listed under "Stage 4+".
 
 **Distribution:** GitHub Pages stays the only channel. It works on Windows, macOS and Linux in any modern browser, with no install and no VPN. A local .bat/.exe would need a separate build per OS (and unsigned apps are blocked by macOS Gatekeeper). Since 2026-10-02 the page is also an installable **PWA**: it works offline after the first visit (Sandbox included) and can be installed from Chrome/Edge or added to the Dock from Safari.
 
@@ -102,11 +102,31 @@ Known gaps carried forward:
 - L04 reports one shortest cycle per independent loop, not every possible cycle.
 - Help cards are English only; the mini-diagram text is small in a narrow drawer.
 
-## Stage 3+ (later)
+## Stage 4 — Trainer ✅ (2026-10-02)
+
+Done:
+- [x] Linter **L11**: an attribute that looks like a foreign key (`PublisherID` typed by hand, or another entity's identifier copied, including into a PI) → "draw a relationship, the PDM creates the FK". Own identifiers, alternate keys (`license_no`) and inheritance families are not flagged. New help card `foreign-key-attribute` (23 cards). Prompted by a user model with `PublisherID` in Books
+- [x] `src/core/compare.ts` — structural comparator (SPEC §9): entities matched by name + synonyms + attribute overlap (entity prefixes and PI names ignored), then a second pass by matched neighbours (finds a renamed intermediate entity without attributes); relationships compared in the reference orientation (kind of link, minimums, dependency); inheritances (children, exclusive, complete); own identifier present or not; attributes from the text missing. Output: matched / missing / different / extra, each with a message and the answer; score 0–100 (different = half, wrong identifier −½). An extra M:N where the reference has an intermediate entity says so
+- [x] `src/data/cases.ts` — machine form of the 3 cases: specification paragraphs, 63 tagged phrases (tag, accepted alternatives, target element, why), key decisions, synonyms, hints per element. `src/data/trainer.ts` — start model per level (level 2: reference entities without links, comments and physical keys)
+- [x] UI: **🎓 Trainer** in the toolbar → case picker with best scores → side pane. Level 0: highlighted phrases select their element on the canvas, with the reason. Level 1: tag each phrase (5 tags), immediate feedback, score. Levels 2–3: Check → score bar, grouped results, click → select in your model, hint ladder per item (where to look → case hint + the text phrases → the answer); linter counts shown too
+- [x] The user's own model is kept aside while the trainer runs (autosave keeps it, the task model is stored separately) and comes back on Exit; a reload resumes the task. Best scores in localStorage
+- [x] Tests: `tests/compare.test.ts` (16: the 3 references match themselves at 100; seeded wrong models — the Episode→Director cycle, Role as M:N, Scene not dependent, flipped cardinality, synonyms, renamed intermediate, wrong identifiers, inheritance flags, Timetables Class with own id, Ride Hailing 0,1 → 1,1, empty model), `tests/trainer-cases.test.ts` (12), L11 (4). 180 tests in total
+- [x] Checked in the production build (Playwright): all four levels of TV Shows, hint ladder to the answer, progress saved, Exit restores the user's model, no console errors
+
+Decisions:
+- Text tagging uses **5 tags** (SPEC listed 4): *inheritance* is added, because "can be indoors or outdoors" is neither an entity nor a plain relationship. A phrase may accept a second tag (an M:N that becomes an intermediate entity is right as relationship or entity).
+- Extra entities are reported but not scored: the course asks students to invent attributes and entities.
+
+Known gaps carried forward:
+- Matching is heuristic: a student entity with a very different name, no attributes in common and no matched neighbours stays unmatched (shown as missing + extra).
+- Attributes are compared by name only (types and mandatory are not checked); missing attributes are not scored.
+- Level 2/3 work is lost when switching level (a confirm asks first).
+
+## Stage 4+ (later)
 
 - Optional text mode: write the CDM as text, diagram updates live (idea from dbdiagram.io / DBML) — useful for fast input and trainer tasks
+- Trainer: per-level saved work, more cases (own examples), Russian/Portuguese texts
 
-- Trainer levels 0–3, structural comparator (stage 4)
 
 ## PWA + tails ✅ (2026-10-02)
 

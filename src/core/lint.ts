@@ -8,7 +8,7 @@ import type { Pdm } from './pdm'
 
 export type Severity = 'error' | 'warning' | 'info'
 
-export type RuleId = 'L01' | 'L02' | 'L03' | 'L04' | 'L05' | 'L06' | 'L07' | 'L08' | 'L09' | 'L10'
+export type RuleId = 'L01' | 'L02' | 'L03' | 'L04' | 'L05' | 'L06' | 'L07' | 'L08' | 'L09' | 'L10' | 'L11'
 
 export type LintTarget =
   | { kind: 'entity'; id: Id }
@@ -37,6 +37,7 @@ export const RULES: Record<RuleId, { title: string; severity: Severity; help: st
   L08: { title: 'Repeated relationship without roles', severity: 'warning', help: 'multiple-relationships' },
   L09: { title: 'Derived attribute', severity: 'info', help: 'derived-data' },
   L10: { title: 'Duplicate name', severity: 'error', help: 'names-and-codes' },
+  L11: { title: 'Attribute looks like a foreign key', severity: 'warning', help: 'foreign-key-attribute' },
 }
 
 const SEVERITY_ORDER: Record<Severity, number> = { error: 0, warning: 1, info: 2 }
@@ -55,6 +56,7 @@ export function lintModel(m: Model, pdm: Pdm = generatePdm(m)): LintIssue[] {
     ...l08(ctx),
     ...l09(ctx),
     ...l10(ctx),
+    ...l11(ctx),
   ]
   return issues.sort((a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity] || a.rule.localeCompare(b.rule))
 }
@@ -466,5 +468,83 @@ function l10(ctx: Context): LintIssue[] {
           'attribute',
         ),
       )
+  return out
+}
+
+// ---------------------------------------------------------------- L11 foreign key typed as an attribute
+
+/** Last words that make a name look like a reference to something else (`publisher_id`, `ShowNo`). */
+const KEY_WORDS = new Set(['id', 'no', 'nr', 'num', 'code'])
+const nameWords = (name: string) => words(name.replace(/([a-z0-9])([A-Z])/g, '$1_$2'))
+const joined = (name: string) => nameWords(name).join('')
+const singular = (w: string) => (w.length > 3 && w.endsWith('s') ? w.slice(0, -1) : w)
+
+function l11(ctx: Context): LintIssue[] {
+  const out: LintIssue[] = []
+  // An entity's own identifier attribute: `show_id` → TVShow. Only a single-attribute PI or one named after
+  // the entity counts, so a hand-copied `episode_id` in Scene's PI does not make Scene its owner.
+  const piOwners = new Map<string, Entity[]>()
+  for (const e of ctx.m.entities) {
+    const pi = primaryIdentifier(e)?.attributeIds ?? []
+    for (const id of pi) {
+      const a = e.attributes.find((x) => x.id === id)
+      if (!a) continue
+      const w = nameWords(a.name)
+      if (w.length < 2 || !KEY_WORDS.has(w[w.length - 1])) continue
+      const stem = singular(w.slice(0, -1).join(''))
+      const own = singular(joined(e.name))
+      if (pi.length > 1 && stem !== own && !own.endsWith(stem)) continue
+      const k = joined(a.name)
+      piOwners.set(k, [...(piOwners.get(k) ?? []), e])
+    }
+  }
+  const byStem = (stem: string) =>
+    ctx.m.entities.filter((e) => {
+      const n = singular(joined(e.name))
+      return n === stem || n.endsWith(stem)
+    })
+
+  for (const e of ctx.m.entities) {
+    const family = new Set([e.id, ...ancestorsOf(ctx.m, e.id), ...ctx.m.entities.filter((x) => ancestorsOf(ctx.m, x.id).includes(e.id)).map((x) => x.id)])
+    const ownKeys = new Set(e.identifiers.flatMap((i) => i.attributeIds))
+    const ownStem = singular(joined(e.name))
+    for (const a of e.attributes) {
+      const w = nameWords(a.name)
+      if (w.length < 2 || !KEY_WORDS.has(w[w.length - 1])) continue
+      const target = { kind: 'attribute' as const, entityId: e.id, attributeId: a.id }
+      // 1. The exact identifier of another entity, copied by hand.
+      const owner = (piOwners.get(joined(a.name)) ?? []).find((o) => !family.has(o.id))
+      if (owner) {
+        out.push(
+          issue(
+            'L11',
+            `${e.name}.${a.name} is the identifier of ${owner.name}, typed in by hand. In the CDM a link is a relationship, ` +
+              `not an attribute: delete ${a.name} and draw a relationship ${e.name} — ${owner.name}. ` +
+              `The PDM then adds the foreign key column itself (with a real FK constraint).`,
+            [target, { kind: 'entity', id: owner.id }],
+          ),
+        )
+        continue
+      }
+      // 2. `<something>_id` that is not one of this entity's own identifiers (`license_no` as an AK is fine).
+      if (ownKeys.has(a.id)) continue
+      const stem = singular(w.slice(0, -1).join(''))
+      if (!stem || stem === ownStem || ownStem.endsWith(stem)) continue
+      const match = byStem(stem).find((x) => !family.has(x.id))
+      if (!match && w[w.length - 1] !== 'id') continue
+      out.push(
+        issue(
+          'L11',
+          match
+            ? `${e.name}.${a.name} looks like a reference to ${match.name}. In the CDM draw a relationship ${e.name} — ${match.name} ` +
+                `instead of typing the key: the PDM creates the foreign key column and its constraint from the relationship.`
+            : `${e.name}.${a.name} looks like a foreign key. In the CDM there are no foreign keys: if “${w.slice(0, -1).join(' ')}” ` +
+                `is something the model must remember, add it as an entity and draw a relationship to ${e.name}. ` +
+                'If it is only an external code with nothing behind it, you can ignore this hint.',
+          match ? [target, { kind: 'entity', id: match.id }] : [target],
+        ),
+      )
+    }
+  }
   return out
 }

@@ -150,7 +150,7 @@ export const HELP_CARDS: HelpCard[] = [
       addRelationship(m, rider.id, trip.id, { name: 'requests' })
       return m
     },
-    seeAlso: ['cardinality', 'one-to-one', 'many-to-many'],
+    seeAlso: ['cardinality', 'one-to-one', 'many-to-many', 'foreign-key-attribute'],
     caseRefs: ['ride-hailing: Rider — Trip'],
   },
   {
@@ -395,6 +395,27 @@ export const HELP_CARDS: HelpCard[] = [
     },
     seeAlso: ['inheritance', 'lookup-vs-check'],
     caseRefs: ['tv-shows: both inheritances use parent + children'],
+  },
+  {
+    id: 'foreign-key-attribute',
+    title: 'Foreign keys in the CDM',
+    oneLiner: 'The CDM has no foreign keys. Draw a relationship; the PDM creates the FK column from it.',
+    body: [
+      'A foreign key is how a **table** stores a link. In the conceptual model the link itself is drawn: a relationship `Publisher — Book`. When the PDM is generated, `BOOK` gets the column `publisher_id` with `FOREIGN KEY … REFERENCES PUBLISHER` (this mini-model).',
+      'Typing `publisher_id` into Book by hand gives an ordinary column: no constraint, so a book can point at a publisher that does not exist. If you also draw the relationship, the PDM has the column twice. Linter L11 points out such attributes.',
+      'The same holds for intermediate and dependent entities: their keys come from **dependent relationships**, never from copied attributes.',
+    ],
+    whenToUse: ['You are about to type `<something>_id` into an entity', '“each book has one publisher” — a verb between two nouns is a relationship'],
+    typicalMistake: '`PublisherID` as an attribute of Book with no Publisher entity at all: the publisher’s name, address… then have nowhere to go.',
+    miniModel: () => {
+      const m = emptyModel('Relationship instead of FK')
+      const pub = idEntity(m, 'Publisher', 0, 0, ['name'])
+      const book = idEntity(m, 'Book', 280, 0, ['title'])
+      addRelationship(m, pub.id, book.id, { name: 'publishes' })
+      return m
+    },
+    seeAlso: ['relationship', 'dependent-entity', 'intermediate-entity'],
+    caseRefs: ['ride-hailing: Trip gets rider_id from the relationship requests'],
   },
   {
     id: 'circular-relationship',

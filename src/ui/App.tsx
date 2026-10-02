@@ -20,6 +20,8 @@ import { PdmPanel } from './pdm/PdmPanel'
 import { fileBaseName, SqlView } from './pdm/SqlView'
 import { SandboxView } from './sandbox/SandboxView'
 import { useEditor, type View } from './store'
+import { TrainerPane } from './trainer/TrainerPane'
+import { useTrainer } from './trainer/trainerStore'
 
 const EXAMPLES = [
   { id: 'tv-shows', label: 'TV Shows (Class 03)', build: buildTvShows },
@@ -85,6 +87,7 @@ function Editor() {
   const error = useEditor((s) => s.error)
   const view = useEditor((s) => s.view)
   const helpOpen = useEditor((s) => s.help !== null)
+  const trainerOn = useTrainer((s) => s.session !== null || s.pickerOpen)
   const { undo, redo, load, apply, select, setLinkKind, setView, showError } = useEditor.getState()
   const fileInput = useRef<HTMLInputElement>(null)
   const flow = useReactFlow()
@@ -256,6 +259,14 @@ function Editor() {
           )}
           <button
             type="button"
+            className={`btn ${trainerOn ? 'btn-primary' : ''}`}
+            onClick={() => useTrainer.getState().openPicker(!useTrainer.getState().pickerOpen)}
+            title="Practise on the course cases: worked example, text tagging, complete the model, from scratch"
+          >
+            🎓 Trainer
+          </button>
+          <button
+            type="button"
             className={`btn ${helpOpen ? 'btn-primary' : ''}`}
             onClick={() => (helpOpen ? useEditor.getState().closeHelp() : useEditor.getState().openHelp())}
             title="Concepts: entity, dependent entity, inheritance… with mini-models"
@@ -279,6 +290,7 @@ function Editor() {
         </>
       ) : (
       <div className="flex min-h-0 flex-1">
+        {trainerOn && <TrainerPane />}
         <main className="relative flex min-w-0 flex-1 flex-col">
           <div className="relative min-h-0 flex-1">
           {view === 'cdm' && <Canvas dark={dark} />}
@@ -287,7 +299,8 @@ function Editor() {
           {model.entities.length === 0 && view !== 'sql' && (
             <div className="empty-state">
               <h2>Start a conceptual model</h2>
-              <p>Double-click the canvas or press “+ Entity”. Or open a worked example:</p>
+              <p>Double-click the canvas or press “+ Entity”.{trainerOn ? ' Read the text on the left and model it here.' : ' Or open a worked example:'}</p>
+              {!trainerOn && (
               <div className="flex flex-wrap justify-center gap-2">
                 {EXAMPLES.map((x) => (
                   <button
@@ -303,7 +316,11 @@ function Editor() {
                     {x.label}
                   </button>
                 ))}
+                <button type="button" className="btn" onClick={() => useTrainer.getState().openPicker(true)}>
+                  🎓 Trainer
+                </button>
               </div>
+              )}
             </div>
           )}
           {error && (

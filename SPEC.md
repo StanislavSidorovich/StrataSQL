@@ -108,6 +108,7 @@ Each warning links to a help card and highlights elements on the canvas.
 | L08 | Two relationships between the same pair of entities without role names | warning |
 | L09 | Attribute that looks derived (`avg_`, `total_`, `count_`) → store history, compute in query | info |
 | L10 | Duplicate entity / attribute names | error |
+| L11 | Attribute that looks like a foreign key (`publisher_id` typed by hand, another entity's identifier copied) → draw a relationship; the PDM creates the FK | warning |
 
 ## 8. Help cards
 
@@ -125,7 +126,7 @@ Pedagogy: worked example → completion problems → faded scaffolding → indep
 | Level | Task | Feedback |
 |---|---|---|
 | 0 — Worked example | Read the case with the reference model; text spans are linked to model elements | — |
-| 1 — Text tagging | Click words in the spec, tag as entity / attribute / relationship / rule-not-in-model | Immediate, per tag |
+| 1 — Text tagging | Click words in the spec, tag as entity / attribute / relationship / inheritance / rule | Immediate, per tag |
 | 2 — Complete the model | Entities given; add relationships, cardinalities, dependencies, inheritance | Hint ladder: "something is missing here" → "look at the word *X*" → show the answer |
 | 3 — From scratch | Build the whole CDM from the text | Structural comparison with reference + linter |
 | 4 — Open business task | Free text task, no reference | AI review (stage 5) |

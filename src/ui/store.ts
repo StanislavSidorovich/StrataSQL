@@ -21,6 +21,8 @@ export type View = 'cdm' | 'pdm' | 'sql' | 'sandbox'
 const HISTORY_LIMIT = 200
 const COALESCE_MS = 1000
 const STORAGE_KEY = 'stratasql.model'
+/** The trainer's working model, kept apart so a task never overwrites the user's own model. */
+export const TRAINER_MODEL_KEY = 'stratasql.trainer.model'
 
 interface ApplyOptions {
   /** Consecutive edits with the same key within 1 s form one undo step (typing in a field). */
@@ -43,6 +45,8 @@ interface EditorState {
   issuesOpen: boolean
   /** Issue whose elements are highlighted on the canvas; cleared when the model changes. */
   focusedIssue: LintIssue | null
+  /** While the trainer runs, the user's own model waits here (and is what autosave keeps). */
+  trainerBackup: Model | null
 
   /** Runs an edit operation on a draft; on ModelError the model is untouched and the message is shown. */
   apply: (edit: (m: Model) => void, opts?: ApplyOptions) => boolean
@@ -73,6 +77,7 @@ export const useEditor = create<EditorState>()((set, get) => ({
   help: null,
   issuesOpen: false,
   focusedIssue: null,
+  trainerBackup: null,
 
   apply(edit, opts = {}) {
     const { model, past, lastEdit } = get()
@@ -160,9 +165,9 @@ function validSelection(m: Model, s: Selection): Selection {
 
 // ---------------------------------------------------------------- persistence (localStorage)
 
-function loadStoredModel(): Model | null {
+export function loadStoredModel(key = STORAGE_KEY): Model | null {
   try {
-    const text = localStorage.getItem(STORAGE_KEY)
+    const text = localStorage.getItem(key)
     return text ? parseModel(text) : null
   } catch (e) {
     if (e instanceof ModelFormatError) console.warn('Ignoring stored model:', e.message)
@@ -175,13 +180,17 @@ function saveNow() {
   clearTimeout(saveTimer)
   saveTimer = undefined
   try {
-    localStorage.setItem(STORAGE_KEY, serializeModel(useEditor.getState().model))
+    const { model, trainerBackup } = useEditor.getState()
+    if (trainerBackup) {
+      localStorage.setItem(STORAGE_KEY, serializeModel(trainerBackup))
+      localStorage.setItem(TRAINER_MODEL_KEY, serializeModel(model))
+    } else localStorage.setItem(STORAGE_KEY, serializeModel(model))
   } catch {
     // Storage full or unavailable: the file save still works.
   }
 }
 useEditor.subscribe((state, prev) => {
-  if (state.model === prev.model) return
+  if (state.model === prev.model && state.trainerBackup === prev.trainerBackup) return
   if (state.focusedIssue) useEditor.setState({ focusedIssue: null })
   clearTimeout(saveTimer)
   saveTimer = setTimeout(saveNow, 300)
