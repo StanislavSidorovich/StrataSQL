@@ -12,6 +12,7 @@ import {
   type Identifier,
   type Inheritance,
   type Model,
+  type PhysicalKey,
   type Point,
   type Relationship,
 } from './metamodel'
@@ -85,6 +86,7 @@ export function integrityProblems(m: Model): string[] {
       for (const a of i.attributeIds)
         if (!attrIds.has(a)) out.push(`identifier ${e.name}.${i.name} references unknown attribute ${a}`)
     }
+    for (const k of e.physicalKeys ?? []) seen(k.id, `physical key ${e.name}.${k.name}`)
   }
   for (const r of m.relationships) {
     seen(r.id, `relationship ${r.name}`)
@@ -140,6 +142,16 @@ function parseEntity(raw: unknown, at: string): Entity {
     position: point(o.position, `${at}.position`),
     attributes: arr(o.attributes, `${at}.attributes`).map((a, i) => parseAttribute(a, `${at}.attributes[${i}]`)),
     identifiers: arr(o.identifiers, `${at}.identifiers`).map((x, i) => parseIdentifier(x, `${at}.identifiers[${i}]`)),
+    physicalKeys: optArr(o.physicalKeys, `${at}.physicalKeys`)?.map((x, i) => parsePhysicalKey(x, `${at}.physicalKeys[${i}]`)),
+  }
+}
+
+function parsePhysicalKey(raw: unknown, at: string): PhysicalKey {
+  const o = obj(raw, at)
+  return {
+    id: str(o.id, `${at}.id`),
+    name: str(o.name, `${at}.name`),
+    columns: arr(o.columns, `${at}.columns`).map((x, i) => str(x, `${at}.columns[${i}]`)),
   }
 }
 
@@ -183,6 +195,7 @@ function parseRelationship(raw: unknown, at: string): Relationship {
     roleA: optStr(o.roleA, `${at}.roleA`),
     roleB: optStr(o.roleB, `${at}.roleB`),
     dependentSide: dep ?? null,
+    foreignKeySide: side(o.foreignKeySide, `${at}.foreignKeySide`),
     comment: optStr(o.comment, `${at}.comment`),
   }
 }
@@ -214,6 +227,17 @@ function obj(v: unknown, at: string): Record<string, unknown> {
 }
 function arr(v: unknown, at: string): unknown[] {
   if (!Array.isArray(v)) throw new ModelFormatError(`${at} must be an array`)
+  return v
+}
+/** Optional array: missing or empty → undefined, so files without it stay byte-identical. */
+function optArr(v: unknown, at: string): unknown[] | undefined {
+  if (v === undefined || v === null) return undefined
+  const a = arr(v, at)
+  return a.length ? a : undefined
+}
+function side(v: unknown, at: string): 'A' | 'B' | undefined {
+  if (v === undefined || v === null) return undefined
+  if (v !== 'A' && v !== 'B') throw new ModelFormatError(`${at} must be "A" or "B"`)
   return v
 }
 function str(v: unknown, at: string): string {

@@ -1,5 +1,7 @@
 import { formatCardinality, parseCardinality, type Cardinality, type Model, type Relationship } from '../../core/metamodel'
-import { removeRelationship, setDependentSide, swapRelationshipSides, updateRelationship } from '../../core/ops'
+import { foreignKeyHolder } from '../../core/cdm2pdm'
+import { removeRelationship, setDependentSide, setForeignKeySide, swapRelationshipSides, updateRelationship } from '../../core/ops'
+import { RelationshipResult } from '../pdm/PhysicalResult'
 import { useEditor } from '../store'
 import { Field, Section, Select, TextArea, TextInput } from './fields'
 
@@ -89,6 +91,28 @@ export function RelationshipPanel({ rel, model }: { rel: Relationship; model: Mo
           </div>
         )}
       </Section>
+
+      {kind === 'one-to-one' && !rel.dependentSide && (
+        <Section title="Foreign key side">
+          <div className="radio-list">
+            <Radio name={`fk-${id}`} checked={!rel.foreignKeySide} onChange={() => apply((m) => setForeignKeySide(m, id, undefined))}>
+              Automatic — in <b>{foreignKeyHolder({ ...rel, foreignKeySide: undefined }) === 'A' ? a : b}</b>
+            </Radio>
+            <Radio name={`fk-${id}`} checked={rel.foreignKeySide === 'A'} onChange={() => apply((m) => setForeignKeySide(m, id, 'A'))}>
+              FK in <b>{a}</b>, referencing {b}
+            </Radio>
+            <Radio name={`fk-${id}`} checked={rel.foreignKeySide === 'B'} onChange={() => apply((m) => setForeignKeySide(m, id, 'B'))}>
+              FK in <b>{b}</b>, referencing {a}
+            </Radio>
+            <p className="muted">
+              One-to-one: either table can hold the FK; it gets a UNIQUE constraint. Prefer the side that must always have a
+              partner — its FK can be NOT NULL.
+            </p>
+          </div>
+        </Section>
+      )}
+
+      <RelationshipResult relationshipId={id} />
 
       <Section title="Comment">
         <TextArea value={rel.comment} onChange={(v) => apply((m) => updateRelationship(m, id, { comment: v }), { coalesce: `rc:${id}` })} />

@@ -22,6 +22,7 @@ import {
   updateAttribute,
   updateEntity,
 } from '../../core/ops'
+import { EntityResult } from '../pdm/PhysicalResult'
 import { useEditor } from '../store'
 import { Check, Field, IconButton, NumberInput, Section, Select, TextArea, TextInput } from './fields'
 
@@ -179,6 +180,8 @@ export function EntityPanel({ entity, model }: { entity: Entity; model: Model })
           )}
         </ul>
       </Section>
+
+      <EntityResult entityId={id} />
 
       <div className="panel-footer">
         <button type="button" className="btn btn-danger" onClick={() => apply((m) => removeEntity(m, id))}>

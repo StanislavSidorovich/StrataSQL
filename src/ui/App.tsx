@@ -3,15 +3,31 @@ import { useEffect, useRef, useState } from 'react'
 import { emptyModel } from '../core/metamodel'
 import { addEntity, removeEntity, removeInheritance, removeRelationship } from '../core/ops'
 import { FILE_EXTENSION, parseModel, serializeModel } from '../core/serialize'
+import { buildRideHailing } from '../data/examples/ride-hailing'
+import { buildTimetables } from '../data/examples/timetables'
 import { buildTvShows } from '../data/examples/tv-shows'
 import { Canvas } from './canvas/Canvas'
+import { exportDiagram } from './exportImage'
 import { EntityPanel } from './panels/EntityPanel'
 import { InheritancePanel } from './panels/InheritancePanel'
 import { ModelPanel } from './panels/ModelPanel'
 import { RelationshipPanel } from './panels/RelationshipPanel'
-import { useEditor } from './store'
+import { PdmCanvas } from './pdm/PdmCanvas'
+import { PdmPanel } from './pdm/PdmPanel'
+import { fileBaseName, SqlView } from './pdm/SqlView'
+import { useEditor, type View } from './store'
 
-const EXAMPLES = [{ id: 'tv-shows', label: 'TV Shows (Class 03)', build: buildTvShows }]
+const EXAMPLES = [
+  { id: 'tv-shows', label: 'TV Shows (Class 03)', build: buildTvShows },
+  { id: 'timetables', label: 'Timetables (Class 03)', build: buildTimetables },
+  { id: 'ride-hailing', label: 'Ride Hailing (Shadow Project)', build: buildRideHailing },
+]
+
+const VIEWS: { id: View; label: string; title: string }[] = [
+  { id: 'cdm', label: 'Conceptual', title: 'Edit the conceptual data model (CDM)' },
+  { id: 'pdm', label: 'Physical', title: 'Tables generated from the CDM (PDM)' },
+  { id: 'sql', label: 'SQL', title: 'SQL Server DDL generated from the PDM' },
+]
 
 export function App() {
   return (
@@ -38,7 +54,7 @@ function downloadModel() {
   const blob = new Blob([serializeModel(model)], { type: 'application/json' })
   const a = document.createElement('a')
   a.href = URL.createObjectURL(blob)
-  a.download = `${(model.name || 'model').replace(/[^\p{L}\p{N}_-]+/gu, '_')}${FILE_EXTENSION}`
+  a.download = `${fileBaseName(model.name)}${FILE_EXTENSION}`
   a.click()
   setTimeout(() => URL.revokeObjectURL(a.href), 1000)
 }
@@ -61,7 +77,8 @@ function Editor() {
   const canRedo = useEditor((s) => s.future.length > 0)
   const linkKind = useEditor((s) => s.linkKind)
   const error = useEditor((s) => s.error)
-  const { undo, redo, load, apply, select, setLinkKind, showError } = useEditor.getState()
+  const view = useEditor((s) => s.view)
+  const { undo, redo, load, apply, select, setLinkKind, setView, showError } = useEditor.getState()
   const fileInput = useRef<HTMLInputElement>(null)
   const flow = useReactFlow()
 
@@ -99,10 +116,11 @@ function Editor() {
       } else if (mod && (e.key.toLowerCase() === 'y' || (e.key.toLowerCase() === 'z' && e.shiftKey))) {
         e.preventDefault()
         redo()
-      } else if (e.key === 'Delete' || e.key === 'Backspace') {
+      } else if ((e.key === 'Delete' || e.key === 'Backspace') && useEditor.getState().view === 'cdm') {
         deleteSelection()
       } else if (e.key === 'Escape') {
         select(null)
+        useEditor.getState().selectTable(null)
       }
     }
     window.addEventListener('keydown', onKey)
@@ -128,6 +146,13 @@ function Editor() {
         <span className="toolbar-model" title="Model name">
           {model.name}
         </span>
+        <div className="segmented view-switch" role="tablist" aria-label="View">
+          {VIEWS.map((v) => (
+            <button key={v.id} type="button" role="tab" aria-selected={view === v.id} className={view === v.id ? 'on' : ''} onClick={() => setView(v.id)} title={v.title}>
+              {v.label}
+            </button>
+          ))}
+        </div>
         <div className="toolbar-group">
           <button type="button" className="btn" onClick={() => load(emptyModel())} title="New empty model">
             New
@@ -169,6 +194,7 @@ function Editor() {
             }}
           />
         </div>
+        {view === 'cdm' && (
         <div className="toolbar-group">
           <button type="button" className="btn btn-primary" onClick={addEntityAtCenter}>
             + Entity
@@ -182,6 +208,7 @@ function Editor() {
             </button>
           </div>
         </div>
+        )}
         <div className="toolbar-group">
           <button type="button" className="btn" onClick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)">
             ↶
@@ -189,9 +216,27 @@ function Editor() {
           <button type="button" className="btn" onClick={redo} disabled={!canRedo} title="Redo (Ctrl+Y)">
             ↷
           </button>
-          <button type="button" className="btn" onClick={() => flow.fitView({ padding: 0.15, duration: 300 })} title="Fit the model on screen">
-            Fit
-          </button>
+          {view !== 'sql' && (
+            <>
+              <button type="button" className="btn" onClick={() => flow.fitView({ padding: 0.15, duration: 300 })} title="Fit the model on screen">
+                Fit
+              </button>
+              <select
+                className="input w-auto"
+                aria-label="Export diagram"
+                value=""
+                onChange={(e) => {
+                  const format = e.target.value as 'png' | 'svg'
+                  const suffix = view === 'pdm' ? '_PDM' : '_CDM'
+                  exportDiagram(flow.getNodesBounds(flow.getNodes()), format, fileBaseName(model.name) + suffix).catch((err: Error) => showError(`Export failed: ${err.message}`))
+                }}
+              >
+                <option value="">Export…</option>
+                <option value="png">Diagram as PNG</option>
+                <option value="svg">Diagram as SVG</option>
+              </select>
+            </>
+          )}
         </div>
         <div className="ml-auto">
           <button type="button" className="btn" onClick={toggleTheme} title="Toggle light/dark theme">
@@ -202,21 +247,29 @@ function Editor() {
 
       <div className="flex min-h-0 flex-1">
         <main className="relative min-w-0 flex-1">
-          <Canvas dark={dark} />
-          {model.entities.length === 0 && (
+          {view === 'cdm' && <Canvas dark={dark} />}
+          {view === 'pdm' && <PdmCanvas dark={dark} />}
+          {view === 'sql' && <SqlView />}
+          {model.entities.length === 0 && view !== 'sql' && (
             <div className="empty-state">
               <h2>Start a conceptual model</h2>
               <p>Double-click the canvas or press “+ Entity”. Or open a worked example:</p>
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={() => {
-                  load(buildTvShows())
-                  fit()
-                }}
-              >
-                Open TV Shows example
-              </button>
+              <div className="flex flex-wrap justify-center gap-2">
+                {EXAMPLES.map((x) => (
+                  <button
+                    key={x.id}
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={() => {
+                      setView('cdm')
+                      load(x.build())
+                      fit()
+                    }}
+                  >
+                    {x.label}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
           {error && (
@@ -226,10 +279,11 @@ function Editor() {
           )}
         </main>
         <aside className="panel" aria-label="Properties">
-          {entity && <EntityPanel key={entity.id} entity={entity} model={model} />}
-          {rel && <RelationshipPanel key={rel.id} rel={rel} model={model} />}
-          {inh && <InheritancePanel key={inh.id} inh={inh} model={model} />}
-          {!entity && !rel && !inh && <ModelPanel model={model} />}
+          {view !== 'cdm' && <PdmPanel />}
+          {view === 'cdm' && entity && <EntityPanel key={entity.id} entity={entity} model={model} />}
+          {view === 'cdm' && rel && <RelationshipPanel key={rel.id} rel={rel} model={model} />}
+          {view === 'cdm' && inh && <InheritancePanel key={inh.id} inh={inh} model={model} />}
+          {view === 'cdm' && !entity && !rel && !inh && <ModelPanel model={model} />}
         </aside>
       </div>
     </div>

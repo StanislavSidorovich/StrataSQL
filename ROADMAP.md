@@ -5,8 +5,8 @@ Stages follow SPEC §12. A stage is done only when its acceptance criteria pass.
 | Stage | Status | Acceptance |
 |---|---|---|
 | 1. CDM editor | ✅ done (2026-10-02) · live: https://stanislavsidorovich.github.io/StrataSQL/ | Full TV Shows reference model can be built and saved/reloaded |
-| 2. PDM + SQL Server DDL | ⏭ next | 3 reference CDMs generate the PDMs in `cases/`; DDL runs on SQL Server |
-| 2.5 SQL sandbox | — | Generated schema runs in the browser; inserting conflicting rows shows the constraint that rejects them |
+| 2. PDM + SQL Server DDL | ✅ done (2026-10-02) | 3 reference CDMs generate the PDMs in `cases/`; DDL runs on SQL Server |
+| 2.5 SQL sandbox | ⏭ next | Generated schema runs in the browser; inserting conflicting rows shows the constraint that rejects them |
 | 3. Linter + Help | — | L01–L10 with tests; ≥ 15 help cards; `?` on every property |
 | 4. Trainer | — | 3 cases × levels 0–3; comparator correct on references and seeded wrong models |
 | 5. AI review | — | Optional, behind a user-provided API key |
@@ -30,25 +30,33 @@ Known gaps carried forward:
 - No multi-select delete; no copy/paste; no auto-layout.
 - Inheritance symbol shape follows PD loosely (exact PD look to be checked against class screenshots).
 
-## Stage 2 — PDM + SQL Server DDL ⏭
+## Stage 2 — PDM + SQL Server DDL ✅
 
-- [ ] `src/core/pdm.ts` — PDM types: tables, columns (SQL type, nullable), PK, AKs, FKs (with `FK_<CHILD>_<ROLE>_<PARENT>` names)
-- [ ] `src/core/cdm2pdm.ts` — one function per rule of SPEC §6, each with a Vitest test:
-  - [ ] entity → table, PI → PK, AI → AK
-  - [ ] 1:N → FK on the N side, NOT NULL when min = 1
-  - [ ] 1:1 → FK on the chosen side + UNIQUE
-  - [ ] M:N → join table, PK = both FKs
-  - [ ] dependent → FK migrates into the child PK (several parents → composite PK)
-  - [ ] inheritance generation = parent / children / both
-  - [ ] FK naming, role prefix on column collisions
-  - [ ] AKs over migrated columns (Timetables)
-- [ ] `src/core/ddl/sqlserver.ts` — CREATE TABLE / PK / UNIQUE / FK, conceptual → SQL Server types
-- [ ] Reference CDMs for Timetables and Ride Hailing as examples (`src/data/examples/`)
-- [ ] Regression tests: 3 cases generate the PDM tables/keys listed in `cases/*.md` §5
-- [ ] UI: PDM view (read-only canvas or table list) + SQL preview with copy/download `.sql`
-- [ ] Check the generated DDL on a real SQL Server (or Azure SQL Edge in Docker)
-- [ ] Export the diagram as PNG / SVG (for reports and group discussion)
-- [ ] Cross-check: paste generated DDL into DrawDB / dbdiagram (both import SQL) and compare tables until our PDM view exists
+Done:
+- [x] `src/core/pdm.ts` — PDM types: tables, columns (conceptual type, nullable, origin, migrated flag), PK, AKs, FKs, CHECKs, generation notes; every element points back to the CDM element that produced it
+- [x] `src/core/cdm2pdm.ts` — `generatePdm(model)`, one test group per rule of SPEC §6 (`tests/cdm2pdm.test.ts`, 24 tests):
+  - [x] entity → table, PI → PK, AI → AK
+  - [x] 1:N → FK on the N side, NOT NULL when min = 1
+  - [x] 1:1 → FK on the chosen side + UNIQUE (new `Relationship.foreignKeySide`; default = the side that must have a partner)
+  - [x] M:N → join table, PK = both FKs (reflexive → role prefixes)
+  - [x] dependent → FK migrates into the child PK (several parents → composite PK; transitive)
+  - [x] inheritance generation = parent (nullable child columns, discriminator + CHECK) / children (parent columns copied) / both (child PK = FK to parent)
+  - [x] FK naming `FK_<CHILD>_<ROLE>_<PARENT>`; same neighbour twice / reflexive → role prefix; same origin via different neighbours → one shared column (with a note); name clash → renamed migrated column
+  - [x] AKs over migrated columns (new `Entity.physicalKeys`, edited in the Physical view)
+- [x] `src/core/ddl/sqlserver.ts` — CREATE TABLE with PK / UNIQUE / CHECK, FKs as ALTER TABLE, optional DROP section, PD type mapping, reserved words bracketed
+- [x] Reference CDMs `src/data/examples/timetables.ts`, `ride-hailing.ts` (in the Examples menu)
+- [x] Regression tests `tests/cases-pdm.test.ts`: the 3 cases generate the PDMs of `cases/*.md` §5
+- [x] UI: view switch Conceptual / Physical / SQL; PDM canvas (tables at the entity positions, migrated columns highlighted, `<pk,fk1>` flags); table panel (origin of every column, keys, notes, "keys over columns" editor); "In the physical model" section in entity and relationship panels; 1:1 FK side choice; SQL view with copy / download `.sql`
+- [x] DDL checked on SQL Server 2022 (local Developer edition, scratch database dropped afterwards): all 3 scripts run, also re-run with DROP; the TV Shows FK rejects an episode directed by a non-director of the show, `AK_ROOM_TIME` rejects a room double-booking
+- [x] Export the diagram (CDM or PDM) as PNG / SVG (`html-to-image`, MIT)
+- [x] ~~Cross-check in DrawDB / dbdiagram~~ — superseded by the own PDM view and the real SQL Server check
+- Tests: 77 unit tests
+
+Known gaps carried forward:
+- PDM table positions follow the CDM layout; moving tables in the Physical view is not saved.
+- With two references to different tables that carry the same origin column (e.g. an entity depending on Actor and Director, both children of Person) the column is shared, as SPEC §6 says; roles don't split it. Candidate for a linter hint.
+- UNIQUE over nullable columns (inheritance generation = parent) allows only one NULL in SQL Server — noted in the PDM, no filtered index generated.
+- Decimal precision still has no input in the attribute grid (domains can carry it, see Ride Hailing `Coordinate`).
 
 ## Stage 2.5 — SQL sandbox (practice: see constraints work)
 
@@ -79,7 +87,8 @@ The owner's guidance: the course's "discussed in class" points are not critical 
 3. TV Shows: TechnicianFunction keeps its **own `function_no`**; the `Function` lookup version is an alternative for help cards.
 4. Table codes follow the **PowerDesigner default** (name upper-cased, spaces → `_`). Reference models name entities so codes match the cases (`Car Shift` → `CAR_SHIFT`).
 5. Column collisions in the PDM: same origin column via different neighbours → shared column; two links to the same neighbour → role prefix (SPEC §6).
+6. Timetables: **Class is identified by its context** (dependent on TeachingAssignment, Room, Shift, Period + own `weekday`), one ClassSlot row per 30-min slot. Only PK columns migrate, so this is what brings `room_id`, `professor_id`, `weekday`… into CLASSSLOT, where the three rules become AKs. Alternative (`class_id` + FK to a wider UNIQUE key) is mentioned in the case.
+7. 1:1 FK default side: the side that must have a partner (its FK is NOT NULL); the user can override it.
 
-Still open (decide in stage 2, same principle — clearest for students):
-- Timetables: Class → TeachingAssignment (course + professor) and ClassSlot per 30-min slot are kept as in the case unless a simpler variant teaches the AK lesson better.
+Still open:
 - SPEC §13: PD-style `0,n` labels shown by default (toggle later); associations not supported; UI in English first.

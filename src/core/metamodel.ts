@@ -85,6 +85,16 @@ export interface Identifier {
   attributeIds: Id[]
 }
 
+/**
+ * An alternate key declared on the generated table, over PDM column names. It can use columns that
+ * only exist after CDM → PDM migration (Timetables: `room_id` arrives in CLASSSLOT through Class).
+ */
+export interface PhysicalKey {
+  id: Id
+  name: string
+  columns: string[]
+}
+
 export interface Entity {
   id: Id
   name: string
@@ -93,6 +103,8 @@ export interface Entity {
   position: Point
   attributes: Attribute[]
   identifiers: Identifier[]
+  /** Alternate keys over PDM columns (incl. migrated ones). */
+  physicalKeys?: PhysicalKey[]
 }
 
 /** PD-style cardinality of one relationship end: `min,max`. */
@@ -120,6 +132,8 @@ export interface Relationship {
   roleA?: string
   roleB?: string
   dependentSide: Side | null
+  /** One-to-one only: the entity whose table holds the FK. Default: see cdm2pdm `foreignKeyHolder`. */
+  foreignKeySide?: Side
   comment?: string
 }
 

@@ -1,7 +1,10 @@
 import { produce } from 'immer'
+import { useMemo } from 'react'
 import { create } from 'zustand'
+import { generatePdm } from '../core/cdm2pdm'
 import { emptyModel, type Id, type Model } from '../core/metamodel'
 import { ModelError } from '../core/ops'
+import type { Pdm } from '../core/pdm'
 import { ModelFormatError, parseModel, serializeModel } from '../core/serialize'
 
 export type Selection =
@@ -11,6 +14,9 @@ export type Selection =
   | null
 
 export type LinkKind = 'relationship' | 'inheritance'
+
+/** Conceptual model editor, generated physical model, generated SQL. */
+export type View = 'cdm' | 'pdm' | 'sql'
 
 const HISTORY_LIMIT = 200
 const COALESCE_MS = 1000
@@ -27,6 +33,9 @@ interface EditorState {
   future: Model[]
   selection: Selection
   linkKind: LinkKind
+  view: View
+  /** Selected table in the PDM view (by name). */
+  tableSelection: string | null
   error: string | null
   lastEdit: { key: string; at: number } | null
 
@@ -37,6 +46,8 @@ interface EditorState {
   load: (model: Model) => void
   select: (selection: Selection) => void
   setLinkKind: (kind: LinkKind) => void
+  setView: (view: View) => void
+  selectTable: (name: string | null) => void
   showError: (message: string | null) => void
 }
 
@@ -46,6 +57,8 @@ export const useEditor = create<EditorState>()((set, get) => ({
   future: [],
   selection: null,
   linkKind: 'relationship',
+  view: 'cdm',
+  tableSelection: null,
   error: null,
   lastEdit: null,
 
@@ -105,11 +118,21 @@ export const useEditor = create<EditorState>()((set, get) => ({
 
   load(model) {
     const { model: current, past } = get()
-    set({ model, past: [...past, current].slice(-HISTORY_LIMIT), future: [], selection: null, lastEdit: null, error: null })
+    set({
+      model,
+      past: [...past, current].slice(-HISTORY_LIMIT),
+      future: [],
+      selection: null,
+      tableSelection: null,
+      lastEdit: null,
+      error: null,
+    })
   },
 
   select: (selection) => set({ selection }),
   setLinkKind: (linkKind) => set({ linkKind }),
+  setView: (view) => set({ view }),
+  selectTable: (tableSelection) => set({ tableSelection }),
   showError: (error) => set({ error }),
 }))
 
@@ -147,4 +170,10 @@ useEditor.subscribe((state, prev) => {
 /** Shortcut for components: the current model. */
 export function useModel(): Model {
   return useEditor((s) => s.model)
+}
+
+/** The PDM generated from the current model (recomputed only when the model changes). */
+export function usePdm(): Pdm {
+  const model = useModel()
+  return useMemo(() => generatePdm(model), [model])
 }

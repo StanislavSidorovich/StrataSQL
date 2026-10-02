@@ -13,14 +13,16 @@ import {
 import { useCallback, useEffect, useMemo, type MouseEvent as ReactMouseEvent } from 'react'
 import type { Model } from '../../core/metamodel'
 import { addEntity, addRelationship, linkInheritance, updateEntity, updateInheritance } from '../../core/ops'
+import { FkEdge, TableNode } from '../pdm/PdmCanvas'
 import { useEditor, type Selection } from '../store'
 import { EntityNode, type EntityNodeType } from './EntityNode'
 import { InheritanceEdge, type InheritanceEdgeType } from './InheritanceEdge'
 import { InheritanceNode, type InheritanceNodeType } from './InheritanceNode'
 import { RelationshipEdge, type RelationshipEdgeType } from './RelationshipEdge'
 
-const nodeTypes = { entity: EntityNode, inheritance: InheritanceNode }
-const edgeTypes = { relationship: RelationshipEdge, inheritance: InheritanceEdge }
+// `table` / `fk` too: see PdmCanvas (shared React Flow store across views).
+const nodeTypes = { entity: EntityNode, inheritance: InheritanceNode, table: TableNode }
+const edgeTypes = { relationship: RelationshipEdge, inheritance: InheritanceEdge, fk: FkEdge }
 
 type AnyNode = EntityNodeType | InheritanceNodeType
 const PARALLEL_GAP = 26

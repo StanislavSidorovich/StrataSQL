@@ -15,6 +15,7 @@ import {
   type Inheritance,
   type InheritanceGeneration,
   type Model,
+  type PhysicalKey,
   type Point,
   type Relationship,
   type Side,
@@ -315,6 +316,44 @@ export function setAttributeInPrimary(m: Model, entityId: Id, attrId: Id, on: bo
   if (pi.attributeIds.length === 0) removeIdentifier(m, entityId, pi.id)
 }
 
+// ---------------------------------------------------------------- physical keys (AKs over PDM columns)
+
+export function addPhysicalKey(m: Model, entityId: Id, input: { name?: string; columns?: string[] } = {}): PhysicalKey {
+  const e = getEntity(m, entityId)
+  const keys = (e.physicalKeys ??= [])
+  const key: PhysicalKey = {
+    id: newId('pk'),
+    name: uniqueName(input.name?.trim() || `AK${keys.length + 1}_${e.code}`, keys.map((k) => k.name)),
+    columns: [...new Set(input.columns ?? [])],
+  }
+  keys.push(key)
+  return key
+}
+
+function getPhysicalKey(e: Entity, id: Id): PhysicalKey {
+  const k = e.physicalKeys?.find((x) => x.id === id)
+  if (!k) throw new ModelError(`Key ${id} not found in ${e.name}`)
+  return k
+}
+
+export function updatePhysicalKey(m: Model, entityId: Id, keyId: Id, patch: { name?: string; columns?: string[] }): void {
+  const k = getPhysicalKey(getEntity(m, entityId), keyId)
+  if (patch.name !== undefined) k.name = patch.name
+  if (patch.columns !== undefined) k.columns = [...new Set(patch.columns)]
+}
+
+export function togglePhysicalKeyColumn(m: Model, entityId: Id, keyId: Id, column: string): void {
+  const k = getPhysicalKey(getEntity(m, entityId), keyId)
+  k.columns = k.columns.includes(column) ? k.columns.filter((c) => c !== column) : [...k.columns, column]
+}
+
+export function removePhysicalKey(m: Model, entityId: Id, keyId: Id): void {
+  const e = getEntity(m, entityId)
+  getPhysicalKey(e, keyId)
+  e.physicalKeys = e.physicalKeys!.filter((k) => k.id !== keyId)
+  if (e.physicalKeys.length === 0) e.physicalKeys = undefined
+}
+
 // ---------------------------------------------------------------- domains
 
 export function getDomain(m: Model, id: Id): Domain {
@@ -404,6 +443,8 @@ export function updateRelationship(
   if ('roleA' in patch) r.roleA = patch.roleA || undefined
   if ('roleB' in patch) r.roleB = patch.roleB || undefined
   if ('comment' in patch) r.comment = patch.comment || undefined
+  // The FK side choice only exists for one-to-one relationships.
+  if (r.cardinalityA.max !== 1 || r.cardinalityB.max !== 1) r.foreignKeySide = undefined
   // A dependent entity always has exactly one parent instance on that relationship.
   if (r.dependentSide) {
     const parentEnd = otherSide(r.dependentSide)
@@ -431,6 +472,15 @@ export function swapRelationshipSides(m: Model, id: Id): void {
   ;[r.cardinalityA, r.cardinalityB] = [r.cardinalityB, r.cardinalityA]
   ;[r.roleA, r.roleB] = [r.roleB, r.roleA]
   if (r.dependentSide) r.dependentSide = otherSide(r.dependentSide)
+  if (r.foreignKeySide) r.foreignKeySide = otherSide(r.foreignKeySide)
+}
+
+/** One-to-one: which entity's table holds the FK (`undefined` = automatic). */
+export function setForeignKeySide(m: Model, id: Id, side: Side | undefined): void {
+  const r = getRelationship(m, id)
+  if (side && (r.cardinalityA.max !== 1 || r.cardinalityB.max !== 1))
+    throw new ModelError('The FK side can only be chosen for a one-to-one relationship')
+  r.foreignKeySide = side
 }
 
 export function removeRelationship(m: Model, id: Id): void {
