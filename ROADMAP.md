@@ -6,6 +6,7 @@ Stages follow SPEC §12. A stage is done only when its acceptance criteria pass.
 |---|---|---|
 | 1. CDM editor | ✅ done (2026-10-02) · live: https://stanislavsidorovich.github.io/StrataSQL/ | Full TV Shows reference model can be built and saved/reloaded |
 | 2. PDM + SQL Server DDL | ⏭ next | 3 reference CDMs generate the PDMs in `cases/`; DDL runs on SQL Server |
+| 2.5 SQL sandbox | — | Generated schema runs in the browser; inserting conflicting rows shows the constraint that rejects them |
 | 3. Linter + Help | — | L01–L10 with tests; ≥ 15 help cards; `?` on every property |
 | 4. Trainer | — | 3 cases × levels 0–3; comparator correct on references and seeded wrong models |
 | 5. AI review | — | Optional, behind a user-provided API key |
@@ -46,11 +47,28 @@ Known gaps carried forward:
 - [ ] Regression tests: 3 cases generate the PDM tables/keys listed in `cases/*.md` §5
 - [ ] UI: PDM view (read-only canvas or table list) + SQL preview with copy/download `.sql`
 - [ ] Check the generated DDL on a real SQL Server (or Azure SQL Edge in Docker)
+- [ ] Export the diagram as PNG / SVG (for reports and group discussion)
+- [ ] Cross-check: paste generated DDL into DrawDB / dbdiagram (both import SQL) and compare tables until our PDM view exists
+
+## Stage 2.5 — SQL sandbox (practice: see constraints work)
+
+Why: the fastest way to *understand* a key is to watch it reject bad data — e.g. a second role for the same actor in the same scene, or an episode directed by someone who is not a director of that show.
+- [ ] In-browser engine: sql.js (SQLite) or PGlite (Postgres); second DDL dialect for it (PK / FK / UNIQUE / CHECK behave the same as SQL Server for this purpose)
+- [ ] Run the generated schema; small grid to insert rows per table; show which constraint failed and link it back to the CDM element that produced it
+- [ ] Per-case scripted "try this" scenarios (valid insert, then the conflicting one) for TV Shows, Timetables, Ride Hailing
+- [ ] Free SQL console for SELECT queries (e.g. rating average from history in Ride Hailing)
 
 ## Stage 3+ (later)
 
+- Live "model issues" panel (linter results update while editing; UX reference: DrawDB issues panel)
+- Optional text mode: write the CDM as text, diagram updates live (idea from dbdiagram.io / DBML) — useful for fast input and trainer tasks
+
 - Linter L01–L10 (SPEC §7) with canvas highlighting; help cards (SPEC §8) with mini-diagrams from cases
 - Trainer levels 0–3, structural comparator
+
+## Positioning vs free alternatives (reviewed 2026-10-02)
+
+DrawDB, dbdiagram.io, DBeaver CE, draw.io and ChartDB are all **table-level (PDM)** tools: none has a conceptual layer (entities vs tables, dependent entities with key migration, intermediate entities, inheritance generation modes), a modeling linter, explanations or a trainer. StrataSQL's niche is **learning CDM → PDM** in PowerDesigner conventions — not a general ER editor; don't compete on generic table editing. Borrowed ideas: PNG/SVG export, live issues panel, text mode, in-browser SQL sandbox. Check licenses before reusing any code (some are copyleft).
 
 ## Decisions (settled 2026-10-02)
 
