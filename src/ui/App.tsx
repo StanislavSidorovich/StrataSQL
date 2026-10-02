@@ -8,6 +8,8 @@ import { buildTimetables } from '../data/examples/timetables'
 import { buildTvShows } from '../data/examples/tv-shows'
 import { Canvas } from './canvas/Canvas'
 import { exportDiagram } from './exportImage'
+import { HelpDrawer } from './help/HelpDrawer'
+import { IssuesDock } from './lint/IssuesPanel'
 import { EntityPanel } from './panels/EntityPanel'
 import { InheritancePanel } from './panels/InheritancePanel'
 import { ModelPanel } from './panels/ModelPanel'
@@ -80,6 +82,7 @@ function Editor() {
   const linkKind = useEditor((s) => s.linkKind)
   const error = useEditor((s) => s.error)
   const view = useEditor((s) => s.view)
+  const helpOpen = useEditor((s) => s.help !== null)
   const { undo, redo, load, apply, select, setLinkKind, setView, showError } = useEditor.getState()
   const fileInput = useRef<HTMLInputElement>(null)
   const flow = useReactFlow()
@@ -121,8 +124,11 @@ function Editor() {
       } else if ((e.key === 'Delete' || e.key === 'Backspace') && useEditor.getState().view === 'cdm') {
         deleteSelection()
       } else if (e.key === 'Escape') {
+        const s = useEditor.getState()
+        if (s.help !== null) return s.closeHelp()
         select(null)
-        useEditor.getState().selectTable(null)
+        s.selectTable(null)
+        s.focusIssue(null)
       }
     }
     window.addEventListener('keydown', onKey)
@@ -240,7 +246,15 @@ function Editor() {
             </>
           )}
         </div>
-        <div className="ml-auto">
+        <div className="toolbar-group ml-auto">
+          <button
+            type="button"
+            className={`btn ${helpOpen ? 'btn-primary' : ''}`}
+            onClick={() => (helpOpen ? useEditor.getState().closeHelp() : useEditor.getState().openHelp())}
+            title="Concepts: entity, dependent entity, inheritance… with mini-models"
+          >
+            ? Help
+          </button>
           <button type="button" className="btn" onClick={toggleTheme} title="Toggle light/dark theme">
             {dark ? '☀' : '☾'}
           </button>
@@ -258,7 +272,8 @@ function Editor() {
         </>
       ) : (
       <div className="flex min-h-0 flex-1">
-        <main className="relative min-w-0 flex-1">
+        <main className="relative flex min-w-0 flex-1 flex-col">
+          <div className="relative min-h-0 flex-1">
           {view === 'cdm' && <Canvas dark={dark} />}
           {view === 'pdm' && <PdmCanvas dark={dark} />}
           {view === 'sql' && <SqlView />}
@@ -289,6 +304,8 @@ function Editor() {
               {error}
             </div>
           )}
+          </div>
+          {view === 'cdm' && model.entities.length > 0 && <IssuesDock />}
         </main>
         <aside className="panel" aria-label="Properties">
           {view !== 'cdm' && <PdmPanel />}
@@ -299,6 +316,7 @@ function Editor() {
         </aside>
       </div>
       )}
+      <HelpDrawer />
     </div>
   )
 }

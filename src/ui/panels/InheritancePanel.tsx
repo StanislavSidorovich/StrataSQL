@@ -1,5 +1,6 @@
 import type { Inheritance, InheritanceGeneration, Model } from '../../core/metamodel'
 import { addInheritanceChild, ancestorsOf, removeInheritance, removeInheritanceChild, updateInheritance } from '../../core/ops'
+import { ElementIssues } from '../lint/IssuesPanel'
 import { useEditor } from '../store'
 import { Check, Field, IconButton, Section, Select, TextArea, TextInput } from './fields'
 
@@ -20,7 +21,8 @@ export function InheritancePanel({ inh, model }: { inh: Inheritance; model: Mode
 
   return (
     <div>
-      <Section title="Inheritance">
+      <ElementIssues kind="inheritance" id={id} />
+      <Section title="Inheritance" help="inheritance">
         <Field label="Name">
           <TextInput value={inh.name} onChange={(v) => apply((m) => updateInheritance(m, id, { name: v }), { coalesce: `hn:${id}` })} />
         </Field>
@@ -53,7 +55,7 @@ export function InheritancePanel({ inh, model }: { inh: Inheritance; model: Mode
         </Field>
       </Section>
 
-      <Section title="Constraints">
+      <Section title="Constraints" help="inheritance">
         <Check
           checked={inh.mutuallyExclusive}
           onChange={(v) => apply((m) => updateInheritance(m, id, { mutuallyExclusive: v }))}
@@ -66,7 +68,7 @@ export function InheritancePanel({ inh, model }: { inh: Inheritance; model: Mode
         />
       </Section>
 
-      <Section title="PDM generation">
+      <Section title="PDM generation" help="inheritance-generation">
         <div className="radio-list">
           {GENERATION.map((g) => (
             <label key={g.value} className="check items-start">
@@ -84,7 +86,7 @@ export function InheritancePanel({ inh, model }: { inh: Inheritance; model: Mode
           ))}
         </div>
         {inh.generation === 'parent' && (
-          <Field label="Discriminator column" hint="Says which child a row belongs to">
+          <Field label="Discriminator column" hint="Says which child a row belongs to" help="inheritance-generation">
             <TextInput
               value={inh.discriminator}
               placeholder="e.g. scene_type"

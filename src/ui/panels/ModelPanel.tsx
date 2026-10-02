@@ -34,6 +34,7 @@ export function ModelPanel({ model }: { model: Model }) {
 
       <Section
         title="Domains"
+        help="domain"
         actions={
           <button type="button" className="btn btn-small" onClick={() => apply((m) => void addDomain(m))}>
             + Domain
@@ -71,6 +72,13 @@ export function ModelPanel({ model }: { model: Model }) {
           <li>Drag from the ● handle of an entity onto another one to link them. The toolbar chooses relationship or inheritance (child → parent).</li>
           <li>Click an entity, line or inheritance symbol to edit it here.</li>
           <li>Ctrl+Z / Ctrl+Y undo and redo · Delete removes the selection · Ctrl+S saves a file.</li>
+          <li>
+            Every <b>?</b> opens a help card with a mini-model;{' '}
+            <button type="button" className="link" onClick={() => useEditor.getState().openHelp()}>
+              browse all concepts
+            </button>
+            .
+          </li>
         </ul>
       </Section>
     </div>

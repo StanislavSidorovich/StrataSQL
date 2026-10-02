@@ -39,7 +39,7 @@ export function EntityResult({ entityId }: { entityId: Id }) {
     : pdm.tables.filter((t) => t.columns.some((c) => c.source.kind === 'attribute' && c.source.entityId === entityId && !c.migrated))
   const notes = pdm.notes.filter((n) => n.source?.kind === 'entity' && n.source.id === entityId)
   return (
-    <Section title="In the physical model">
+    <Section title="In the physical model" help="entity">
       {own && (
         <p>
           Table <TableLink name={own.name} /> · {pkText(own)}
@@ -79,7 +79,7 @@ export function RelationshipResult({ relationshipId }: { relationshipId: Id }) {
       )
   const notes = pdm.notes.filter((n) => n.source?.kind === 'relationship' && n.source.id === relationshipId && !join)
   return (
-    <Section title="In the physical model">
+    <Section title="In the physical model" help="relationship">
       {join && (
         <p>
           Join table <TableLink name={join.name} /> · {pkText(join)}

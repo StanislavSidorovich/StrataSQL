@@ -11,7 +11,7 @@ const TYPES = /\b(int|smallint|bigint|decimal|float|money|bit|char|varchar|varbi
 const TOKEN = new RegExp(`${KEYWORDS.source}|${TYPES.source}|('[^']*')`, 'g')
 
 /** Minimal T-SQL highlighting: comments, keywords, types, strings. */
-function highlight(sql: string): ReactNode[] {
+export function highlightSql(sql: string): ReactNode[] {
   return sql.split('\n').map((line, i) => {
     const out: ReactNode[] = []
     const commentAt = line.indexOf('--')
@@ -52,7 +52,7 @@ export function SqlView() {
   const [drop, setDrop] = useState(false)
   const [copied, setCopied] = useState(false)
   const sql = useMemo(() => generateSqlServer(pdm, { drop }), [pdm, drop])
-  const lines = useMemo(() => highlight(sql), [sql])
+  const lines = useMemo(() => highlightSql(sql), [sql])
 
   const copy = async () => {
     await navigator.clipboard.writeText(sql)

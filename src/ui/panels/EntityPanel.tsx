@@ -22,9 +22,10 @@ import {
   updateAttribute,
   updateEntity,
 } from '../../core/ops'
+import { ElementIssues } from '../lint/IssuesPanel'
 import { EntityResult } from '../pdm/PhysicalResult'
 import { useEditor } from '../store'
-import { Check, Field, IconButton, NumberInput, Section, Select, TextArea, TextInput } from './fields'
+import { Check, Field, HelpButton, IconButton, NumberInput, Section, Select, TextArea, TextInput } from './fields'
 
 export function EntityPanel({ entity, model }: { entity: Entity; model: Model }) {
   const apply = useEditor((s) => s.apply)
@@ -39,11 +40,12 @@ export function EntityPanel({ entity, model }: { entity: Entity; model: Model })
 
   return (
     <div>
-      <Section title="Entity">
-        <Field label="Name">
+      <ElementIssues kind="entity" id={id} />
+      <Section title="Entity" help="entity">
+        <Field label="Name" help="names-and-codes">
           <TextInput value={entity.name} onChange={(v) => apply((m) => updateEntity(m, id, { name: v }), { coalesce: `en:${id}` })} />
         </Field>
-        <Field label="Code" hint="Table name in the PDM">
+        <Field label="Code" hint="Table name in the PDM" help="names-and-codes">
           <TextInput value={entity.code} onChange={(v) => apply((m) => updateEntity(m, id, { code: v }), { coalesce: `ec:${id}` })} />
         </Field>
         <Field label="Comment">
@@ -53,6 +55,7 @@ export function EntityPanel({ entity, model }: { entity: Entity; model: Model })
 
       <Section
         title={`Attributes (${entity.attributes.length})`}
+        help="attribute"
         actions={
           <button type="button" className="btn btn-small" onClick={() => apply((m) => void addAttribute(m, id))}>
             + Attribute
@@ -61,11 +64,17 @@ export function EntityPanel({ entity, model }: { entity: Entity; model: Model })
       >
         {entity.attributes.length > 0 && (
           <div className="attr-grid attr-grid-head">
-            <span title="Primary identifier">PI</span>
+            <span title="Primary identifier">
+              PI<HelpButton card="identifier" title="What is a primary identifier?" />
+            </span>
             <span>Name</span>
-            <span>Type</span>
+            <span>
+              Type<HelpButton card="domain" title="Data types and domains" />
+            </span>
             <span title="Length / precision">Len</span>
-            <span title="Mandatory">M</span>
+            <span title="Mandatory">
+              M<HelpButton card="attribute" title="Mandatory attributes" />
+            </span>
             <span />
           </div>
         )}
@@ -89,6 +98,7 @@ export function EntityPanel({ entity, model }: { entity: Entity; model: Model })
 
       <Section
         title="Identifiers"
+        help="identifier"
         actions={
           <button
             type="button"
@@ -100,6 +110,12 @@ export function EntityPanel({ entity, model }: { entity: Entity; model: Model })
           </button>
         }
       >
+        {entity.identifiers.length > 1 && (
+          <p className="muted">
+            The primary one becomes the PK; the others become alternate keys (UNIQUE).
+            <HelpButton card="alternate-identifier" title="What is an alternate identifier?" />
+          </p>
+        )}
         {entity.identifiers.length === 0 && (
           <p className="muted">No identifier. Tick PI on an attribute, or make this entity dependent on another one.</p>
         )}
@@ -144,7 +160,7 @@ export function EntityPanel({ entity, model }: { entity: Entity; model: Model })
         ))}
       </Section>
 
-      <Section title="Links">
+      <Section title="Links" help="relationship">
         {relationships.length === 0 && !asChild && !asParent && <p className="muted">Drag from the ● handle on the entity to another entity.</p>}
         <ul className="link-list">
           {relationships.map((r) => {

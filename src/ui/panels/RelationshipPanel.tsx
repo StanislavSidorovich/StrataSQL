@@ -1,9 +1,10 @@
 import { formatCardinality, parseCardinality, type Cardinality, type Model, type Relationship } from '../../core/metamodel'
 import { foreignKeyHolder } from '../../core/cdm2pdm'
 import { removeRelationship, setDependentSide, setForeignKeySide, swapRelationshipSides, updateRelationship } from '../../core/ops'
+import { ElementIssues } from '../lint/IssuesPanel'
 import { RelationshipResult } from '../pdm/PhysicalResult'
 import { useEditor } from '../store'
-import { Field, Section, Select, TextArea, TextInput } from './fields'
+import { Field, HelpButton, Section, Select, TextArea, TextInput } from './fields'
 
 const CARD_OPTIONS = ['0,1', '1,1', '0,n', '1,n'].map((v) => ({ value: v, label: v }))
 
@@ -31,8 +32,9 @@ export function RelationshipPanel({ rel, model }: { rel: Relationship; model: Mo
 
   return (
     <div>
-      <Section title="Relationship">
-        <Field label="Name">
+      <ElementIssues kind="relationship" id={id} />
+      <Section title="Relationship" help="relationship">
+        <Field label="Name" help="names-and-codes">
           <TextInput value={rel.name} onChange={(v) => apply((m) => updateRelationship(m, id, { name: v }), { coalesce: `rn:${id}` })} />
         </Field>
         <div className="rel-ends">
@@ -69,11 +71,12 @@ export function RelationshipPanel({ rel, model }: { rel: Relationship; model: Mo
           </p>
           <p className="muted">
             {kind} · {formatCardinality(rel.cardinalityA)} — {formatCardinality(rel.cardinalityB)}
+            <HelpButton card={reflexive ? 'reflexive-relationship' : kind === 'many-to-many' ? 'many-to-many' : kind === 'one-to-one' ? 'one-to-one' : 'cardinality'} title={`About ${reflexive ? 'reflexive' : kind} relationships`} />
           </p>
         </div>
       </Section>
 
-      <Section title="Dependency">
+      <Section title="Dependency" help="dependent-entity">
         {reflexive ? (
           <p className="muted">A reflexive relationship cannot be dependent.</p>
         ) : (
@@ -93,7 +96,7 @@ export function RelationshipPanel({ rel, model }: { rel: Relationship; model: Mo
       </Section>
 
       {kind === 'one-to-one' && !rel.dependentSide && (
-        <Section title="Foreign key side">
+        <Section title="Foreign key side" help="one-to-one">
           <div className="radio-list">
             <Radio name={`fk-${id}`} checked={!rel.foreignKeySide} onChange={() => apply((m) => setForeignKeySide(m, id, undefined))}>
               Automatic — in <b>{foreignKeyHolder({ ...rel, foreignKeySide: undefined }) === 'A' ? a : b}</b>
@@ -141,7 +144,7 @@ function EndEditor(props: {
     <fieldset className="rel-end">
       <legend>{props.label}</legend>
       <Select ariaLabel={`${props.label} entity`} value={props.entity} options={props.options} onChange={props.onEntity} />
-      <Field label="Cardinality" hint="How many of this entity per one of the other">
+      <Field label="Cardinality" hint="How many of this entity per one of the other" help="cardinality">
         <Select
           ariaLabel={`${props.label} cardinality`}
           value={formatCardinality(props.card)}
@@ -149,7 +152,7 @@ function EndEditor(props: {
           onChange={(v) => props.onCard(parseCardinality(v)!)}
         />
       </Field>
-      <Field label="Role">
+      <Field label="Role" help="multiple-relationships">
         <TextInput value={props.role} placeholder="optional" onChange={props.onRole} />
       </Field>
     </fieldset>

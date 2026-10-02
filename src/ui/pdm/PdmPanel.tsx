@@ -182,7 +182,7 @@ function TablePanel({ table: t, pdm }: { table: PdmTable; pdm: Pdm }) {
         </div>
       </Section>
 
-      <Section title="Keys">
+      <Section title="Keys" help="alternate-identifier">
         <dl className="key-list">
           <dt>Primary key</dt>
           <dd>{t.primaryKey ? `${t.primaryKey.name} (${t.primaryKey.columns.join(', ')})` : <span className="text-[var(--danger)]">none</span>}</dd>
@@ -250,6 +250,7 @@ function TablePanel({ table: t, pdm }: { table: PdmTable; pdm: Pdm }) {
       {entity && (
         <Section
           title="Keys over columns"
+          help="business-rule"
           actions={
             <button type="button" className="btn btn-small" onClick={() => apply((m) => addPhysicalKey(m, entity.id))}>
               + Key

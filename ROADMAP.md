@@ -7,11 +7,13 @@ Stages follow SPEC §12. A stage is done only when its acceptance criteria pass.
 | 1. CDM editor | ✅ done (2026-10-02) · live: https://stanislavsidorovich.github.io/StrataSQL/ | Full TV Shows reference model can be built and saved/reloaded |
 | 2. PDM + SQL Server DDL | ✅ done (2026-10-02) | 3 reference CDMs generate the PDMs in `cases/`; DDL runs on SQL Server |
 | 2.5 SQL sandbox | ✅ done (2026-10-02) | Generated schema runs in the browser; inserting conflicting rows shows the constraint that rejects them |
-| 3. Linter + Help | ⏭ next | L01–L10 with tests; ≥ 15 help cards; `?` on every property |
-| 4. Trainer | — | 3 cases × levels 0–3; comparator correct on references and seeded wrong models |
+| 3. Linter + Help | ✅ done (2026-10-02) | L01–L10 with tests; ≥ 15 help cards; `?` on every property |
+| 4. Trainer | ⏭ next | 3 cases × levels 0–3; comparator correct on references and seeded wrong models |
 | 5. AI review | — | Optional, behind a user-provided API key |
 
-**Where we are (2026-10-02):** usable today for building a CDM, getting the PDM + SQL Server DDL and testing keys in the sandbox. What's missing is feedback on *your own* mistakes: stage 3 (linter + help), about 1 sprint. Then stage 4 (trainer), about 1–2 sprints, completes the learning loop. Stage 5 is optional.
+**Where we are (2026-10-02):** usable today for building a CDM, getting the PDM + SQL Server DDL, testing keys in the sandbox, and getting feedback on your own model: the linter checks it live and every warning and property links to a help card. Next is stage 4 (trainer), about 1–2 sprints, which completes the learning loop. Stage 5 is optional.
+
+**Distribution:** GitHub Pages stays the only channel. It works on Windows, macOS and Linux in any modern browser, with no install and no VPN. A local .bat/.exe would need a separate build per OS (and unsigned apps are blocked by macOS Gatekeeper). Candidate for later: make the page an installable PWA, so it opens offline after the first visit.
 
 ## Stage 1 — CDM editor ✅
 
@@ -78,13 +80,34 @@ Known gaps carried forward:
 - Postgres, not SQL Server: UNIQUE allows many NULLs (SQL Server: one); T-SQL syntax (`TOP`, `GETDATE()`) does not run in the console.
 - Ride Hailing has no CHECK for `score` — the scenario shows it on purpose; a CHECK editor for attributes (domains with value ranges) is a candidate for stage 3.
 
+## Stage 3 — Linter + Help ✅
+
+Done:
+- [x] `src/core/lint.ts` — `lintModel(model)` → issues with rule, severity, message, the elements to highlight, and a help card. One test group per rule in `tests/lint.test.ts` (23 tests):
+  - [x] L01 no primary identifier (dependent entities and inheritance children are exempt)
+  - [x] L02 entity without attributes, relationships or inheritance
+  - [x] L03 many-to-many whose name, comment or roles mention pair data (date, grade, role…) → intermediate entity
+  - [x] L04 cycles: shortest cycle per non-tree edge, with each edge oriented FK holder → referenced. A "diamond" (one source) is accepted when the PDM shares a key column between both FKs (TV Shows reference: `show_id`); otherwise there are two paths that can disagree. Two or more sources = the classic conflict (Episode → Director). A directed loop = circular references
+  - [x] L05 attribute repeated in a parent or ancestor; L06 child with no own attributes or relationships
+  - [x] L07 dependent entity, one parent, no own id, **many** side (a 1:1 dependent like DriverRating is fine)
+  - [x] L08 repeated or reflexive relationship without roles; L09 derived (avg_, total_, count_, number_of_, age); L10 duplicate entity names, codes and attribute names
+  - [x] The 3 reference models have **zero** issues (acceptance); the TV Shows cycle version is flagged by L04
+- [x] `src/data/help.ts` — 22 help cards (21 with a mini-model): entity, attribute, identifier, alternate identifier, domain, relationship, cardinality, 1:1, dependent, intermediate (with and without own id), M:N, multiple and reflexive relationships, n-ary, inheritance and its generation, cycle, derived data, lookup vs CHECK, history, business rules, names and codes. A card's PDM and SQL are **generated** from its mini-model, so they cannot go stale. Tests in `tests/help.test.ts` check that every mini-model is consistent, lint-clean and produces SQL, and that every link points to an existing card
+- [x] UI: "Model check" dock under the CDM canvas (live counts, list, click → select + highlight every element of the issue). Entities get a red or amber border and a dot whose tooltip lists the issues, and relationship lines get the same colours. Each element's issues also show at the top of its panel
+- [x] Help drawer: searchable glossary; a card shows its text, the mini-diagram (static SVG with the same IE symbols), the generated tables and DDL, text signals, the typical mistake, case references and "see also". "Open as model" loads the example (Ctrl+Z restores yours). `?` on every panel property and on every issue; "? Help" in the toolbar
+- [x] Checked in the browser (Playwright): TV Shows clean → Episode→Director gives L04 with 4 entities highlighted → the `?` opens the cycle card; glossary search; "Open as model"; removing the PI from Scene gives L07 live. No console errors. 146 tests in total
+
+Known gaps carried forward:
+- L03 is a keyword heuristic (English words only).
+- L04 reports one shortest cycle per independent loop, not every possible cycle.
+- Help cards are English only; the mini-diagram text is small in a narrow drawer.
+
 ## Stage 3+ (later)
 
-- Live "model issues" panel (linter results update while editing; UX reference: DrawDB issues panel)
 - Optional text mode: write the CDM as text, diagram updates live (idea from dbdiagram.io / DBML) — useful for fast input and trainer tasks
 
-- Linter L01–L10 (SPEC §7) with canvas highlighting; help cards (SPEC §8) with mini-diagrams from cases
-- Trainer levels 0–3, structural comparator
+- Trainer levels 0–3, structural comparator (stage 4)
+- PWA: offline use after the first visit
 
 ## Positioning vs free alternatives (reviewed 2026-10-02)
 

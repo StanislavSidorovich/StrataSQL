@@ -1,6 +1,8 @@
 import { BaseEdge, useInternalNode, type Edge, type EdgeProps, type InternalNode } from '@xyflow/react'
 import { formatCardinality, type Cardinality } from '../../core/metamodel'
-import { useEditor } from '../store'
+import { issueTouches } from '../../core/lint'
+import { worstSeverity } from '../lint/IssuesPanel'
+import { useEditor, useLint } from '../store'
 import { add, edgeEnds, perp, scale, sub, unit, type Rect, type Vec } from './geometry'
 
 export type RelationshipEdgeData = { relationshipId: string; offset: number }
@@ -16,9 +18,17 @@ export function RelationshipEdge({ id, source, target, data, selected }: EdgePro
   const rel = useEditor((s) => s.model.relationships.find((r) => r.id === data?.relationshipId))
   const a = nodeRect(useInternalNode(source))
   const b = nodeRect(useInternalNode(target))
+  const severity = worstSeverity(useLint(), 'relationship', data?.relationshipId ?? '')
+  const focused = useEditor((s) => (s.focusedIssue ? issueTouches(s.focusedIssue, 'relationship', data?.relationshipId ?? '') : false))
   if (!rel || !a || !b) return null
 
-  const stroke = selected ? 'var(--edge-selected)' : 'var(--edge)'
+  const stroke = selected
+    ? 'var(--edge-selected)'
+    : focused || severity === 'error'
+      ? 'var(--lint-error)'
+      : severity === 'warning'
+        ? 'var(--lint-warning)'
+        : 'var(--edge)'
 
   if (source === target) return <ReflexiveEdge id={id} rect={a} rel={rel} stroke={stroke} />
 
@@ -30,7 +40,7 @@ export function RelationshipEdge({ id, source, target, data, selected }: EdgePro
 
   return (
     <>
-      <BaseEdge id={id} path={path} interactionWidth={16} style={{ stroke, strokeWidth: selected ? 2 : 1.4 }} />
+      <BaseEdge id={id} path={path} interactionWidth={16} style={{ stroke, strokeWidth: selected || focused ? 2.4 : 1.4 }} />
       <g className="pointer-events-none" stroke={stroke} fill="none" strokeWidth={1.4}>
         <EndMarker at={from} dir={dirA} card={rel.cardinalityA} dependent={rel.dependentSide === 'A'} stroke={stroke} />
         <EndMarker at={to} dir={dirB} card={rel.cardinalityB} dependent={rel.dependentSide === 'B'} stroke={stroke} />
@@ -53,7 +63,7 @@ export function RelationshipEdge({ id, source, target, data, selected }: EdgePro
  * Closest to the entity: max (bar = 1, crow's foot = n); further out: min (bar = 1, circle = 0).
  * A dependent end additionally gets a small triangle pointing at the parent.
  */
-function EndMarker({ at, dir, card, dependent, stroke }: { at: Vec; dir: Vec; card: Cardinality; dependent: boolean; stroke: string }) {
+export function EndMarker({ at, dir, card, dependent, stroke }: { at: Vec; dir: Vec; card: Cardinality; dependent: boolean; stroke: string }) {
   const n = perp(dir)
   const p = (along: number, side = 0) => add(add(at, scale(dir, along)), scale(n, side))
   const line = (u: Vec, v: Vec) => `M ${u.x} ${u.y} L ${v.x} ${v.y}`
@@ -77,7 +87,7 @@ function EndMarker({ at, dir, card, dependent, stroke }: { at: Vec; dir: Vec; ca
   )
 }
 
-function EndLabel({ at, dir, text, role }: { at: Vec; dir: Vec; text: string; role?: string }) {
+export function EndLabel({ at, dir, text, role }: { at: Vec; dir: Vec; text: string; role?: string }) {
   const n = perp(dir)
   // Put the label on the side of the line that points "up/left" so it reads consistently.
   const side = n.y > 0 || (n.y === 0 && n.x > 0) ? -1 : 1

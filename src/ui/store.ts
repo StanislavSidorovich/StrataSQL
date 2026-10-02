@@ -1,7 +1,7 @@
 import { produce } from 'immer'
-import { useMemo } from 'react'
 import { create } from 'zustand'
 import { generatePdm } from '../core/cdm2pdm'
+import { lintModel, type LintIssue } from '../core/lint'
 import { emptyModel, type Id, type Model } from '../core/metamodel'
 import { ModelError } from '../core/ops'
 import type { Pdm } from '../core/pdm'
@@ -38,6 +38,11 @@ interface EditorState {
   tableSelection: string | null
   error: string | null
   lastEdit: { key: string; at: number } | null
+  /** Help drawer: closed, the glossary (`''`) or a card id. */
+  help: string | null
+  issuesOpen: boolean
+  /** Issue whose elements are highlighted on the canvas; cleared when the model changes. */
+  focusedIssue: LintIssue | null
 
   /** Runs an edit operation on a draft; on ModelError the model is untouched and the message is shown. */
   apply: (edit: (m: Model) => void, opts?: ApplyOptions) => boolean
@@ -49,6 +54,10 @@ interface EditorState {
   setView: (view: View) => void
   selectTable: (name: string | null) => void
   showError: (message: string | null) => void
+  openHelp: (cardId?: string) => void
+  closeHelp: () => void
+  setIssuesOpen: (open: boolean) => void
+  focusIssue: (issue: LintIssue | null) => void
 }
 
 export const useEditor = create<EditorState>()((set, get) => ({
@@ -61,6 +70,9 @@ export const useEditor = create<EditorState>()((set, get) => ({
   tableSelection: null,
   error: null,
   lastEdit: null,
+  help: null,
+  issuesOpen: false,
+  focusedIssue: null,
 
   apply(edit, opts = {}) {
     const { model, past, lastEdit } = get()
@@ -134,6 +146,10 @@ export const useEditor = create<EditorState>()((set, get) => ({
   setView: (view) => set({ view }),
   selectTable: (tableSelection) => set({ tableSelection }),
   showError: (error) => set({ error }),
+  openHelp: (cardId = '') => set({ help: cardId }),
+  closeHelp: () => set({ help: null }),
+  setIssuesOpen: (issuesOpen) => set({ issuesOpen }),
+  focusIssue: (focusedIssue) => set({ focusedIssue }),
 }))
 
 function validSelection(m: Model, s: Selection): Selection {
@@ -157,6 +173,7 @@ function loadStoredModel(): Model | null {
 let saveTimer: ReturnType<typeof setTimeout> | undefined
 useEditor.subscribe((state, prev) => {
   if (state.model === prev.model) return
+  if (state.focusedIssue) useEditor.setState({ focusedIssue: null })
   clearTimeout(saveTimer)
   saveTimer = setTimeout(() => {
     try {
@@ -172,8 +189,28 @@ export function useModel(): Model {
   return useEditor((s) => s.model)
 }
 
-/** The PDM generated from the current model (recomputed only when the model changes). */
+// Generated views of a model, computed once per model object (models are immutable snapshots).
+const pdmCache = new WeakMap<Model, Pdm>()
+const lintCache = new WeakMap<Model, LintIssue[]>()
+
+export function pdmFor(m: Model): Pdm {
+  let p = pdmCache.get(m)
+  if (!p) pdmCache.set(m, (p = generatePdm(m)))
+  return p
+}
+
+export function lintFor(m: Model): LintIssue[] {
+  let l = lintCache.get(m)
+  if (!l) lintCache.set(m, (l = lintModel(m, pdmFor(m))))
+  return l
+}
+
+/** The PDM generated from the current model. */
 export function usePdm(): Pdm {
-  const model = useModel()
-  return useMemo(() => generatePdm(model), [model])
+  return pdmFor(useModel())
+}
+
+/** Linter issues of the current model. */
+export function useLint(): LintIssue[] {
+  return lintFor(useModel())
 }

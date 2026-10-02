@@ -1,9 +1,33 @@
 import type { ReactNode } from 'react'
+import { useEditor } from '../store'
 
-export function Field({ label, children, hint }: { label: string; children: ReactNode; hint?: ReactNode }) {
+/** `?` that opens a help card. */
+export function HelpButton({ card, title }: { card: string; title?: string }) {
+  const openHelp = useEditor((s) => s.openHelp)
+  return (
+    <button
+      type="button"
+      className="help-btn"
+      title={title ?? 'Explain this'}
+      aria-label={`Help: ${title ?? card}`}
+      onClick={(e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        openHelp(card)
+      }}
+    >
+      ?
+    </button>
+  )
+}
+
+export function Field({ label, children, hint, help }: { label: string; children: ReactNode; hint?: ReactNode; help?: string }) {
   return (
     <label className="field">
-      <span className="field-label">{label}</span>
+      <span className="field-label">
+        {label}
+        {help && <HelpButton card={help} title={`What is “${label.toLowerCase()}”?`} />}
+      </span>
       {children}
       {hint && <span className="field-hint">{hint}</span>}
     </label>
@@ -106,11 +130,14 @@ export function Check({ checked, onChange, label, title }: { checked: boolean; o
   )
 }
 
-export function Section({ title, children, actions }: { title: string; children: ReactNode; actions?: ReactNode }) {
+export function Section({ title, children, actions, help }: { title: string; children: ReactNode; actions?: ReactNode; help?: string }) {
   return (
     <section className="panel-section">
       <header className="panel-section-header">
-        <h3>{title}</h3>
+        <h3>
+          {title}
+          {help && <HelpButton card={help} title={`What is “${title.replace(/ \(.*\)$/, '').toLowerCase()}”?`} />}
+        </h3>
         {actions}
       </header>
       {children}
