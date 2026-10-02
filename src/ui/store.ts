@@ -171,18 +171,26 @@ function loadStoredModel(): Model | null {
 }
 
 let saveTimer: ReturnType<typeof setTimeout> | undefined
+function saveNow() {
+  clearTimeout(saveTimer)
+  saveTimer = undefined
+  try {
+    localStorage.setItem(STORAGE_KEY, serializeModel(useEditor.getState().model))
+  } catch {
+    // Storage full or unavailable: the file save still works.
+  }
+}
 useEditor.subscribe((state, prev) => {
   if (state.model === prev.model) return
   if (state.focusedIssue) useEditor.setState({ focusedIssue: null })
   clearTimeout(saveTimer)
-  saveTimer = setTimeout(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, serializeModel(useEditor.getState().model))
-    } catch {
-      // Storage full or unavailable: the file save still works.
-    }
-  }, 300)
+  saveTimer = setTimeout(saveNow, 300)
 })
+// Closing the tab or reloading for an update within the 300 ms window must not lose the last edit.
+if (typeof window !== 'undefined')
+  window.addEventListener('pagehide', () => {
+    if (saveTimer !== undefined) saveNow()
+  })
 
 /** Shortcut for components: the current model. */
 export function useModel(): Model {

@@ -1,7 +1,7 @@
 import { DATA_TYPES, TYPES_WITH_LENGTH, TYPES_WITH_PRECISION, type DataType, type Model } from '../../core/metamodel'
 import { addDomain, removeDomain, renameModel, updateDomain } from '../../core/ops'
 import { useEditor } from '../store'
-import { Field, IconButton, NumberInput, Section, Select, TextArea, TextInput } from './fields'
+import { Field, IconButton, NumberInput, Section, Select, SizeInput, TextArea, TextInput } from './fields'
 
 export function ModelPanel({ model }: { model: Model }) {
   const apply = useEditor((s) => s.apply)
@@ -53,7 +53,14 @@ export function ModelPanel({ model }: { model: Model }) {
                 options={DATA_TYPES.map((t) => ({ value: t, label: t }))}
                 onChange={(v) => apply((m) => updateDomain(m, d.id, { dataType: v as DataType }))}
               />
-              {hasLength ? (
+              {TYPES_WITH_PRECISION.includes(d.dataType) ? (
+                <SizeInput
+                  ariaLabel="Domain precision and scale"
+                  length={d.length}
+                  precision={d.precision}
+                  onChange={(v) => apply((m) => updateDomain(m, d.id, { length: v.length, precision: v.precision }), { coalesce: `dl:${d.id}` })}
+                />
+              ) : hasLength ? (
                 <NumberInput ariaLabel="Domain length" value={d.length} onChange={(v) => apply((m) => updateDomain(m, d.id, { length: v }), { coalesce: `dl:${d.id}` })} />
               ) : (
                 <span />

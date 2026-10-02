@@ -57,6 +57,18 @@ export function formatDataType(t: { dataType: DataType; length?: number; precisi
   return code
 }
 
+/** Parses a PD-style size: `10` → length 10, `10,2` → precision 10 and scale 2 (stored as length, precision); `''` clears both. */
+export function parseSize(text: string): { length?: number; precision?: number } | null {
+  const t = text.trim()
+  if (t === '') return {}
+  const m = /^(\d+)\s*(?:,\s*(\d+))?$/.exec(t)
+  if (!m) return null
+  const length = Number(m[1])
+  const precision = m[2] === undefined ? undefined : Number(m[2])
+  if (precision !== undefined && precision > length) return null
+  return { length, precision }
+}
+
 export interface Domain {
   id: Id
   name: string

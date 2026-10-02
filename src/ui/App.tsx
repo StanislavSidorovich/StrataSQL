@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { emptyModel } from '../core/metamodel'
 import { addEntity, removeEntity, removeInheritance, removeRelationship } from '../core/ops'
 import { FILE_EXTENSION, parseModel, serializeModel } from '../core/serialize'
+import { applyUpdate, useUpdateReady } from '../pwa/register'
 import { buildRideHailing } from '../data/examples/ride-hailing'
 import { buildTimetables } from '../data/examples/timetables'
 import { buildTvShows } from '../data/examples/tv-shows'
@@ -75,6 +76,7 @@ function deleteSelection() {
 
 function Editor() {
   const [dark, toggleTheme] = useTheme()
+  const updateReady = useUpdateReady()
   const model = useEditor((s) => s.model)
   const selection = useEditor((s) => s.selection)
   const canUndo = useEditor((s) => s.past.length > 0)
@@ -247,6 +249,11 @@ function Editor() {
           )}
         </div>
         <div className="toolbar-group ml-auto">
+          {updateReady && (
+            <button type="button" className="btn btn-primary" onClick={applyUpdate} title="A new version of StrataSQL is ready. Your model is kept.">
+              Update
+            </button>
+          )}
           <button
             type="button"
             className={`btn ${helpOpen ? 'btn-primary' : ''}`}

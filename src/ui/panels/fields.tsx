@@ -1,4 +1,5 @@
-import type { ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
+import { parseSize } from '../../core/metamodel'
 import { useEditor } from '../store'
 
 /** `?` that opens a help card. */
@@ -162,5 +163,49 @@ export function IconButton({
     <button type="button" className={`icon-btn ${danger ? 'danger' : ''}`} title={title} aria-label={title} onClick={onClick} disabled={disabled}>
       {children}
     </button>
+  )
+}
+
+/** `10` or `10,2` (PD notation). Keeps the typed text while it is incomplete (`10,`). */
+export function SizeInput({
+  length,
+  precision,
+  onChange,
+  ariaLabel,
+}: {
+  length: number | undefined
+  precision: number | undefined
+  onChange: (v: { length?: number; precision?: number }) => void
+  ariaLabel?: string
+}) {
+  const formatted = length === undefined ? '' : precision === undefined ? String(length) : `${length},${precision}`
+  const [text, setText] = useState(formatted)
+  const [invalid, setInvalid] = useState(false)
+  useEffect(() => {
+    // Undo, domain change…: show the model's value unless the typed text already means it.
+    setText((t) => {
+      const p = parseSize(t)
+      return p && p.length === length && p.precision === precision ? t : formatted
+    })
+    setInvalid(false)
+  }, [formatted, length, precision])
+  return (
+    <input
+      className={`input ${invalid ? 'input-invalid' : ''}`}
+      inputMode="decimal"
+      aria-label={ariaLabel}
+      title="Precision,scale — e.g. 10,2"
+      value={text}
+      onChange={(e) => {
+        setText(e.target.value)
+        const p = parseSize(e.target.value)
+        setInvalid(p === null)
+        if (p) onChange(p)
+      }}
+      onBlur={() => {
+        setText(formatted)
+        setInvalid(false)
+      }}
+    />
   )
 }

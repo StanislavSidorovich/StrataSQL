@@ -25,7 +25,7 @@ import {
 import { ElementIssues } from '../lint/IssuesPanel'
 import { EntityResult } from '../pdm/PhysicalResult'
 import { useEditor } from '../store'
-import { Check, Field, HelpButton, IconButton, NumberInput, Section, Select, TextArea, TextInput } from './fields'
+import { Check, Field, HelpButton, IconButton, NumberInput, Section, Select, SizeInput, TextArea, TextInput } from './fields'
 
 export function EntityPanel({ entity, model }: { entity: Entity; model: Model }) {
   const apply = useEditor((s) => s.apply)
@@ -71,7 +71,7 @@ export function EntityPanel({ entity, model }: { entity: Entity; model: Model })
             <span>
               Type<HelpButton card="domain" title="Data types and domains" />
             </span>
-            <span title="Length / precision">Len</span>
+            <span title="Length, or precision,scale (10,2)">Len</span>
             <span title="Mandatory">
               M<HelpButton card="attribute" title="Mandatory attributes" />
             </span>
@@ -256,7 +256,16 @@ function AttributeRow({
           )
         }
       />
-      {hasLength ? (
+      {TYPES_WITH_PRECISION.includes(attr.dataType) ? (
+        <SizeInput
+          ariaLabel="Precision and scale"
+          length={attr.length}
+          precision={attr.precision}
+          onChange={(v) =>
+            apply((m) => updateAttribute(m, entityId, aid, { length: v.length, precision: v.precision, domainId: undefined }), { coalesce: `al:${aid}` })
+          }
+        />
+      ) : hasLength ? (
         <NumberInput
           ariaLabel="Length"
           value={attr.length}

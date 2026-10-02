@@ -228,6 +228,9 @@ body {
   outline: 2px solid var(--accent-soft);
   border-color: var(--accent);
 }
+.input.input-invalid {
+  border-color: var(--danger);
+}
 .check {
   display: flex;
   align-items: center;
