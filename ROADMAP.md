@@ -6,10 +6,12 @@ Stages follow SPEC §12. A stage is done only when its acceptance criteria pass.
 |---|---|---|
 | 1. CDM editor | ✅ done (2026-10-02) · live: https://stanislavsidorovich.github.io/StrataSQL/ | Full TV Shows reference model can be built and saved/reloaded |
 | 2. PDM + SQL Server DDL | ✅ done (2026-10-02) | 3 reference CDMs generate the PDMs in `cases/`; DDL runs on SQL Server |
-| 2.5 SQL sandbox | ⏭ next | Generated schema runs in the browser; inserting conflicting rows shows the constraint that rejects them |
-| 3. Linter + Help | — | L01–L10 with tests; ≥ 15 help cards; `?` on every property |
+| 2.5 SQL sandbox | ✅ done (2026-10-02) | Generated schema runs in the browser; inserting conflicting rows shows the constraint that rejects them |
+| 3. Linter + Help | ⏭ next | L01–L10 with tests; ≥ 15 help cards; `?` on every property |
 | 4. Trainer | — | 3 cases × levels 0–3; comparator correct on references and seeded wrong models |
 | 5. AI review | — | Optional, behind a user-provided API key |
+
+**Where we are (2026-10-02):** usable today for building a CDM, getting the PDM + SQL Server DDL and testing keys in the sandbox. What's missing is feedback on *your own* mistakes: stage 3 (linter + help), about 1 sprint. Then stage 4 (trainer), about 1–2 sprints, completes the learning loop. Stage 5 is optional.
 
 ## Stage 1 — CDM editor ✅
 
@@ -58,13 +60,23 @@ Known gaps carried forward:
 - UNIQUE over nullable columns (inheritance generation = parent) allows only one NULL in SQL Server — noted in the PDM, no filtered index generated.
 - Decimal precision still has no input in the attribute grid (domains can carry it, see Ride Hailing `Coordinate`).
 
-## Stage 2.5 — SQL sandbox (practice: see constraints work)
+## Stage 2.5 — SQL sandbox ✅
 
 Why: the fastest way to *understand* a key is to watch it reject bad data — e.g. a second role for the same actor in the same scene, or an episode directed by someone who is not a director of that show.
-- [ ] In-browser engine: sql.js (SQLite) or PGlite (Postgres); second DDL dialect for it (PK / FK / UNIQUE / CHECK behave the same as SQL Server for this purpose)
-- [ ] Run the generated schema; small grid to insert rows per table; show which constraint failed and link it back to the CDM element that produced it
-- [ ] Per-case scripted "try this" scenarios (valid insert, then the conflicting one) for TV Shows, Timetables, Ride Hailing
-- [ ] Free SQL console for SELECT queries (e.g. rating average from history in Ride Hailing)
+
+Done:
+- [x] Engine: **PGlite** (PostgreSQL in WebAssembly, Apache-2.0), loaded only when the Sandbox tab opens (~4 MB gzip, starts in ~3 s). Chosen over sql.js because Postgres errors name the constraint (`pk_role`, `fk_…`) and it enforces types and `varchar(n)`; SQLite does neither.
+- [x] `src/core/ddl/postgres.ts` — second DDL dialect (unquoted identifiers, so `episode` and `EPISODE` both work in the console)
+- [x] `src/core/sandbox.ts` — engine-agnostic: reset schema, run, INSERT/DELETE/SELECT builders, `explainError` → PK / AK / FK (insert and delete) / CHECK / NOT NULL / type, with plain-language reason and the CDM element that produced the constraint
+- [x] UI: view **Sandbox** — table tabs with row counts, grid with an insert row (empty = NULL, `*` = NOT NULL) and delete per row, rejected columns highlighted; SQL console (Ctrl+Enter); "Last statement" with the reason and a link to the CDM element; DB recreated automatically when the schema changes
+- [x] `src/data/scenarios.ts` — "Try this" scenarios: TV Shows (director of the show; one role per actor per scene), Timetables (AK_ROOM_TIME / AK_PROFESSOR_TIME / AK_COURSE_SHIFT_TIME, assignment FK), Ride Hailing (licence AK, optional shift, one rating per trip, missing score CHECK, average rating query). A step that behaves differently from the reference is flagged ("your model differs")
+- [x] Tests `tests/sandbox.test.ts` (21): dialect, statements, every violation kind, and every scenario step against the generated schema (acceptance). 98 tests total
+- [x] Checked in the production build (Playwright): scenario run, duplicate PK from the grid, console SELECT, link back to the CDM
+
+Known gaps carried forward:
+- Sandbox data lives only in the page (not saved); changing the model empties it.
+- Postgres, not SQL Server: UNIQUE allows many NULLs (SQL Server: one); T-SQL syntax (`TOP`, `GETDATE()`) does not run in the console.
+- Ride Hailing has no CHECK for `score` — the scenario shows it on purpose; a CHECK editor for attributes (domains with value ranges) is a candidate for stage 3.
 
 ## Stage 3+ (later)
 

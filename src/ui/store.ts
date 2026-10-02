@@ -15,8 +15,8 @@ export type Selection =
 
 export type LinkKind = 'relationship' | 'inheritance'
 
-/** Conceptual model editor, generated physical model, generated SQL. */
-export type View = 'cdm' | 'pdm' | 'sql'
+/** Conceptual model editor, generated physical model, generated SQL, SQL sandbox. */
+export type View = 'cdm' | 'pdm' | 'sql' | 'sandbox'
 
 const HISTORY_LIMIT = 200
 const COALESCE_MS = 1000

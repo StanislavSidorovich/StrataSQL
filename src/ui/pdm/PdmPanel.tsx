@@ -39,7 +39,7 @@ function sourceLabel(m: Model, s: PdmSource): string {
   }
 }
 
-function SourceLink({ source }: { source: PdmSource }) {
+export function SourceLink({ source }: { source: PdmSource }) {
   const model = useEditor((s) => s.model)
   return (
     <span className="link" onClick={() => showInCdm(source)} title="Show in the conceptual model">

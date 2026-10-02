@@ -15,6 +15,7 @@ import { RelationshipPanel } from './panels/RelationshipPanel'
 import { PdmCanvas } from './pdm/PdmCanvas'
 import { PdmPanel } from './pdm/PdmPanel'
 import { fileBaseName, SqlView } from './pdm/SqlView'
+import { SandboxView } from './sandbox/SandboxView'
 import { useEditor, type View } from './store'
 
 const EXAMPLES = [
@@ -27,6 +28,7 @@ const VIEWS: { id: View; label: string; title: string }[] = [
   { id: 'cdm', label: 'Conceptual', title: 'Edit the conceptual data model (CDM)' },
   { id: 'pdm', label: 'Physical', title: 'Tables generated from the CDM (PDM)' },
   { id: 'sql', label: 'SQL', title: 'SQL Server DDL generated from the PDM' },
+  { id: 'sandbox', label: 'Sandbox', title: 'Run the schema in the browser: insert rows and see which constraint rejects them' },
 ]
 
 export function App() {
@@ -216,7 +218,7 @@ function Editor() {
           <button type="button" className="btn" onClick={redo} disabled={!canRedo} title="Redo (Ctrl+Y)">
             ↷
           </button>
-          {view !== 'sql' && (
+          {(view === 'cdm' || view === 'pdm') && (
             <>
               <button type="button" className="btn" onClick={() => flow.fitView({ padding: 0.15, duration: 300 })} title="Fit the model on screen">
                 Fit
@@ -245,6 +247,16 @@ function Editor() {
         </div>
       </header>
 
+      {view === 'sandbox' ? (
+        <>
+          <SandboxView />
+          {error && (
+            <div className="error-toast" role="alert" onClick={() => showError(null)}>
+              {error}
+            </div>
+          )}
+        </>
+      ) : (
       <div className="flex min-h-0 flex-1">
         <main className="relative min-w-0 flex-1">
           {view === 'cdm' && <Canvas dark={dark} />}
@@ -286,6 +298,7 @@ function Editor() {
           {view === 'cdm' && !entity && !rel && !inh && <ModelPanel model={model} />}
         </aside>
       </div>
+      )}
     </div>
   )
 }
