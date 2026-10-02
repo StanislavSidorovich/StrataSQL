@@ -4,7 +4,7 @@ Stages follow SPEC §12. A stage is done only when its acceptance criteria pass.
 
 | Stage | Status | Acceptance |
 |---|---|---|
-| 1. CDM editor | ✅ done (2026-10-02) | Full TV Shows reference model can be built and saved/reloaded |
+| 1. CDM editor | ✅ done (2026-10-02) · live: https://stanislavsidorovich.github.io/StrataSQL/ | Full TV Shows reference model can be built and saved/reloaded |
 | 2. PDM + SQL Server DDL | ⏭ next | 3 reference CDMs generate the PDMs in `cases/`; DDL runs on SQL Server |
 | 3. Linter + Help | — | L01–L10 with tests; ≥ 15 help cards; `?` on every property |
 | 4. Trainer | — | 3 cases × levels 0–3; comparator correct on references and seeded wrong models |
@@ -21,6 +21,7 @@ Done:
 - [x] Create: double-click canvas → entity; drag from ● handle onto another entity → relationship or inheritance (toolbar toggle)
 - [x] Properties panel for model/domains, entity (attributes, identifiers, links), relationship (ends, cardinalities, plain-language reading, dependency, swap), inheritance
 - [x] Undo/redo (typing coalesced into one step), Delete, Esc, Ctrl+S; autosave to localStorage; Open/Save file; TV Shows example; light/dark theme
+- [x] Deploy: GitHub Actions runs tests + build and publishes to GitHub Pages on every push to `main`
 - [x] Tests: 33 unit tests incl. `tests/tv-shows.test.ts` (acceptance); UI scenario checked in a browser (build from scratch, undo/redo, reload, file round-trip, bad file)
 
 Known gaps carried forward:
@@ -50,14 +51,17 @@ Known gaps carried forward:
 
 - Linter L01–L10 (SPEC §7) with canvas highlighting; help cards (SPEC §8) with mini-diagrams from cases
 - Trainer levels 0–3, structural comparator
-- Deploy to GitHub Pages (workflow + enabling Pages in the repo settings)
 
-## Open questions to settle with class notes
+## Decisions (settled 2026-10-02)
 
-Marked **(?)** in the cases — not treated as ground truth until confirmed:
-1. TV Shows: does Episode link to `Director` directly (cycle, as in the current example) or to `ShowDirector`?
-2. TV Shows: is the Person inheritance non-exclusive (a person may act and direct)?
-3. TV Shows: TechnicianFunction — own `function_no` or a `Function` lookup entity in the PK?
-4. Timetables: does Class reference `TeachingAssignment` (course + professor) or Course directly? Is `ClassSlot` per 30-min slot the expected solution?
-5. Entity code convention: `CAR_SHIFT` (ride-hailing) vs `PROGRAMCOURSE` (timetables) — current default is PD's (name upper-cased, spaces → `_`), so `CarShift` → `CARSHIFT`.
-6. SPEC §13: PD-style `0,n` labels are on by default (no toggle yet); associations not supported (intermediate entities only); UI language English first.
+The owner's guidance: the course's "discussed in class" points are not critical — choose what is clearest for students; own examples are welcome. Decisions are marked ✱ in `cases/*.md`.
+
+1. TV Shows: Episode links to **ShowDirector** (1,1 — 0,n), not to Director → no cycle; in the PDM `show_id` is one shared column. The cycle version becomes a seeded wrong model for the trainer / linter L04.
+2. TV Shows: Person inheritance is **non-exclusive**, complete, generation = both.
+3. TV Shows: TechnicianFunction keeps its **own `function_no`**; the `Function` lookup version is an alternative for help cards.
+4. Table codes follow the **PowerDesigner default** (name upper-cased, spaces → `_`). Reference models name entities so codes match the cases (`Car Shift` → `CAR_SHIFT`).
+5. Column collisions in the PDM: same origin column via different neighbours → shared column; two links to the same neighbour → role prefix (SPEC §6).
+
+Still open (decide in stage 2, same principle — clearest for students):
+- Timetables: Class → TeachingAssignment (course + professor) and ClassSlot per 30-min slot are kept as in the case unless a simpler variant teaches the AK lesson better.
+- SPEC §13: PD-style `0,n` labels shown by default (toggle later); associations not supported; UI in English first.

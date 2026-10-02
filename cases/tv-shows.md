@@ -6,7 +6,7 @@
 - difficulty: ★★☆
 - concepts: inheritance (incl. "same attributes, different relationships"), dependent entity, intermediate entity without own id vs with own id, circular relationships
 
-> The class PDF has no solution diagrams. The reference model below is reconstructed from the specification and the "Lessons learned" slide. Points marked **(?)** were "discussed in class" — verify against your notes.
+> The class PDF has no solution diagrams. The reference model below is reconstructed from the specification and the "Lessons learned" slide. Points that were only "discussed in class" are settled as **StrataSQL decisions** (marked ✱) — chosen to be the clearest for students; your teacher may accept alternatives.
 
 ## 2. Specification (verbatim)
 
@@ -60,20 +60,20 @@
 | Scene | 1,1 | TechnicianFunction | 0,n | TF → Scene | |
 | TVShow | 1,1 | ShowDirector | 1,n | SD → TVShow | |
 | Director | 1,1 | ShowDirector | 0,n | SD → Director | |
-| Director **or** ShowDirector | 1,1 | Episode | 0,n | — | see §6 (?) |
+| ShowDirector | 1,1 | Episode | 0,n | — | episode directed by one of the show's directors ✱ (see §6.5) |
 
 ### Inheritances
 | Parent | Children | Exclusive | Complete | Generation |
 |---|---|---|---|---|
 | Scene | IndoorScene, OutdoorScene | yes | yes | parent + children |
-| Person | Actor, Technician, Director | **no** (a person may act and direct) (?) | yes | parent + children |
+| Person | Actor, Technician, Director | **no** (a person may act and direct) ✱ | yes | parent + children |
 
 ## 5. Expected PDM
 
 | Table | PK | FKs / AKs |
 |---|---|---|
 | TVSHOW | show_id | |
-| EPISODE | episode_id | show_id → TVSHOW; director FK (see §6) |
+| EPISODE | episode_id | show_id → TVSHOW; (show_id, person_id) → SHOWDIRECTOR — `show_id` is **one shared column** used by both FKs |
 | SCENE | episode_id, order_no | episode_id → EPISODE |
 | INDOORSCENE | episode_id, order_no | → SCENE |
 | OUTDOORSCENE | episode_id, order_no | → SCENE |
@@ -88,10 +88,11 @@
 1. **Inheritance without own attributes.** Actor, Technician and Director have identical attributes, but each takes part in *different relationships*. That alone justifies inheritance (lesson slide 7). Without it you'd either duplicate three identical tables or lose the ability to say "only actors can have roles".
 2. **Intermediate entity without own id (`Role`).** "Just one role in each scene" → the pair (actor, scene) must be unique → PK = the two migrated keys only. The DB itself then prevents a second role for the same actor in the same scene.
 3. **Intermediate entity with own id (`TechnicianFunction`).** "Several functions in the same scene" → the pair (technician, scene) must repeat → add an own identifier (`function_no`) to the PK.
-   *Alternative:* a lookup entity `Function` (Sound, Lighting…) and make TF depend on Technician + Scene + Function → PK of three, which also prevents the same function twice. Discuss which one your teacher expects.
+   *Alternative:* a lookup entity `Function` (Sound, Lighting…) and make TF depend on Technician + Scene + Function → PK of three, which also prevents the same function twice. StrataSQL uses the own-id version ✱ (it is the one the text describes); the lookup version is shown as an alternative in help.
 4. **Dependent `Scene`.** The text gives the identifier literally: "identified by the episode … and an order number". "Not sequential" means `order_no` is just a sortable number (10, 20, 25…), not 1, 2, 3.
 5. **Circular relationships (directors).** If you link `Episode → Director` directly *and* `TVShow ↔ Director` via ShowDirector, the loop Episode → TVShow → ShowDirector → Director ← Episode lets you store an episode directed by someone who is **not** a director of that show — conflicting data. Lesson: avoid cycles whenever possible.
-   *Typical fix (?):* link Episode to **ShowDirector** instead of Director. Episode then carries (show_id, person_id) of a valid show-director pair; with Episode's show_id and ShowDirector's show_id unified in the PDM the conflict becomes impossible. Verify with your class notes.
+   *Fix used here ✱:* link Episode to **ShowDirector** instead of Director. Episode then carries (show_id, person_id) of a valid show-director pair. In the PDM `show_id` arrives twice (from TVShow and from ShowDirector) and is kept as **one shared column** — so the director's show and the episode's show are the same value by construction and the conflict becomes impossible.
+   *The cycle version* (Episode → Director) is kept as a seeded wrong model for the trainer and the linter (L04).
 
 ## 7. Rules not representable in the model
 - A person who is a Director must have directed at least one show (minimum cardinalities on inheritance children).

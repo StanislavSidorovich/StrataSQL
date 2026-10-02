@@ -86,7 +86,11 @@ Rules of the metamodel:
 | Inheritance, generation = both (course default) | Parent table + child tables; child PK = FK to parent PK |
 | Migrated columns used by an AK | Allowed: AKs may include FK columns that only exist in the PDM (Timetables lesson) |
 
-Naming: table = entity code, FK column = referenced PK column name; on collision, prefix with role name. FK constraint name `FK_<CHILD>_<ROLE>_<PARENT>` (PD-like).
+Naming: table = entity code (PowerDesigner default: name upper-cased, spaces → `_`; so `Car Shift` → `CAR_SHIFT`, `CarShift` → `CARSHIFT`), FK column = referenced PK column name. FK constraint name `FK_<CHILD>_<ROLE>_<PARENT>` (PD-like).
+
+Column collisions:
+- Same origin PK column arriving through **different neighbour entities** (TV Shows: `show_id` via TVShow and via ShowDirector, which itself got it from TVShow) → **one shared column** used by both FKs. This is what closes a relationship cycle.
+- Two relationships to the **same neighbour entity** (incl. reflexive, e.g. `Stop` as origin and destination) → separate columns, prefixed with the role name (`from_stop_id`, `to_stop_id`); roles are required there (linter L08).
 
 ## 7. Linter (model checks)
 

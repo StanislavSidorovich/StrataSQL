@@ -60,6 +60,10 @@ describe('TV Shows reference CDM', () => {
     expect(rel(m, 'Scene', 'TechnicianFunction')).toEqual({ card: '1,1 / 0,n', dependent: 'TechnicianFunction' })
     expect(rel(m, 'TVShow', 'ShowDirector')).toEqual({ card: '1,1 / 1,n', dependent: 'ShowDirector' })
     expect(rel(m, 'Director', 'ShowDirector')).toEqual({ card: '1,1 / 0,n', dependent: 'ShowDirector' })
+    // Decision ✱: the episode's director is a show-director pair, which avoids the cycle.
+    expect(rel(m, 'ShowDirector', 'Episode')).toEqual({ card: '1,1 / 0,n', dependent: null })
+    const director = entity(m, 'Director')
+    expect(m.relationships.some((r) => r.entityA === director.id && r.entityB === entity(m, 'Episode').id)).toBe(false)
   })
 
   it('has both inheritances', () => {

@@ -3,6 +3,7 @@
 Browser-based data modeling: **Conceptual Data Model → Physical Data Model → SQL Server DDL**, with help cards and a trainer. A lightweight, learnable companion to SAP PowerDesigner for the NOVA IMS DBMS course (IE notation, intermediate entities, SQL Server).
 
 - Spec: [SPEC.md](SPEC.md) · Progress: [ROADMAP.md](ROADMAP.md) · Reference cases: [cases/](cases/)
+- **Open it: https://stanislavsidorovich.github.io/StrataSQL/** — runs in the browser, no install, no VPN.
 - Status: stage 1 (CDM editor) done.
 
 ## Run

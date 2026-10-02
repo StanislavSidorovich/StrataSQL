@@ -70,11 +70,12 @@ export function buildTvShows(): Model {
   addRelationship(m, scene.id, techFn.id, { name: 'scene_function', dependentSide: 'B' })
   addRelationship(m, show.id, showDirector.id, { name: 'show_directors', cardinalityB: CARD.oneMany, dependentSide: 'B' })
   addRelationship(m, director.id, showDirector.id, { name: 'director_shows', dependentSide: 'B' })
-  addRelationship(m, director.id, episode.id, {
+  addRelationship(m, showDirector.id, episode.id, {
     name: 'directs_episode',
     comment:
-      '(?) Unverified: the text says each episode is directed by one person. This direct link creates the ' +
-      'Episode → TVShow → ShowDirector → Director cycle; the alternative is to link Episode to ShowDirector.',
+      'Each episode is directed by one person, who must be a director of that show. Linking Episode to ' +
+      'ShowDirector (not to Director) avoids the cycle Episode → TVShow → ShowDirector → Director ← Episode: ' +
+      'in the PDM show_id becomes one shared column, so the conflict cannot be stored.',
   })
 
   addInheritance(m, scene.id, [indoor.id, outdoor.id], {
@@ -91,7 +92,7 @@ export function buildTvShows(): Model {
     generation: 'both',
     position: { x: 1010, y: 520 },
   })
-  participants.comment = '(?) Unverified: not exclusive — a person may act and direct.'
+  participants.comment = 'Not exclusive: the same person may act in one show and direct another.'
 
   return m
 }
