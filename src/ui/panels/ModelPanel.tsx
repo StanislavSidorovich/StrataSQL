@@ -1,0 +1,78 @@
+import { DATA_TYPES, TYPES_WITH_LENGTH, TYPES_WITH_PRECISION, type DataType, type Model } from '../../core/metamodel'
+import { addDomain, removeDomain, renameModel, updateDomain } from '../../core/ops'
+import { useEditor } from '../store'
+import { Field, IconButton, NumberInput, Section, Select, TextArea, TextInput } from './fields'
+
+export function ModelPanel({ model }: { model: Model }) {
+  const apply = useEditor((s) => s.apply)
+  const usage = (domainId: string) =>
+    model.entities.reduce((n, e) => n + e.attributes.filter((a) => a.domainId === domainId).length, 0)
+
+  return (
+    <div>
+      <Section title="Model">
+        <Field label="Name">
+          <TextInput value={model.name} onChange={(v) => apply((m) => renameModel(m, v), { coalesce: 'model-name' })} />
+        </Field>
+        <Field label="Comment">
+          <TextArea
+            value={model.comment}
+            onChange={(v) =>
+              apply(
+                (m) => {
+                  m.comment = v || undefined
+                },
+                { coalesce: 'model-comment' },
+              )
+            }
+          />
+        </Field>
+        <p className="muted">
+          {model.entities.length} entities · {model.relationships.length} relationships · {model.inheritances.length} inheritances
+        </p>
+      </Section>
+
+      <Section
+        title="Domains"
+        actions={
+          <button type="button" className="btn btn-small" onClick={() => apply((m) => void addDomain(m))}>
+            + Domain
+          </button>
+        }
+      >
+        <p className="muted">Reusable attribute types (Email, Phone…). Changing a domain updates every attribute that uses it.</p>
+        {model.domains.map((d) => {
+          const hasLength = TYPES_WITH_LENGTH.includes(d.dataType) || TYPES_WITH_PRECISION.includes(d.dataType)
+          return (
+            <div key={d.id} className="domain-row">
+              <TextInput ariaLabel="Domain name" value={d.name} onChange={(v) => apply((m) => updateDomain(m, d.id, { name: v }), { coalesce: `dn:${d.id}` })} />
+              <Select
+                ariaLabel="Domain type"
+                value={d.dataType}
+                options={DATA_TYPES.map((t) => ({ value: t, label: t }))}
+                onChange={(v) => apply((m) => updateDomain(m, d.id, { dataType: v as DataType }))}
+              />
+              {hasLength ? (
+                <NumberInput ariaLabel="Domain length" value={d.length} onChange={(v) => apply((m) => updateDomain(m, d.id, { length: v }), { coalesce: `dl:${d.id}` })} />
+              ) : (
+                <span />
+              )}
+              <IconButton title={`Delete domain (${usage(d.id)} uses)`} danger onClick={() => apply((m) => removeDomain(m, d.id))}>
+                ✕
+              </IconButton>
+            </div>
+          )
+        })}
+      </Section>
+
+      <Section title="How to model">
+        <ul className="muted list-disc space-y-1 pl-4">
+          <li>Double-click the canvas to add an entity.</li>
+          <li>Drag from the ● handle of an entity onto another one to link them. The toolbar chooses relationship or inheritance (child → parent).</li>
+          <li>Click an entity, line or inheritance symbol to edit it here.</li>
+          <li>Ctrl+Z / Ctrl+Y undo and redo · Delete removes the selection · Ctrl+S saves a file.</li>
+        </ul>
+      </Section>
+    </div>
+  )
+}
