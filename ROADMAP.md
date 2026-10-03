@@ -168,6 +168,13 @@ Sprint 3 (2026-10-03) — 5c “Build it with me”, done:
 
 Built with: Claude Opus 5.5 (Claude Code), effort low.
 
+Sprint 4 (2026-10-03) — 5e polish, part 1 (owner's review before showing classmates):
+- [x] Side columns (trainer on the left, properties on the right) **hide** with a ‹ › tab on their inner edge and **resize** by dragging that edge (260 px – 45 % of the window; double-click resets); the width is remembered. Opening another case, level or the picker shows a hidden trainer again (`src/ui/SideDock.tsx`)
+- [x] Walkthrough: **Back / Next above the explanation**, so the buttons stay in place from step to step; the text fills the rest of the column instead of a fixed 220 px box
+- [x] **File** and **Examples** moved to the left of the toolbar, right after the logo (as in most programs)
+- [x] `LICENSE` (MIT) for the code; README says the course cases and class files stay with their authors
+- [x] Checked in the dev build (Playwright 1366×820): walkthrough steps, hide / show both columns, drag-resize, no console errors. 314 tests
+
 Carried over (5e and later): File menu icons (lucide), toolbar grouped by task, “Saved” indicator, check at 1280 px and on a tablet; `.pdm` reverse import; hints used are not counted in the score.
 
 Acceptance: a first-time user can, without reading docs, finish the tour, watch the starter case built to the end, and build it alone to 100 % using hints. Walkthrough steps of all 4 cases replay to exactly the reference model (unit test). Import of the course `.cdm` files gives the same model as the hand-built reference.

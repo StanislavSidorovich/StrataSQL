@@ -21,7 +21,8 @@ npm run build    # typecheck + static build in dist/
 - Drag from the ● handle of an entity onto another entity to link them. The toolbar picks *Relationship* or *Inheritance* (drag child → parent).
 - Views: **Conceptual** (CDM), **Physical** (generated tables), **SQL** (SQL Server DDL), **Sandbox** (the schema running in the browser — insert rows and see which constraint rejects them).
 - The **Model check** dock under the canvas lists modeling issues live; `?` next to any property or issue opens a help card.
-- Models autosave in the browser; **Save** / **Open** use `*.strata.json` files. **Examples…** loads the three reference models.
+- Models autosave in the browser; **Save** / **Open** use `*.strata.json` files. The **Examples** menu has every case three ways: watch it built, build it yourself with hints, or open the finished model.
+- The left (trainer) and right (properties) columns can be hidden with the ‹ › tab and resized by dragging their edge; double-click the edge to reset.
 - When a new version is deployed, an **Update** button appears in the toolbar; the model is kept.
 
 ## Layout
@@ -35,3 +36,7 @@ scripts/    make-icons.mjs — regenerates the app icons in public/
 tests/      Vitest tests for every core rule + case regression tests
 cases/      reference cases (markdown)
 ```
+
+## License
+
+The code is under the [MIT License](LICENSE). The three course cases (Ride Hailing, Timetables, TV Shows) and the PowerDesigner files in `tests/fixtures/` are adapted from NOVA IMS DBMS class material; their rights stay with their authors, and they are here for study only. The other cases (Library, Hotel, Online Shop, Hospital, Football) and the open exercises are original and covered by the MIT License.

@@ -78,6 +78,26 @@ export function WalkthroughPane({ c, step }: { c: TrainerCase; step: number }) {
           <div style={{ width: `${(100 * step) / (steps.length - 1)}%` }} />
         </div>
 
+        <div className="walk-nav">
+          <button type="button" className="btn" onClick={() => go(step - 1)} disabled={step === 0} title="Previous step (←)">
+            ← Back
+          </button>
+          {step < steps.length - 1 ? (
+            <button type="button" className="btn btn-primary" onClick={() => go(step + 1)} title="Next step (→)" autoFocus>
+              {step === 0 ? 'Start →' : 'Next →'}
+            </button>
+          ) : (
+            <button type="button" className="btn btn-primary" onClick={() => start(c.id, 3)} title="Trainer level 3: build the same model from the text">
+              Build it yourself →
+            </button>
+          )}
+          {step === steps.length - 1 && next && (
+            <button type="button" className="btn" onClick={() => walkTo(next.id, 0)} title={`Watch the next case: ${next.title}`}>
+              Next case: {next.title} ▶
+            </button>
+          )}
+        </div>
+
         <section className="walk-step" aria-live="polite">
           <h3>{s.title}</h3>
           {s.spans.map((i) => (
@@ -104,28 +124,8 @@ export function WalkthroughPane({ c, step }: { c: TrainerCase; step: number }) {
           )}
         </section>
 
-        <div className="walk-nav">
-          <button type="button" className="btn" onClick={() => go(step - 1)} disabled={step === 0} title="Previous step (←)">
-            ← Back
-          </button>
-          {step < steps.length - 1 ? (
-            <button type="button" className="btn btn-primary" onClick={() => go(step + 1)} title="Next step (→)" autoFocus>
-              {step === 0 ? 'Start →' : 'Next →'}
-            </button>
-          ) : (
-            <button type="button" className="btn btn-primary" onClick={() => start(c.id, 3)} title="Trainer level 3: build the same model from the text">
-              Build it yourself →
-            </button>
-          )}
-          {step === steps.length - 1 && next && (
-            <button type="button" className="btn" onClick={() => walkTo(next.id, 0)} title={`Watch the next case: ${next.title}`}>
-              Next case: {next.title} ▶
-            </button>
-          )}
-        </div>
-
         <div className="walk-tables-label">The text</div>
-        <div className="walk-spec trainer-spec" ref={specRef}>
+        <div className="walk-spec walk-spec-fill trainer-spec" ref={specRef}>
           {c.spec.map((_, p) => (
             <p key={p}>
               {splitParagraph(c, p).map((part, k) =>

@@ -17,6 +17,7 @@ import { PdmCanvas } from './pdm/PdmCanvas'
 import { PdmPanel } from './pdm/PdmPanel'
 import { fileBaseName, SqlView } from './pdm/SqlView'
 import { SandboxView } from './sandbox/SandboxView'
+import { SideDock } from './SideDock'
 import { useEditor, type View } from './store'
 import { CASES } from '../data/cases'
 import { Menu } from './onboarding/Menu'
@@ -87,6 +88,8 @@ function Editor() {
   const helpOpen = useEditor((s) => s.help !== null)
   const trainerOn = useTrainer((s) => s.session !== null || s.pickerOpen)
   const walkOn = useEditor((s) => s.walkthrough !== null)
+  // Opening another case, level or the picker shows a hidden trainer column again.
+  const trainerKey = useTrainer((s) => `${s.pickerOpen}|${s.session?.caseId}|${s.session?.level}|${s.session?.walk === undefined}`)
   const { undo, redo, load, apply, select, setLinkKind, setView, showError } = useEditor.getState()
   const fileInput = useRef<HTMLInputElement>(null)
   const flow = useReactFlow()
@@ -191,16 +194,6 @@ function Editor() {
         <div className="brand">
           Strata<span>SQL</span>
         </div>
-        <span className="toolbar-model" title="Model name">
-          {model.name}
-        </span>
-        <div className="segmented view-switch" role="tablist" aria-label="View" data-tour="views">
-          {VIEWS.map((v) => (
-            <button key={v.id} type="button" role="tab" aria-selected={view === v.id} className={view === v.id ? 'on' : ''} onClick={() => setView(v.id)} title={v.title}>
-              {v.label}
-            </button>
-          ))}
-        </div>
         <div className="toolbar-group">
           <Menu
             label="File"
@@ -248,6 +241,16 @@ function Editor() {
               e.target.value = ''
             }}
           />
+        </div>
+        <span className="toolbar-model" title="Model name">
+          {model.name}
+        </span>
+        <div className="segmented view-switch" role="tablist" aria-label="View" data-tour="views">
+          {VIEWS.map((v) => (
+            <button key={v.id} type="button" role="tab" aria-selected={view === v.id} className={view === v.id ? 'on' : ''} onClick={() => setView(v.id)} title={v.title}>
+              {v.label}
+            </button>
+          ))}
         </div>
         {view === 'cdm' && (
         <div className="toolbar-group" data-tour="add">
@@ -321,7 +324,11 @@ function Editor() {
         </>
       ) : (
       <div className="flex min-h-0 flex-1">
-        {trainerOn && <TrainerPane />}
+        {trainerOn && (
+          <SideDock side="left" name="trainer" defaultWidth={380} revealKey={trainerKey}>
+            <TrainerPane />
+          </SideDock>
+        )}
         <main className="relative flex min-w-0 flex-1 flex-col">
           <div className="relative min-h-0 flex-1" data-tour="canvas">
           {view === 'cdm' && <Canvas dark={dark} />}
@@ -352,6 +359,7 @@ function Editor() {
           </div>
           {view === 'cdm' && model.entities.length > 0 && !walkOn && <IssuesDock />}
         </main>
+        <SideDock side="right" name="properties" defaultWidth={390}>
         <aside className="panel" aria-label="Properties" data-tour="panel">
           {view !== 'cdm' && <PdmPanel />}
           {view === 'cdm' && entity && <EntityPanel key={entity.id} entity={entity} model={model} />}
@@ -359,6 +367,7 @@ function Editor() {
           {view === 'cdm' && inh && <InheritancePanel key={inh.id} inh={inh} model={model} />}
           {view === 'cdm' && !entity && !rel && !inh && <ModelPanel model={model} />}
         </aside>
+        </SideDock>
       </div>
       )}
       {notice && (
