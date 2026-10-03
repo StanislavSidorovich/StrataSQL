@@ -378,6 +378,7 @@ export const HELP_CARDS: HelpCard[] = [
     oneLiner: 'Parent + children tables, parent table only, or children tables only.',
     body: [
       '**Parent + children** (course default): PERSON plus one table per child; the child PK is also a FK to PERSON.',
+      'PowerDesigner also ticks **Inherit all attributes** by default: the child tables then get *copies* of the parent columns too (ACTOR: person_id, name, phone, email). StrataSQL leaves it off — the same name stored twice can disagree — but the checkbox in the inheritance panel turns it on, and imported PowerDesigner models keep it on.',
       '**Parent only**: one table, child columns become nullable, a **discriminator** column says which child a row is (with a CHECK). Simple, but NOT NULL rules for child columns are lost.',
       '**Children only**: parent columns are copied into each child table; no PERSON table — so nothing can reference “any person”.',
     ],

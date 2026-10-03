@@ -333,7 +333,8 @@ class Generator {
   /** Entities whose attributes land in the table of `t`, with whether they become nullable. */
   private contributors(t: Id): { entity: Entity; forceNullable: boolean }[] {
     const ancestors: Entity[] = []
-    for (let inh = this.childInh.get(t); inh?.generation === 'children'; inh = this.childInh.get(inh.parentId))
+    // Generation = children copies the parent's attributes; so does generation = both with “inherit all”.
+    for (let inh = this.childInh.get(t); inh && (inh.generation === 'children' || (inh.generation === 'both' && inh.inheritAll)); inh = this.childInh.get(inh.parentId))
       ancestors.unshift(this.entity(inh.parentId))
     const merged: Entity[] = []
     const collect = (id: Id) => {
@@ -427,6 +428,13 @@ class Generator {
     for (const [col, fks] of usedBy)
       if (fks.length > 1)
         this.note('info', `${name}.${col.name} is one shared column for ${fks.join(' and ')}: both references must agree on it.`, name, col.source)
+
+    // Column order as in PowerDesigner: key columns, then the other foreign key columns, then attributes.
+    const pkOrigins = new Set(key.map((c) => c.origin))
+    const fkCols = new Set(usedBy.keys())
+    const rank = (c: PdmColumn) => (pkOrigins.has(c.origin) ? 0 : fkCols.has(c) ? 1 : 2)
+    const ordered = [...set.columns].sort((x, y) => rank(x) - rank(y))
+    set.columns.splice(0, set.columns.length, ...ordered)
 
     // Primary key.
     if (key.length) table.primaryKey = { name: this.constraintName(`PK_${name}`), columns: key.map((c) => set.byOrigin(c.origin)!.name) }

@@ -159,6 +159,11 @@ export interface Inheritance {
   mutuallyExclusive: boolean
   complete: boolean
   generation: InheritanceGeneration
+  /**
+   * Generation = both: the child tables also get copies of the parent's other attributes
+   * (PowerDesigner “Inherit all attributes”, its default). Off = children keep only the key.
+   */
+  inheritAll?: boolean
   /** Optional discriminator column name, used with generation = parent. */
   discriminator?: string
   /** Position of the inheritance symbol on the canvas. */

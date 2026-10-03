@@ -66,7 +66,7 @@
 | Parent | Children | Exclusive | Complete | Generation |
 |---|---|---|---|---|
 | Scene | IndoorScene, OutdoorScene | yes | yes | parent + children |
-| Person | Actor, Technician, Director | **no** (a person may act and direct) ✱ | yes | parent + children |
+| Person | Actor, Technician, Director | **no** (a person may act and direct) ✱ | yes | parent + children, child tables keep only the key ✱ |
 
 ## 5. Expected PDM
 

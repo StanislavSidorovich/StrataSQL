@@ -85,6 +85,13 @@ export function InheritancePanel({ inh, model }: { inh: Inheritance; model: Mode
             </label>
           ))}
         </div>
+        {inh.generation === 'both' && (
+          <Check
+            checked={!!inh.inheritAll}
+            onChange={(v) => apply((m) => updateInheritance(m, id, { inheritAll: v }))}
+            label="Children also copy the parent's attributes (PowerDesigner “Inherit all attributes”, its default) — repeats data; off = children keep only the key"
+          />
+        )}
         {inh.generation === 'parent' && (
           <Field label="Discriminator column" hint="Says which child a row belongs to" help="inheritance-generation">
             <TextInput

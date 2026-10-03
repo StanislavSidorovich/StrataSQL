@@ -212,8 +212,14 @@ export function importPowerDesigner(src: string, fileName = ''): ImportResult {
     }
     try {
       const parentPos = m.entities.find((e) => e.id === parent)!.position
+      // PD stores only non-default flags: generate parent and children, inherit all attributes.
+      const gp = textOf(pi, 'a:GenerateParent') !== '0'
+      const gc = textOf(pi, 'a:GenerateChildren') !== '0'
+      const generation = gp && gc ? 'both' : gp ? 'parent' : 'children'
       addInheritance(m, parent, kids, {
         name,
+        generation,
+        inheritAll: generation === 'both' && textOf(pi, 'a:InheritAll') !== '0',
         mutuallyExclusive: textOf(pi, 'a:MutuallyExclusive') === '1',
         complete: textOf(pi, 'a:BaseLogicalInheritance.Complete') !== '0',
         position: pos(pi.attrs.Id, { x: parentPos.x + 60, y: parentPos.y + 160 }),

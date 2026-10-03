@@ -213,6 +213,7 @@ function parseInheritance(raw: unknown, at: string): Inheritance {
     mutuallyExclusive: bool(o.mutuallyExclusive, `${at}.mutuallyExclusive`),
     complete: bool(o.complete, `${at}.complete`),
     generation: gen,
+    ...(o.inheritAll === undefined ? {} : { inheritAll: bool(o.inheritAll, `${at}.inheritAll`) }),
     discriminator: optStr(o.discriminator, `${at}.discriminator`),
     position: point(o.position, `${at}.position`),
     comment: optStr(o.comment, `${at}.comment`),

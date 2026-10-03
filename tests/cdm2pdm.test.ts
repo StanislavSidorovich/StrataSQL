@@ -227,7 +227,7 @@ describe('inheritance', () => {
   it('generation = both: parent table + child tables whose PK is a FK to the parent', () => {
     const p = scenes('both')
     expect(p.tables.map((t) => t.name)).toEqual(['SCENE', 'INDOOR', 'OUTDOOR', 'CREW'])
-    expect(cols(p, 'INDOOR')).toEqual(['scene_id', 'studio', 'crew_id'])
+    expect(cols(p, 'INDOOR')).toEqual(['scene_id', 'crew_id', 'studio'])
     expect(pk(p, 'INDOOR')).toEqual(['scene_id'])
     expect(fks(p, 'INDOOR')[0]).toBe('FK_INDOOR_KIND_SCENE: (scene_id) → SCENE(scene_id)')
     expect(table(p, 'INDOOR').foreignKeys[0].identifying).toBe(true)
@@ -236,7 +236,7 @@ describe('inheritance', () => {
   it('generation = parent: one table, child columns nullable, optional discriminator with CHECK', () => {
     const p = scenes('parent', 'scene_kind')
     expect(p.tables.map((t) => t.name)).toEqual(['SCENE', 'CREW'])
-    expect(cols(p, 'SCENE')).toEqual(['scene_id', 'title', 'studio', 'location', 'scene_kind', 'crew_id'])
+    expect(cols(p, 'SCENE')).toEqual(['scene_id', 'crew_id', 'title', 'studio', 'location', 'scene_kind'])
     // studio is mandatory in Indoor, but outdoor rows have none.
     expect(nullable(p, 'SCENE', 'studio')).toBe(true)
     // The relationship to the child moves to the single table, nullable for the same reason.
@@ -248,7 +248,7 @@ describe('inheritance', () => {
   it('generation = children: no parent table, parent columns copied into each child', () => {
     const p = scenes('children')
     expect(p.tables.map((t) => t.name)).toEqual(['INDOOR', 'OUTDOOR', 'CREW'])
-    expect(cols(p, 'INDOOR')).toEqual(['scene_id', 'title', 'studio', 'crew_id'])
+    expect(cols(p, 'INDOOR')).toEqual(['scene_id', 'crew_id', 'title', 'studio'])
     expect(cols(p, 'OUTDOOR')).toEqual(['scene_id', 'title', 'location'])
     expect(pk(p, 'OUTDOOR')).toEqual(['scene_id'])
     expect(table(p, 'OUTDOOR').foreignKeys).toEqual([])

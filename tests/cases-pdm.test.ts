@@ -48,7 +48,7 @@ describe('TV Shows (cases/tv-shows.md §5)', () => {
   it('keeps show_id as one shared column in EPISODE (no conflicting director)', () => {
     const episode = findTable(p, 'EPISODE')!
     expect(episode.columns.filter((c) => c.name === 'show_id')).toHaveLength(1)
-    expect(episode.columns.map((c) => c.name)).toEqual(['episode_id', 'title', 'summary', 'duration_min', 'show_id', 'person_id'])
+    expect(episode.columns.map((c) => c.name)).toEqual(['episode_id', 'show_id', 'person_id', 'title', 'summary', 'duration_min'])
     expect(nullableColumns(p, 'EPISODE')).toEqual(['summary', 'duration_min'])
     expect(p.notes.filter((n) => n.level === 'warning')).toEqual([])
   })

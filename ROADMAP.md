@@ -172,6 +172,16 @@ Carried over (5e and later): File menu icons (lucide), toolbar grouped by task, 
 
 Acceptance: a first-time user can, without reading docs, finish the tour, watch the starter case built to the end, and build it alone to 100 % using hints. Walkthrough steps of all 4 cases replay to exactly the reference model (unit test). Import of the course `.cdm` files gives the same model as the hand-built reference.
 
+## Cross-check with PowerDesigner ✅ (2026-10-03)
+
+Why: the rules were written from the SPEC and the course slides; the owner's own class files let us check them against PowerDesigner itself.
+- [x] `src/core/import/pdm-reader.ts` — reads a PD `.pdm` (tables, columns, PK, AKs, references with joins); first half of the `.pdm` reverse import
+- [x] `tests/crosscheck-powerdesigner.test.ts`: the owner's `TV Show.cdm` and `University.cdm` (13 + 9 tables) go through our import + CDM → PDM and are compared with the `.pdm` PowerDesigner 16 generated from them: same tables, columns, order, NULL / NOT NULL, PKs, FKs, AKs. Two differences are explained by the CDMs being edited after their PDMs (one added attribute, one renamed entity)
+- [x] Found and fixed: (1) PD's default **Inherit all attributes** copies parent columns into child tables with generation = both → new option `Inheritance.inheritAll` (checkbox, import reads PD's flags incl. generate parent / children); (2) column order now as in PD: key columns, then FK columns, then attributes
+- Not checked yet: `.pdm` files where PD flags are non-default (the XML tag names `GenerateParent`, `GenerateChildren`, `InheritAll` are assumed, PD stores only non-default flags), 1:1 and reflexive links (none in these files)
+
+Built with: Claude Opus 5.5 (Claude Code), effort low.
+
 ## Stage 4+ (later)
 
 - Optional text mode: write the CDM as text, diagram updates live (idea from dbdiagram.io / DBML) — useful for fast input and trainer tasks
@@ -202,6 +212,8 @@ The owner's guidance: the course's "discussed in class" points are not critical 
 6. Timetables: **Class is identified by its context** (dependent on TeachingAssignment, Room, Shift, Period + own `weekday`), one ClassSlot row per 30-min slot. Only PK columns migrate, so this is what brings `room_id`, `professor_id`, `weekday`… into CLASSSLOT, where the three rules become AKs. Alternative (`class_id` + FK to a wider UNIQUE key) is mentioned in the case.
 7. 1:1 FK default side: the side that must have a partner (its FK is NOT NULL); the user can override it.
 8. (2026-10-03) Own starter case **Library** comes first; cases are ordered by difficulty Library → Ride Hailing → TV Shows → Timetables (Ride Hailing lowered to ★★). In Library the primary identifier of Book is an added `book_id`, the ISBN an alternate identifier — to show the PI/AI choice; Loan has its own id because the pair repeats.
+
+9. (2026-10-03) Inheritance generation = both keeps **only the key** in child tables ✱. PowerDesigner's default “Inherit all attributes” also copies the parent's columns into each child (found by the cross-check with the owner's `TV Show.pdm`); it is a checkbox (`Inheritance.inheritAll`), on for imported PD models, off in the reference cases (no duplicated data).
 
 Still open:
 - SPEC §13: PD-style `0,n` labels shown by default (toggle later); associations not supported; UI in English first.

@@ -496,6 +496,7 @@ export interface NewInheritance {
   complete?: boolean
   generation?: InheritanceGeneration
   discriminator?: string
+  inheritAll?: boolean
   position?: Point
 }
 
@@ -522,6 +523,7 @@ export function addInheritance(m: Model, parentId: Id, childIds: Id[], input: Ne
     complete: input.complete ?? true,
     generation: input.generation ?? 'both',
     discriminator: input.discriminator,
+    ...(input.inheritAll ? { inheritAll: true } : {}),
     position: input.position ?? { x: parent.position.x + 60, y: parent.position.y + 160 },
   }
   for (const c of childIds) assertCanBeChild(m, parentId, c)
@@ -546,7 +548,7 @@ export function removeInheritanceChild(m: Model, inhId: Id, childId: Id): void {
 export function updateInheritance(
   m: Model,
   id: Id,
-  patch: Partial<Pick<Inheritance, 'name' | 'mutuallyExclusive' | 'complete' | 'generation' | 'discriminator' | 'position' | 'comment'>>,
+  patch: Partial<Pick<Inheritance, 'name' | 'mutuallyExclusive' | 'complete' | 'generation' | 'discriminator' | 'inheritAll' | 'position' | 'comment'>>,
 ): void {
   const inh = getInheritance(m, id)
   if (patch.name !== undefined) inh.name = patch.name
@@ -554,6 +556,10 @@ export function updateInheritance(
   if (patch.complete !== undefined) inh.complete = patch.complete
   if (patch.generation !== undefined) inh.generation = patch.generation
   if ('discriminator' in patch) inh.discriminator = patch.discriminator || undefined
+  if ('inheritAll' in patch) {
+    if (patch.inheritAll) inh.inheritAll = true
+    else delete inh.inheritAll
+  }
   if (patch.position !== undefined) inh.position = { ...patch.position }
   if ('comment' in patch) inh.comment = patch.comment || undefined
 }
