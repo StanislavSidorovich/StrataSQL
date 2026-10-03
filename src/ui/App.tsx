@@ -5,10 +5,6 @@ import { addEntity, removeEntity, removeInheritance, removeRelationship } from '
 import { importPowerDesigner } from '../core/import/powerdesigner'
 import { FILE_EXTENSION, parseModel, serializeModel } from '../core/serialize'
 import { applyUpdate, useUpdateReady } from '../pwa/register'
-import { buildLibrary } from '../data/examples/library'
-import { buildRideHailing } from '../data/examples/ride-hailing'
-import { buildTimetables } from '../data/examples/timetables'
-import { buildTvShows } from '../data/examples/tv-shows'
 import { Canvas } from './canvas/Canvas'
 import { exportDiagram } from './exportImage'
 import { HelpDrawer } from './help/HelpDrawer'
@@ -22,18 +18,14 @@ import { PdmPanel } from './pdm/PdmPanel'
 import { fileBaseName, SqlView } from './pdm/SqlView'
 import { SandboxView } from './sandbox/SandboxView'
 import { useEditor, type View } from './store'
+import { CASES } from '../data/cases'
 import { Menu } from './onboarding/Menu'
 import { Onboarding, useOnboarding } from './onboarding/Tour'
 import { TrainerPane } from './trainer/TrainerPane'
 import { confirmDiscardTask, leaveTrainer, useTrainer } from './trainer/trainerStore'
 
-/** Easiest first, as in the trainer. */
-const EXAMPLES = [
-  { id: 'library', label: 'Library (starter)', build: buildLibrary },
-  { id: 'ride-hailing', label: 'Ride Hailing (Shadow Project)', build: buildRideHailing },
-  { id: 'tv-shows', label: 'TV Shows (Class 03)', build: buildTvShows },
-  { id: 'timetables', label: 'Timetables (Class 03)', build: buildTimetables },
-]
+/** The trainer cases, easiest first: their reference models are the examples. */
+const EXAMPLES = CASES.map((c) => ({ id: c.id, label: `${c.title} ${'★'.repeat(c.difficulty)}`, build: c.build }))
 
 const VIEWS: { id: View; label: string; title: string }[] = [
   { id: 'cdm', label: 'Conceptual', title: 'Edit the conceptual data model (CDM)' },
@@ -241,6 +233,8 @@ function Editor() {
               'separator',
               { heading: 'Show the answer' },
               ...EXAMPLES.map((x) => ({ label: x.label, onSelect: () => openExample(x.build) })),
+              'separator',
+              { label: 'Open exercises (no answer)…', onSelect: () => useTrainer.getState().openPicker(true) },
             ]}
           />
           <input
@@ -336,27 +330,18 @@ function Editor() {
           {model.entities.length === 0 && view !== 'sql' && (
             <div className="empty-state">
               <h2>Start a conceptual model</h2>
-              <p>{walkOn ? 'Press “Start” on the left: the model appears here step by step.' : `Double-click the canvas or press “+ Entity”.${trainerOn ? ' Read the text on the left and model it here.' : ' Or open a worked example:'}`}</p>
+              <p>{walkOn ? 'Press “Start” on the left: the model appears here step by step.' : `Double-click the canvas or press “+ Entity”.${trainerOn ? ' Read the text on the left and model it here.' : ' Or start here:'}`}</p>
               {!trainerOn && (
               <div className="flex flex-wrap justify-center gap-2">
                 <button type="button" className="btn btn-primary" onClick={watchLibrary}>
                   ▶ Watch a model being built
                 </button>
-                {EXAMPLES.map((x) => (
-                  <button
-                    key={x.id}
-                    type="button"
-                    className="btn"
-                    onClick={() => openExample(x.build)}
-                  >
-                    {x.label}
-                  </button>
-                ))}
                 <button type="button" className="btn" onClick={() => useTrainer.getState().openPicker(true)}>
-                  🎓 Trainer
+                  🎓 Build one with hints
                 </button>
               </div>
               )}
+              {!trainerOn && <p className="muted text-xs">Finished models of all {EXAMPLES.length} cases are in the Examples menu.</p>}
             </div>
           )}
           {error && (

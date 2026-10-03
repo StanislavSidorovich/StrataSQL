@@ -172,6 +172,22 @@ Carried over (5e and later): File menu icons (lucide), toolbar grouped by task, 
 
 Acceptance: a first-time user can, without reading docs, finish the tour, watch the starter case built to the end, and build it alone to 100 % using hints. Walkthrough steps of all 4 cases replay to exactly the reference model (unit test). Import of the course `.cdm` files gives the same model as the hand-built reference.
 
+## More cases + open exercises ✅ (2026-10-03)
+
+Why: one case per difficulty is too few to practise; the owner asked for several per level, some with a check and some without. Textbook exercises were not copied (copyright, and their published answers rarely follow IE / PowerDesigner conventions): the texts are own, on classic domains ✱.
+- [x] **4 new full cases** (reference CDM, tagged phrases, hints, synonyms, walkthrough plan, `cases/*.md`), built in `src/data/examples/` and `src/data/cases-more.ts`:
+  - **Hotel ★** — lookup entity Room Type (the price belongs to the type), passport AI, intermediate entity *without* own id (Booked Room), optional `cancelled_on`
+  - **Online Shop ★★** — Order Line dependent with `line_no`, reflexive category tree with roles (`parent_category_id`), one-to-one Payment (FK UNIQUE), price at order time (history) vs order total (derived), ORDER as a reserved word → Customer Order
+  - **Hospital ★★** — inheritance with own data *and* own links (Appointment → Doctor, Admission → Nurse), plain M:N Doctor — Specialty, Bed dependent on Ward (2-column FK), two history entities
+  - **Football League ★★★** — home / away as two relationships with roles, Contract history with own id, Goal dependent on Match, derived score, pairing rule as UNIQUE over migrated columns, and an **accepted L04 cycle** explained in the text ✱ (a linter warning is a question, not a verdict)
+- [x] Ladder (trainer picker, Examples menu, walkthrough “Next case”): Library ★ → Hotel ★ → Ride Hailing ★★ → Online Shop ★★ → TV Shows ★★ → Hospital ★★ → Timetables ★★★ → Football ★★★. Examples menu is built from the case list (scrolls when long); the empty canvas shows two starts instead of eight buttons
+- [x] **5 open exercises** (`src/data/exercises.ts`, `cases/exercises.md`): Car Rental ★, Gym ★, Cinema ★★, Conference ★★, Airline ★★★ — a text, no reference, **no score, no hints**; the pane shows live Model check counts and a self-review checklist (ticks saved with the session). In the trainer picker under “Open exercises”
+- [x] Sandbox **“Try this”** scenarios for Library (had none) and the 4 new cases: ISBN AK and a repeated loan; a room listed twice in one booking; category tree FK, PK of order lines, second payment rejected by the 1:1 UNIQUE, total as a query; a doctor as the responsible nurse, a missing bed; the pairing AK and the CHECK that a key cannot express
+- [x] Checks: every case passes the existing per-case suites automatically (phrases found, targets exist, walkthrough ends at the reference and explains every phrase once, **do it for me reaches 100 %**, schema runs in PGlite); new `tests/cases-more.test.ts` (expected PDM of each new case, lint clean — Football only the accepted L04 —, no generation warnings) and `tests/exercises.test.ts`. DDL of the 4 new cases run on SQL Server 2022 (scratch database, also re-run with DROP; AK_MATCH_PAIRING rejects a repeated pairing; database dropped). 314 tests
+- [x] Checked in the dev build (Playwright 1366×820): picker with 8 cases + 5 exercises, an exercise survives a reload with its ticks, Football walkthrough to the end, no console errors
+
+Built with: Claude Opus 5.5 (Claude Code), effort low.
+
 ## Cross-check with PowerDesigner ✅ (2026-10-03)
 
 Why: the rules were written from the SPEC and the course slides; the owner's own class files let us check them against PowerDesigner itself.
@@ -185,7 +201,7 @@ Built with: Claude Opus 5.5 (Claude Code), effort low.
 ## Stage 4+ (later)
 
 - Optional text mode: write the CDM as text, diagram updates live (idea from dbdiagram.io / DBML) — useful for fast input and trainer tasks
-- Trainer: per-level saved work, more cases (own examples), Russian/Portuguese texts
+- Trainer: per-level saved work, Russian/Portuguese texts; promote good open exercises to full cases (Airline is the candidate)
 
 
 ## PWA + tails ✅ (2026-10-02)

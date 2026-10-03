@@ -5,6 +5,8 @@
 import { create } from 'zustand'
 import { compareModels, type CompareResult } from '../../core/compare'
 import { caseById, type Tag, type TrainerCase } from '../../data/cases'
+import { exerciseById } from '../../data/exercises'
+import { emptyModel } from '../../core/metamodel'
 import { levelStartModel, recordScore, type Level, type Progress } from '../../data/trainer'
 import { walkthroughSteps, type WalkStep } from '../../data/walkthrough'
 import { lintFor, loadStoredModel, TRAINER_MODEL_KEY, useEditor } from '../store'
@@ -32,6 +34,8 @@ interface Session {
   hintSteps: Record<string, number>
   /** Walkthrough (“watch it built”): the current step; the task level is then 0. */
   walk?: number
+  /** Open exercise (`caseId` is then an exercise id, level 3): the checklist items ticked. */
+  exercise?: number[]
 }
 
 interface TrainerState {
@@ -43,6 +47,9 @@ interface TrainerState {
 
   openPicker: (open: boolean) => void
   start: (caseId: string, level: Level) => void
+  /** Starts an open exercise (no reference) on an empty model. */
+  startExercise: (id: string) => void
+  toggleChecklist: (item: number) => void
   /** Starts (or moves) the walkthrough of a case at a step. */
   walkTo: (caseId: string, step: number) => void
   exit: () => void
@@ -97,6 +104,32 @@ export const useTrainer = create<TrainerState>()((set, get) => ({
       walkthrough: null,
     })
     set({ session: { caseId, level, tags: {}, openSpan: null, hintSteps: {} }, check: null, pickerOpen: false })
+  },
+
+  startExercise(id) {
+    const x = exerciseById(id)
+    if (!x) return
+    const editor = useEditor.getState()
+    useEditor.setState({
+      model: { ...emptyModel(`${x.title} — my model`), comment: `Open exercise: ${x.title}.` },
+      trainerBackup: editor.trainerBackup ?? editor.model,
+      past: [],
+      future: [],
+      selection: null,
+      tableSelection: null,
+      focusedIssue: null,
+      view: 'cdm',
+      error: null,
+      walkthrough: null,
+    })
+    set({ session: { caseId: id, level: 3, tags: {}, openSpan: null, hintSteps: {}, exercise: [] }, check: null, pickerOpen: false })
+  },
+
+  toggleChecklist(item) {
+    const s = get().session
+    if (!s?.exercise) return
+    const exercise = s.exercise.includes(item) ? s.exercise.filter((x) => x !== item) : [...s.exercise, item]
+    set({ session: { ...s, exercise } })
   },
 
   walkTo(caseId, step) {
@@ -236,9 +269,9 @@ useTrainer.subscribe((state, prev) => {
 /** After a reload: resume the open task with its working model. */
 export function restoreTrainer() {
   const session = readJson<Session | null>(SESSION_KEY, null)
-  if (!session || !caseById(session.caseId)) return
+  if (!session || !(session.exercise ? exerciseById(session.caseId) : caseById(session.caseId))) return
   if (session.walk !== undefined) return useTrainer.getState().walkTo(session.caseId, session.walk)
-  const model = loadStoredModel(TRAINER_MODEL_KEY) ?? levelStartModel(caseById(session.caseId)!, session.level)
+  const model = loadStoredModel(TRAINER_MODEL_KEY) ?? (session.exercise ? emptyModel() : levelStartModel(caseById(session.caseId)!, session.level))
   const editor = useEditor.getState()
   useEditor.setState({ model, trainerBackup: editor.model, past: [], future: [] })
   useTrainer.setState({ session })

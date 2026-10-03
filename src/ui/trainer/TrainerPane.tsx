@@ -5,9 +5,10 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { compareModels, type CompareItem } from '../../core/compare'
 import { CASES, caseById, hintsFor, LEVELS, phrasesFor, splitParagraph, TAGS, type Tag, type TrainerCase } from '../../data/cases'
 import { applyAnswer, coach, referenceOf, type CoachState } from '../../data/coach'
+import { EXERCISES, exerciseById, type Exercise } from '../../data/exercises'
 import { progressKey, type Level } from '../../data/trainer'
 import { richText } from '../help/HelpDrawer'
-import { useEditor, type Selection } from '../store'
+import { lintFor, useEditor, type Selection } from '../store'
 import { confirmDiscardTask, isRightTag, tagScore, useTrainer } from './trainerStore'
 import { WalkthroughPane } from './Walkthrough'
 
@@ -48,6 +49,7 @@ export function TrainerPane() {
   const session = useTrainer((s) => s.session)
   const pickerOpen = useTrainer((s) => s.pickerOpen)
   if (!session || pickerOpen) return <CasePicker />
+  if (session.exercise) return <ExercisePane x={exerciseById(session.caseId)!} ticked={session.exercise} />
   const c = caseById(session.caseId)!
   if (session.walk !== undefined) return <WalkthroughPane c={c} step={session.walk} />
   return <TaskPane c={c} level={session.level} />
@@ -93,6 +95,81 @@ function CasePicker() {
             </div>
           </section>
         ))}
+        <h3 className="trainer-h3">Open exercises</h3>
+        <p className="muted text-xs">
+          A text with <b>no reference answer</b>, so there is no score and no hints. Model it, then use the Model check, the Physical view, the Sandbox and a list of questions to review your own decisions.
+        </p>
+        {EXERCISES.map((x) => (
+          <section key={x.id} className="trainer-case">
+            <div className="flex items-baseline gap-2">
+              <h3>{x.title}</h3>
+              <Stars n={x.difficulty} />
+              <button type="button" className="btn btn-small ml-auto" onClick={() => confirmDiscardTask() && useTrainer.getState().startExercise(x.id)}>
+                Start
+              </button>
+            </div>
+            <p className="text-xs">{x.concepts.join(' · ')}</p>
+          </section>
+        ))}
+      </div>
+    </aside>
+  )
+}
+
+/** An open exercise: the text, live model-check counts and a self-review checklist. No score. */
+function ExercisePane({ x, ticked }: { x: Exercise; ticked: number[] }) {
+  const { exit, openPicker, toggleChecklist } = useTrainer.getState()
+  const model = useEditor((s) => s.model)
+  const issues = useMemo(() => lintFor(model), [model])
+  const errors = issues.filter((i) => i.severity === 'error').length
+  const warnings = issues.filter((i) => i.severity === 'warning').length
+  return (
+    <aside className="trainer-pane" aria-label="Open exercise">
+      <div className="trainer-header">
+        <button type="button" className="btn btn-small" onClick={() => openPicker(true)} title="All cases and exercises">
+          ☰
+        </button>
+        <h2>
+          {x.title} <Stars n={x.difficulty} />
+        </h2>
+        <button type="button" className="btn btn-small ml-auto" onClick={exit} title="Close and get your own model back">
+          Exit
+        </button>
+      </div>
+      <div className="trainer-body">
+        <p className="trainer-task">
+          <b>Open exercise — no reference answer, no score.</b> Model the text. Then check your decisions: the Model check under the canvas, the tables in the Physical view, rows in the Sandbox, and the questions below.
+        </p>
+        <div className="trainer-spec walk-spec">
+          {x.spec.map((t, p) => (
+            <p key={p}>{t}</p>
+          ))}
+        </div>
+        <div className="trainer-score">
+          {model.entities.length} entities · {model.relationships.length} relationships ·{' '}
+          {errors + warnings === 0 ? (
+            <span className="count count-ok">model check: no errors or warnings</span>
+          ) : (
+            <>
+              {errors > 0 && <span className="count count-error">{errors} error(s)</span>}
+              {warnings > 0 && <span className="count count-warning">{warnings} warning(s)</span>}
+            </>
+          )}
+        </div>
+        <h3 className="trainer-h3">Review your decisions</h3>
+        <ul className="exercise-checklist">
+          {x.checklist.map((q, k) => (
+            <li key={k}>
+              <label className="check items-start">
+                <input type="checkbox" checked={ticked.includes(k)} onChange={() => toggleChecklist(k)} />
+                <span>{q}</span>
+              </label>
+            </li>
+          ))}
+        </ul>
+        {ticked.length === x.checklist.length && (
+          <p className="trainer-done">✓ All questions reviewed. Want a second opinion? Compare with a classmate — there is more than one good model.</p>
+        )}
       </div>
     </aside>
   )

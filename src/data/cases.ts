@@ -2,6 +2,7 @@
 // that map to model elements (level 0 links, level 1 tagging), synonyms for the comparator and hints.
 
 import type { Model } from '../core/metamodel'
+import { MORE_CASES } from './cases-more'
 import { buildLibrary } from './examples/library'
 import { buildRideHailing } from './examples/ride-hailing'
 import { buildTimetables } from './examples/timetables'
@@ -366,8 +367,8 @@ const ALL: TrainerCase[] = [
 ]
 
 /** Easiest first: the walkthrough and the case picker follow this order. */
-const ORDER = ['library', 'ride-hailing', 'tv-shows', 'timetables']
-export const CASES: TrainerCase[] = ORDER.map((id) => ALL.find((c) => c.id === id)!)
+const ORDER = ['library', 'hotel', 'ride-hailing', 'online-shop', 'tv-shows', 'hospital', 'timetables', 'football']
+export const CASES: TrainerCase[] = ORDER.map((id) => [...ALL, ...MORE_CASES].find((c) => c.id === id)!)
 
 export function caseById(id: string): TrainerCase | undefined {
   return CASES.find((c) => c.id === id)

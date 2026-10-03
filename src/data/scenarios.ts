@@ -240,6 +240,214 @@ GROUP BY s.driver_id;`,
       },
     ],
   },
+
+  // ------------------------------------------------------------------ own cases
+  {
+    id: 'library-keys',
+    model: 'Library',
+    title: 'ISBN is unique, and a member may borrow the same book twice',
+    intro: 'book_id is the primary key and isbn an alternate one (UNIQUE). LOAN has its own id, so the same (member, book) pair can repeat.',
+    steps: [
+      {
+        title: 'Setup: a publisher, a book, a member',
+        why: 'Parents first: BOOK needs its PUBLISHER.',
+        sql: `INSERT INTO PUBLISHER (publisher_id, name) VALUES (1, 'Penguin');
+INSERT INTO BOOK (book_id, publisher_id, isbn, title) VALUES (10, 1, '9780141439518', 'Pride and Prejudice');
+INSERT INTO MEMBER (card_no, name, email) VALUES (7, 'Ana', 'ana@example.com');`,
+        expect: 'ok',
+      },
+      {
+        title: 'A second book with the same ISBN',
+        why: 'isbn is an alternate identifier → UNIQUE in BOOK.',
+        sql: `INSERT INTO BOOK (book_id, publisher_id, isbn, title) VALUES (11, 1, '9780141439518', 'Copy');`,
+        expect: { rejectedBy: 'AK_ISBN_BOOK' },
+      },
+      {
+        title: 'Ana borrows the book twice, a month apart',
+        why: 'Two LOAN rows for the same pair: possible because loan_id, not (card_no, book_id), is the key.',
+        sql: `INSERT INTO LOAN (loan_id, card_no, book_id, loan_date, due_date) VALUES (1, 7, 10, '2026-01-05', '2026-01-19'), (2, 7, 10, '2026-02-10', '2026-02-24');`,
+        expect: 'ok',
+      },
+      {
+        title: 'A loan of a book that does not exist',
+        why: 'book_id in LOAN is a foreign key to BOOK.',
+        sql: `INSERT INTO LOAN (loan_id, card_no, book_id, loan_date, due_date) VALUES (3, 7, 99, '2026-03-01', '2026-03-15');`,
+        expect: { rejectedBy: 'FK_LOAN_IS_LENT_BOOK' },
+      },
+    ],
+  },
+  {
+    id: 'hotel-booked-room',
+    model: 'Hotel',
+    title: 'A room is listed once per booking',
+    intro: 'BOOKED_ROOM has no own id: its key is (booking_id, room_no), so the same room cannot appear twice in one booking — but it can in other bookings.',
+    steps: [
+      {
+        title: 'Setup: a room type, two rooms, a guest and a booking',
+        why: 'ROOM needs its ROOM_TYPE; BOOKING needs its GUEST.',
+        sql: `INSERT INTO ROOM_TYPE (type_name, nightly_price, max_guests) VALUES ('double', 90.00, 2);
+INSERT INTO ROOM (room_no, type_name, floor) VALUES (101, 'double', 1), (102, 'double', 1);
+INSERT INTO GUEST (guest_no, name, passport_no) VALUES (1, 'Rui', 'P123');
+INSERT INTO BOOKING (booking_id, guest_no, arrival_date, departure_date, booked_on) VALUES (500, 1, '2026-07-01', '2026-07-05', '2026-03-01');`,
+        expect: 'ok',
+      },
+      {
+        title: 'The family takes two rooms in one booking',
+        why: 'Two rows with different rooms: two different keys.',
+        sql: `INSERT INTO BOOKED_ROOM (booking_id, room_no, guests) VALUES (500, 101, 2), (500, 102, 1);`,
+        expect: 'ok',
+      },
+      {
+        title: 'Room 101 listed again in the same booking',
+        why: '(500, 101) already exists → the primary key rejects it.',
+        sql: `INSERT INTO BOOKED_ROOM (booking_id, room_no, guests) VALUES (500, 101, 1);`,
+        expect: { rejectedBy: 'PK_BOOKED_ROOM' },
+      },
+      {
+        title: 'A room of a type that does not exist',
+        why: 'The price lives in ROOM_TYPE, so every room must point at a real type.',
+        sql: `INSERT INTO ROOM (room_no, type_name, floor) VALUES (201, 'penthouse', 2);`,
+        expect: { rejectedBy: 'FK_ROOM_IS_OF_TYPE_ROOM_TYPE' },
+      },
+    ],
+  },
+  {
+    id: 'shop-lines',
+    model: 'Online Shop',
+    title: 'Order lines, the category tree and one payment per order',
+    intro: 'ORDER_LINE is identified by (order_no, line_no); CATEGORY points at its parent; PAYMENT.order_no is UNIQUE (one-to-one).',
+    steps: [
+      {
+        title: 'Setup: categories as a tree, a product, a customer and an order',
+        why: 'Phones has Electronics as its parent: the reflexive FK parent_category_id.',
+        sql: `INSERT INTO CATEGORY (category_id, name) VALUES (1, 'Electronics');
+INSERT INTO CATEGORY (category_id, parent_category_id, name) VALUES (2, 1, 'Phones');
+INSERT INTO PRODUCT (product_id, category_id, sku, name, price, stock) VALUES (10, 2, 'PH-1', 'Phone One', 299.00, 5);
+INSERT INTO CUSTOMER (customer_no, name, email) VALUES (1, 'Inês', 'ines@example.com');
+INSERT INTO CUSTOMER_ORDER (order_no, customer_no, order_date) VALUES (100, 1, '2026-05-02');`,
+        expect: 'ok',
+      },
+      {
+        title: 'A subcategory of a category that does not exist',
+        why: 'parent_category_id is a foreign key to CATEGORY itself.',
+        sql: `INSERT INTO CATEGORY (category_id, parent_category_id, name) VALUES (3, 99, 'Tablets');`,
+        expect: { rejectedBy: 'FK_CATEGORY_PARENT_CATEGORY' },
+      },
+      {
+        title: 'Lines 1 and 2 of order 100',
+        why: 'The line number is unique only inside its order.',
+        sql: `INSERT INTO ORDER_LINE (order_no, line_no, product_id, quantity, unit_price) VALUES (100, 1, 10, 1, 299.00), (100, 2, 10, 1, 279.00);`,
+        expect: 'ok',
+      },
+      {
+        title: 'Line 1 of order 100 again',
+        why: '(order_no, line_no) is the primary key of ORDER_LINE.',
+        sql: `INSERT INTO ORDER_LINE (order_no, line_no, product_id, quantity, unit_price) VALUES (100, 1, 10, 3, 299.00);`,
+        expect: { rejectedBy: 'PK_ORDER_LINE' },
+      },
+      {
+        title: 'The order is paid',
+        why: 'The FK to the order sits in PAYMENT.',
+        sql: `INSERT INTO PAYMENT (payment_id, order_no, paid_on, method, amount) VALUES (1, 100, '2026-05-02', 'card', 578.00);`,
+        expect: 'ok',
+      },
+      {
+        title: 'A second payment for the same order',
+        why: 'One-to-one: the FK column order_no is also UNIQUE.',
+        sql: `INSERT INTO PAYMENT (payment_id, order_no, paid_on, method, amount) VALUES (2, 100, '2026-05-03', 'paypal', 578.00);`,
+        expect: { rejectedBy: 'AK_PAID_BY_PAYMENT' },
+      },
+      {
+        title: 'Order total, computed from the lines',
+        why: 'Derived data is a query, not a column.',
+        sql: `SELECT order_no, SUM(quantity * unit_price) AS total FROM ORDER_LINE GROUP BY order_no;`,
+        expect: 'ok',
+      },
+    ],
+  },
+  {
+    id: 'hospital-roles',
+    model: 'Hospital',
+    title: 'Only a nurse can be responsible; beds are numbered per ward',
+    intro: 'ADMISSION references NURSE (a child of STAFF_MEMBER), and BED is identified by (ward_id, bed_no).',
+    steps: [
+      {
+        title: 'Setup: a doctor, a nurse, a patient, two wards with a bed 1 each',
+        why: 'Inheritance generation “both”: a staff row plus a DOCTOR or NURSE row. Bed 1 exists in both wards.',
+        sql: `INSERT INTO STAFF_MEMBER (employee_no, name, hire_date) VALUES (1, 'Dr. Costa', '2020-01-01'), (2, 'Nurse Lima', '2021-01-01');
+INSERT INTO DOCTOR (employee_no, licence_no) VALUES (1, 'OM-555');
+INSERT INTO NURSE (employee_no, grade) VALUES (2, 'senior');
+INSERT INTO PATIENT (health_no, name, birth_date) VALUES (900, 'Tiago', '1980-04-02');
+INSERT INTO WARD (ward_id, name, floor) VALUES (1, 'A', 2), (2, 'B', 3);
+INSERT INTO BED (ward_id, bed_no) VALUES (1, 1), (2, 1);`,
+        expect: 'ok',
+      },
+      {
+        title: 'Admission with nurse 2 in bed 1 of ward A',
+        why: 'The FK to BED takes both columns (ward_id, bed_no).',
+        sql: `INSERT INTO ADMISSION (admission_id, health_no, ward_id, bed_no, employee_no, admitted_on) VALUES (1, 900, 1, 1, 2, '2026-04-01');`,
+        expect: 'ok',
+      },
+      {
+        title: 'The doctor as the responsible nurse',
+        why: 'Employee 1 has no NURSE row: linking Admission to Nurse (not Staff Member) makes the database check it.',
+        sql: `INSERT INTO ADMISSION (admission_id, health_no, ward_id, bed_no, employee_no, admitted_on) VALUES (2, 900, 2, 1, 1, '2026-06-01');`,
+        expect: { rejectedBy: 'FK_ADMISSION_RESPONSIBLE_FOR_NURSE' },
+      },
+      {
+        title: 'Bed 2 of ward A, which does not exist',
+        why: '(1, 2) is not a row of BED.',
+        sql: `INSERT INTO ADMISSION (admission_id, health_no, ward_id, bed_no, employee_no, admitted_on) VALUES (3, 900, 1, 2, 2, '2026-06-01');`,
+        expect: { rejectedBy: 'FK_ADMISSION_OCCUPIED_BY_BED' },
+      },
+      {
+        title: 'Two doctors with the same licence',
+        why: 'licence_no is an alternate identifier of Doctor → UNIQUE in DOCTOR.',
+        sql: `INSERT INTO STAFF_MEMBER (employee_no, name, hire_date) VALUES (3, 'Dr. Reis', '2022-01-01');
+INSERT INTO DOCTOR (employee_no, licence_no) VALUES (3, 'OM-555');`,
+        expect: { rejectedBy: 'AK_LICENCE_NO_DOCTOR' },
+      },
+    ],
+  },
+  {
+    id: 'football-pairing',
+    model: 'Football League',
+    title: 'Home and away teams, and one pairing per season',
+    intro: 'MATCH has two FKs to TEAM (roles home / away) and a UNIQUE key (start_year, home_team_id, away_team_id).',
+    steps: [
+      {
+        title: 'Setup: a season and two teams',
+        why: 'Parents of MATCH.',
+        sql: `INSERT INTO SEASON (start_year) VALUES (2025);
+INSERT INTO TEAM (team_id, name, city) VALUES (1, 'Benfica', 'Lisboa'), (2, 'Porto', 'Porto');`,
+        expect: 'ok',
+      },
+      {
+        title: 'Benfica at home to Porto, and the return match',
+        why: 'The same two teams with home and away swapped: a different pairing.',
+        sql: `INSERT INTO MATCH (match_id, start_year, home_team_id, away_team_id, match_date) VALUES (1, 2025, 1, 2, '2025-09-14'), (2, 2025, 2, 1, '2026-02-08');`,
+        expect: 'ok',
+      },
+      {
+        title: 'Benfica at home to Porto again in the same season',
+        why: 'The pairing rule became a key over migrated columns.',
+        sql: `INSERT INTO MATCH (match_id, start_year, home_team_id, away_team_id, match_date) VALUES (3, 2025, 1, 2, '2026-04-20');`,
+        expect: { rejectedBy: 'AK_MATCH_PAIRING' },
+      },
+      {
+        title: 'A team playing against itself',
+        why: 'No key can say “two columns differ”: this rule needs a CHECK (home_team_id <> away_team_id), which the CDM does not draw. The row goes in.',
+        sql: `INSERT INTO MATCH (match_id, start_year, home_team_id, away_team_id, match_date) VALUES (4, 2025, 1, 1, '2026-05-01');`,
+        expect: 'ok',
+      },
+      {
+        title: 'Goals per match, counted from GOAL',
+        why: 'The score is derived data: a query, not a column.',
+        sql: `SELECT m.match_id, COUNT(g.goal_no) AS goals FROM MATCH m LEFT JOIN GOAL g ON g.match_id = m.match_id GROUP BY m.match_id;`,
+        expect: 'ok',
+      },
+    ],
+  },
 ]
 
 export function scenariosFor(modelName: string): Scenario[] {

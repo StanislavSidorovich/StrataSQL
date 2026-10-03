@@ -4,12 +4,13 @@ import { generatePostgres, pgIdent, postgresType } from '../src/core/ddl/postgre
 import { createPgliteEngine } from '../src/core/engine-pglite'
 import { findTable } from '../src/core/pdm'
 import { deleteStatement, insertStatement, resetDatabase, run, sqlLiteral, type SqlEngine } from '../src/core/sandbox'
-import { buildRideHailing } from '../src/data/examples/ride-hailing'
 import { buildTimetables } from '../src/data/examples/timetables'
 import { buildTvShows } from '../src/data/examples/tv-shows'
+import { CASES } from '../src/data/cases'
 import { SCENARIOS, scenariosFor } from '../src/data/scenarios'
 
-const EXAMPLES = [buildTvShows, buildTimetables, buildRideHailing]
+// Every trainer case (course and own ones) must run in the Sandbox.
+const EXAMPLES = CASES.map((c) => c.build)
 
 let engine: SqlEngine
 beforeAll(async () => {
@@ -140,7 +141,7 @@ INSERT INTO EPISODE (episode_id, title, show_id, person_id) VALUES (100, 'Secret
 })
 
 describe('scenarios (acceptance: conflicting rows are rejected by the expected constraint)', () => {
-  it('cover all three reference cases', () => {
+  it('cover every trainer case', () => {
     for (const b of EXAMPLES) expect(scenariosFor(b().name).length).toBeGreaterThan(0)
   })
 
