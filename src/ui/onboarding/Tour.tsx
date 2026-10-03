@@ -19,7 +19,7 @@ export const TOUR_STEPS: TourStep[] = [
   { target: 'canvas', title: 'The canvas', text: 'Click an entity or a line to select it, drag to move. Scroll to zoom. Delete removes the selection, Ctrl+Z undoes.' },
   { target: 'panel', title: 'Properties', text: 'Everything about the selection: attributes, identifiers, cardinalities, dependency. The small ? next to a property explains it with a mini-example. With nothing selected you see the model and its domains.' },
   { target: 'issues', title: 'Model check', text: 'Live hints about your model: a missing identifier, a many-to-many that needs an intermediate entity, a cycle… Click an issue to see the elements; its ? opens the explanation.' },
-  { target: 'trainer', title: 'Practise', text: 'The trainer uses the course cases: first a worked example, then tagging the text, completing a model and building one from scratch, with a hint ladder and a score.' },
+  { target: 'trainer', title: 'Practise', text: 'The trainer uses the course cases: first a worked example, then tagging the text, completing a model and building one yourself, with a Next hint button and a score.' },
   { target: 'help', title: 'Help', text: 'The glossary of concepts, this tour and the keyboard shortcuts are always here.' },
 ]
 

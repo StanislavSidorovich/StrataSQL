@@ -1,13 +1,14 @@
 // Trainer (SPEC §9): case picker and the side pane of an open task — levels 0–3.
 
 import { useReactFlow } from '@xyflow/react'
-import { useState } from 'react'
-import type { CompareItem } from '../../core/compare'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { compareModels, type CompareItem } from '../../core/compare'
 import { CASES, caseById, hintsFor, LEVELS, phrasesFor, splitParagraph, TAGS, type Tag, type TrainerCase } from '../../data/cases'
+import { applyAnswer, coach, referenceOf, type CoachState } from '../../data/coach'
 import { progressKey, type Level } from '../../data/trainer'
 import { richText } from '../help/HelpDrawer'
 import { useEditor, type Selection } from '../store'
-import { isRightTag, tagScore, useTrainer } from './trainerStore'
+import { confirmDiscardTask, isRightTag, tagScore, useTrainer } from './trainerStore'
 import { WalkthroughPane } from './Walkthrough'
 
 const TAG_LABEL: Record<Tag, string> = Object.fromEntries(TAGS.map((t) => [t.id, t.label])) as Record<Tag, string>
@@ -77,13 +78,13 @@ function CasePicker() {
             <p className="muted text-xs">{c.source}</p>
             <p className="text-xs">{c.concepts.join(' · ')}</p>
             <div className="trainer-levels">
-              <button type="button" className="btn btn-small btn-primary" onClick={() => useTrainer.getState().walkTo(c.id, 0)} title="The model is built on an empty canvas one step at a time, with the reason for each step">
+              <button type="button" className="btn btn-small btn-primary" onClick={() => confirmDiscardTask() && useTrainer.getState().walkTo(c.id, 0)} title="The model is built on an empty canvas one step at a time, with the reason for each step">
                 ▶ Watch it built
               </button>
               {LEVELS.map((l) => {
                 const best = progress[progressKey(c.id, l.level)]
                 return (
-                  <button key={l.level} type="button" className="btn btn-small" onClick={() => start(c.id, l.level)} title={l.task}>
+                  <button key={l.level} type="button" className="btn btn-small" onClick={() => confirmDiscardTask() && start(c.id, l.level)} title={l.task}>
                     <b>{l.level}</b> {l.title}
                     {best !== undefined && <span className={`trainer-best ${best === 100 ? 'is-full' : ''}`}>{l.level === 0 ? '✓' : `${best}%`}</span>}
                   </button>
@@ -101,8 +102,7 @@ function TaskPane({ c, level }: { c: TrainerCase; level: Level }) {
   const { start, exit, openPicker } = useTrainer.getState()
   const flow = useReactFlow()
   const go = (l: Level) => {
-    const edited = useEditor.getState().past.length > 0
-    if (edited && level >= 2 && !window.confirm('Switching the level discards the work of this task. Continue?')) return
+    if (!confirmDiscardTask()) return
     start(c.id, l)
     setTimeout(() => flow.fitView({ padding: 0.15, duration: 300 }), 50)
   }
@@ -300,15 +300,35 @@ function CheckPanel({ c, level }: { c: TrainerCase; level: Level }) {
   const model = useEditor((s) => s.model)
   const { runCheck } = useTrainer.getState()
   const [showText, setShowText] = useState(level === 3)
+  const coached = useMemo(() => coach(c, model, level), [c, model, level])
+  const next = coached.next
+  const step = useTrainer((s) => (next ? s.session?.hintSteps[next.key] ?? 0 : 0))
+  // From the “Where” rung on, the phrases of the hint are marked in the text, which opens.
+  const marked = new Set(next && step >= 2 ? next.spans : [])
+  useEffect(() => {
+    if (marked.size) setShowText(true)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [marked.size])
   const stale = check && check.model !== model
   const groups = check ? (['missing', 'different', 'extra', 'matched'] as const).map((st) => [st, check.result.items.filter((i) => i.status === st)] as const) : []
   return (
     <>
+      <Coach c={c} state={coached} step={step} />
       <details className="trainer-text" open={showText} onToggle={(e) => setShowText((e.target as HTMLDetailsElement).open)}>
         <summary>Specification text</summary>
-        <div className="trainer-spec">
-          {c.spec.map((t, p) => (
-            <p key={p}>{t}</p>
+        <div className="trainer-spec walk-spec">
+          {c.spec.map((_, p) => (
+            <p key={p}>
+              {splitParagraph(c, p).map((part, k) =>
+                'span' in part && marked.has(part.index) ? (
+                  <span key={k} className={`spec-span tag-${part.span.tag} is-now`}>
+                    {part.text}
+                  </span>
+                ) : (
+                  <span key={k}>{part.text}</span>
+                ),
+              )}
+            </p>
           ))}
         </div>
       </details>
@@ -351,6 +371,83 @@ function CheckPanel({ c, level }: { c: TrainerCase; level: Level }) {
         </div>
       )}
     </>
+  )
+}
+
+/** “Build it with me”: one global Next hint, for the next missing item in the walkthrough order. */
+function Coach({ c, state, step }: { c: TrainerCase; state: CoachState; step: number }) {
+  const { next } = state
+  const { nextHint } = useTrainer.getState()
+  // Remember the item that was being coached, to say “done” when it is in the model.
+  const last = useRef<string | null>(null)
+  const [solved, setSolved] = useState(false)
+  useEffect(() => {
+    if (last.current && last.current !== next?.key) {
+      setSolved(true)
+      last.current = null
+    }
+    if (next && step > 0) last.current = next.key
+  }, [next?.key, step])
+  if (!next)
+    return (
+      <div className="coach is-done" role="status">
+        ✓ Everything of the reference is in your model. Press <b>Check</b> to record the score
+        {state.result.counts.extra ? ' — and look at the items that are not in the reference' : ''}.
+      </div>
+    )
+  const shown = next.rungs.slice(0, step)
+  const atAnswer = step >= next.rungs.length
+  const doIt = () => {
+    const editor = useEditor.getState()
+    const ok = editor.apply((m) => {
+      applyAnswer(m, c, next.item)
+    })
+    if (!ok) return
+    // Select what was added or fixed.
+    const { model } = useEditor.getState()
+    const found = compareModels(model, referenceOf(c), { synonyms: c.synonyms }).items.find((i) => i.refKey === next.item.refKey && i.target)
+    const target = found?.target ?? next.item.target
+    editor.setView('cdm')
+    if (target) editor.select(target)
+  }
+  return (
+    <div className="coach" role="region" aria-label="Build it with me">
+      <div className="coach-head">
+        <b>💡 Build it with me</b>
+        <span className="muted ml-auto text-xs" title="How much of the reference your model has">
+          {state.result.score}% done
+        </span>
+      </div>
+      {solved && step === 0 && <div className="coach-solved">✓ That one is in. Next:</div>}
+      {shown.map((r, k) => (
+        <div key={k} className={`trainer-hint ${r.label === 'Answer' ? 'is-answer' : ''}`}>
+          <b>{r.label}:</b> {richText(r.text)}
+        </div>
+      ))}
+      <div className="flex flex-wrap gap-1">
+        {!atAnswer && (
+          <button
+            type="button"
+            className="btn btn-small btn-primary"
+            onClick={() => {
+              setSolved(false)
+              nextHint(next.key)
+              if (step === 0 && next.item.target) {
+                useEditor.getState().setView('cdm')
+                useEditor.getState().select(next.item.target)
+              }
+            }}
+          >
+            {step === 0 ? 'Next hint' : next.rungs[step].label === 'Answer' ? 'Show the answer' : 'Another hint'}
+          </button>
+        )}
+        {atAnswer && (
+          <button type="button" className="btn btn-small" onClick={doIt} title="Add this element to your model (Ctrl+Z undoes it)">
+            Do it for me
+          </button>
+        )}
+      </div>
+    </div>
   )
 }
 

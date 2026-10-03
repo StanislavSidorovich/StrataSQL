@@ -7,6 +7,7 @@ import { relationshipKind } from './cdm2pdm'
 import {
   formatCardinality,
   primaryIdentifier,
+  type Attribute,
   type Cardinality,
   type Entity,
   type Id,
@@ -75,6 +76,19 @@ function ownPi(e: Entity): Set<Id> {
 function plainAttrs(e: Entity): Set<string> {
   const pi = ownPi(e)
   return new Set(e.attributes.filter((a) => !pi.has(a.id)).map((a) => normAttr(a.name, e.name)))
+}
+
+/** Reference attributes (outside its own identifier) that the student entity lacks, compared by name. */
+export function missingAttributes(s: Entity, r: Entity): Attribute[] {
+  const have = plainAttrs(s)
+  const pi = ownPi(r)
+  return r.attributes.filter((a) => !pi.has(a.id) && !have.has(normAttr(a.name, r.name)))
+}
+
+/** The student attribute that stands for a reference attribute (same name without entity prefix). */
+export function sameAttribute(s: Entity, r: Entity, refAttr: Attribute): Attribute | undefined {
+  const want = normAttr(refAttr.name, r.name)
+  return s.attributes.find((a) => normAttr(a.name, s.name) === want)
 }
 
 function dice(a: Set<string>, b: Set<string>): number {
@@ -256,8 +270,7 @@ export function compareModels(student: Model, ref: Model, opts: CompareOptions =
             : `${s.name} should have no own identifier — it is identified only by the entities it depends on (one row per combination).`,
           answer: rHas ? `${r.name} has its own identifier: ${piNames(r).join(', ')}.` : `${r.name} has no own identifier; its key comes from its parents.`,
         })
-      const sAttrs = plainAttrs(s)
-      const missingAttrs = r.attributes.filter((a) => !ownPi(r).has(a.id) && !sAttrs.has(normAttr(a.name, r.name)))
+      const missingAttrs = missingAttributes(s, r)
       if (missingAttrs.length)
         items.push({
           kind: 'attribute',

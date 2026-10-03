@@ -1467,6 +1467,14 @@ body {
   font-size: 0.8em;
   color: var(--muted);
 }
+.menu-heading {
+  padding: 6px 10px 2px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
 .menu-sep {
   height: 1px;
   margin: 4px 6px;
@@ -1673,4 +1681,32 @@ body {
 }
 .walk-spec .spec-span.is-now {
   outline: 2px solid var(--walk-new);
+}
+
+/* Build it with me (stage 5c) */
+.coach {
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin: 8px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+}
+.coach.is-done {
+  border-color: var(--ok);
+  background: var(--ok-soft);
+}
+.coach-head {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.coach-solved {
+  color: var(--ok);
+  font-weight: 600;
+}
+.trainer-text .walk-spec {
+  max-height: none;
 }

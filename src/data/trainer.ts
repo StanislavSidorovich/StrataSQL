@@ -12,7 +12,7 @@ export type Level = 0 | 1 | 2 | 3
  * Level 3: an empty model.
  */
 export function levelStartModel(c: TrainerCase, level: Level): Model {
-  if (level === 3) return { ...emptyModel(`${c.title} — my model`), comment: `Trainer: ${c.title}, level 3 (from scratch).` }
+  if (level === 3) return { ...emptyModel(`${c.title} — my model`), comment: `Trainer: ${c.title}, level 3 (build it yourself).` }
   const m = c.build()
   if (level < 2) return m
   return {

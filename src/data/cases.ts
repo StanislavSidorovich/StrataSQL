@@ -64,8 +64,8 @@ export interface TrainerCase {
 export const LEVELS = [
   { level: 0, title: 'Worked example', task: 'Read the text next to the reference model. Click a highlighted phrase to see the element it became.' },
   { level: 1, title: 'Text tagging', task: 'Click each underlined phrase and say what it becomes in the model.' },
-  { level: 2, title: 'Complete the model', task: 'The entities are given. Add the relationships (with cardinalities and dependencies) and the inheritances, then press Check.' },
-  { level: 3, title: 'From scratch', task: 'Build the whole conceptual model from the text, then press Check.' },
+  { level: 2, title: 'Complete the model', task: 'The entities are given. Add the relationships (with cardinalities and dependencies) and the inheritances, then press Check. Stuck? Next hint.' },
+  { level: 3, title: 'Build it yourself', task: 'Build the whole conceptual model from the text, then press Check. Stuck? Next hint shows what to add next, step by step.' },
 ] as const
 
 const ALL: TrainerCase[] = [

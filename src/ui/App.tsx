@@ -25,7 +25,7 @@ import { useEditor, type View } from './store'
 import { Menu } from './onboarding/Menu'
 import { Onboarding, useOnboarding } from './onboarding/Tour'
 import { TrainerPane } from './trainer/TrainerPane'
-import { useTrainer } from './trainer/trainerStore'
+import { confirmDiscardTask, leaveTrainer, useTrainer } from './trainer/trainerStore'
 
 /** Easiest first, as in the trainer. */
 const EXAMPLES = [
@@ -102,12 +102,18 @@ function Editor() {
   const fit = () => setTimeout(() => flow.fitView({ padding: 0.15, duration: 300 }), 50)
 
   const openExample = (build: () => ReturnType<typeof emptyModel>) => {
+    if (!leaveTrainer()) return
     setView('cdm')
     load(build())
     fit()
   }
 
-  const watchLibrary = () => useTrainer.getState().walkTo('library', 0)
+  const watchLibrary = () => {
+    if (confirmDiscardTask()) useTrainer.getState().walkTo('library', 0)
+  }
+  const buildCase = (id: string) => {
+    if (confirmDiscardTask()) useTrainer.getState().start(id, 3)
+  }
 
   const startTour = () => {
     setView('cdm')
@@ -132,6 +138,7 @@ function Editor() {
   const openFile = async (file: File) => {
     try {
       const text = await file.text()
+      if (!leaveTrainer()) return
       if (/\.(cdm|cdb|pdm|pdb)$/i.test(file.name)) {
         const { model: imported, warnings } = importPowerDesigner(text, file.name)
         setView('cdm')
@@ -207,7 +214,7 @@ function Editor() {
             label="File"
             tour="file"
             items={[
-              { label: 'New model', onSelect: () => load(emptyModel()) },
+              { label: 'New model', onSelect: () => leaveTrainer() && load(emptyModel()) },
               { label: 'Open…', hint: `${FILE_EXTENSION}, .cdm`, onSelect: () => fileInput.current?.click() },
               { label: 'Save', hint: 'Ctrl+S', onSelect: downloadModel },
               'separator',
@@ -223,14 +230,17 @@ function Editor() {
           />
           <Menu
             label="Examples"
-            title="Reference models of the cases, easiest first: watch one built step by step, or open the finished model"
+            title="The course cases, easiest first: watch one built step by step, build it yourself with hints, or open the finished model"
             items={[
-              { label: '▶ Watch it built: Library (start here)', onSelect: watchLibrary },
-              { label: '▶ Watch it built: other cases…', onSelect: () => useTrainer.getState().openPicker(true) },
+              { heading: 'Watch it built' },
+              { label: '▶ Library (start here)', onSelect: watchLibrary },
+              { label: '▶ Other cases…', onSelect: () => useTrainer.getState().openPicker(true) },
               'separator',
-              ...EXAMPLES.map((x) => ({ label: `Finished: ${x.label}`, onSelect: () => openExample(x.build) })),
+              { heading: 'Build it yourself (with hints)' },
+              ...EXAMPLES.map((x) => ({ label: x.label, onSelect: () => buildCase(x.id) })),
               'separator',
-              { label: 'Build one yourself (Trainer)…', onSelect: () => useTrainer.getState().openPicker(true) },
+              { heading: 'Show the answer' },
+              ...EXAMPLES.map((x) => ({ label: x.label, onSelect: () => openExample(x.build) })),
             ]}
           />
           <input
@@ -284,7 +294,7 @@ function Editor() {
             data-tour="trainer"
             className={`btn ${trainerOn ? 'btn-primary' : ''}`}
             onClick={() => useTrainer.getState().openPicker(!useTrainer.getState().pickerOpen)}
-            title="Practise on the course cases: worked example, text tagging, complete the model, from scratch"
+            title="Practise on the course cases: watch it built, worked example, text tagging, complete the model, build it yourself with hints"
           >
             🎓 Trainer
           </button>
@@ -296,7 +306,7 @@ function Editor() {
             items={[
               { label: 'Glossary of concepts', onSelect: () => useEditor.getState().openHelp() },
               { label: 'Tour of the screen', onSelect: startTour },
-              { label: 'Watch a model being built', onSelect: () => useTrainer.getState().openPicker(true) },
+              { label: 'Watch a model being built…', onSelect: () => useTrainer.getState().openPicker(true) },
               { label: 'Keyboard shortcuts', onSelect: () => useOnboarding.getState().showShortcuts(true) },
             ]}
           />
@@ -337,11 +347,7 @@ function Editor() {
                     key={x.id}
                     type="button"
                     className="btn"
-                    onClick={() => {
-                      setView('cdm')
-                      load(x.build())
-                      fit()
-                    }}
+                    onClick={() => openExample(x.build)}
                   >
                     {x.label}
                   </button>

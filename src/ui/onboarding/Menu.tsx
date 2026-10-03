@@ -8,7 +8,12 @@ export interface MenuItem {
 }
 
 /** A toolbar button that opens a list of commands. Closes on choice, outside click and Esc. */
-export function Menu(props: { label: ReactNode; title?: string; items: (MenuItem | 'separator')[]; align?: 'left' | 'right'; active?: boolean; tour?: string }) {
+/** A small caption over a group of items. */
+export interface MenuHeading {
+  heading: string
+}
+
+export function Menu(props: { label: ReactNode; title?: string; items: (MenuItem | MenuHeading | 'separator')[]; align?: 'left' | 'right'; active?: boolean; tour?: string }) {
   const [open, setOpen] = useState(false)
   const root = useRef<HTMLDivElement>(null)
 
@@ -38,6 +43,10 @@ export function Menu(props: { label: ReactNode; title?: string; items: (MenuItem
           {props.items.map((it, i) =>
             it === 'separator' ? (
               <div key={i} className="menu-sep" role="separator" />
+            ) : 'heading' in it ? (
+              <div key={i} className="menu-heading">
+                {it.heading}
+              </div>
             ) : (
               <button
                 key={i}

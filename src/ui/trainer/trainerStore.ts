@@ -173,6 +173,33 @@ export const useTrainer = create<TrainerState>()((set, get) => ({
   },
 }))
 
+/**
+ * A level 2–3 task holds the student's own work. Edits after a reload leave no undo history, so the
+ * model itself is checked too.
+ */
+export function taskHasWork(): boolean {
+  const s = useTrainer.getState().session
+  if (!s || s.walk !== undefined || s.level < 2) return false
+  const { past, model } = useEditor.getState()
+  return past.length > 0 || (s.level === 3 ? model.entities.length > 0 : model.relationships.length + model.inheritances.length > 0)
+}
+
+/** Asks before a level 2–3 task's work is replaced. */
+export function confirmDiscardTask(): boolean {
+  return !taskHasWork() || window.confirm('This discards the work of the current trainer task. Continue?')
+}
+
+/**
+ * Before New / Open / a finished example: those replace the user's own model, so a running trainer
+ * task or walkthrough closes first (otherwise the answer would land in the task). False = cancelled.
+ */
+export function leaveTrainer(): boolean {
+  if (!useTrainer.getState().session) return true
+  if (!confirmDiscardTask()) return false
+  useTrainer.getState().exit()
+  return true
+}
+
 const stepCache = new Map<string, WalkStep[]>()
 /** The walkthrough steps of a case, generated once per page. */
 export function walkSteps(c: TrainerCase): WalkStep[] {

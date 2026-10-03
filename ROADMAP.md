@@ -9,10 +9,12 @@ Stages follow SPEC §12. A stage is done only when its acceptance criteria pass.
 | 2.5 SQL sandbox | ✅ done (2026-10-02) | Generated schema runs in the browser; inserting conflicting rows shows the constraint that rejects them |
 | 3. Linter + Help | ✅ done (2026-10-02) | L01–L10 with tests; ≥ 15 help cards; `?` on every property (L11 added with stage 4) |
 | 4. Trainer | ✅ done (2026-10-02) | 3 cases × levels 0–3; comparator correct on references and seeded wrong models |
-| 5. Guided start | 🚧 in progress — 5a, 5b, 5d (.cdm) done 2026-10-03; next 5c | A first-time user learns the screen in a tour, watches a case built step by step, and builds one alone with “next hint” |
+| 5. Guided start | ✅ acceptance met (2026-10-03, v0.5.0) — 5a–5c, 5d (.cdm) done; 5e polish and `.pdm` reverse carried over | A first-time user learns the screen in a tour, watches a case built step by step, and builds one alone with “next hint” |
 | 6. AI review | ⏭ optional | Optional, behind a user-provided API key |
 
-**Where we are (2026-10-02, v0.4.0):** the learning loop is complete. Build a CDM, get the PDM + SQL Server DDL, test the keys in the sandbox, get live linter feedback with help cards, and practise on the three course cases in the trainer (worked example → text tagging → complete the model → from scratch, with a structural check and a hint ladder). Next is stage 5 (guided start, see below); AI review moved to stage 6 and stays optional.
+**Where we are (2026-10-03, v0.5.0):** guided start is in: a welcome card and a tour, the four cases watched built step by step (Library starter first), built alone with a Next hint that walks the same order, and PowerDesigner `.cdm` import. Next: 5e UI polish, then optional AI review (stage 6).
+
+**Earlier (2026-10-02, v0.4.0):** the learning loop is complete. Build a CDM, get the PDM + SQL Server DDL, test the keys in the sandbox, get live linter feedback with help cards, and practise on the three course cases in the trainer (worked example → text tagging → complete the model → from scratch, with a structural check and a hint ladder). Next is stage 5 (guided start, see below); AI review moved to stage 6 and stays optional.
 
 **Distribution:** GitHub Pages stays the only channel. It works on Windows, macOS and Linux in any modern browser, with no install and no VPN. A local .bat/.exe would need a separate build per OS (and unsigned apps are blocked by macOS Gatekeeper). Since 2026-10-02 the page is also an installable **PWA**: it works offline after the first visit (Sandbox included) and can be installed from Chrome/Edge or added to the Dock from Safari.
 
@@ -123,7 +125,7 @@ Known gaps carried forward:
 - Attributes are compared by name only (types and mandatory are not checked); missing attributes are not scored.
 - Level 2/3 work is lost when switching level (a confirm asks first).
 
-## Stage 5 — Guided start 🔜 (planned 2026-10-03)
+## Stage 5 — Guided start ✅ (2026-10-03)
 
 Why: the owner's review — the tool works, but a newcomer does not know where to start. The Examples menu shows the finished answer at once, the trainer (which already has a worked example and a hint ladder) is hard to discover, and nothing explains the screen. Goal: *show → do with help → do alone*, reachable from the first screen.
 
@@ -131,7 +133,7 @@ Phases (each is shippable on its own):
 
 - [x] **5a. Welcome + tour.** (done 2026-10-03) First visit: a short welcome card (what the tool is, three ways to start: tour, watch an example being built, build one yourself). Coach marks over the real UI, 6–8 steps: views, + Entity / drag to link, properties panel, Model check, Help, Trainer, Save/Open. Re-run from a **? menu** (Tour · Walkthroughs · Glossary · Keyboard shortcuts). Skippable, `Esc` exits, remembered in localStorage
 - [x] **5b. Walkthrough (“Show me how it's built”).** (done 2026-10-03, sprint 2) A case is built on an empty canvas one step at a time: the text phrase is highlighted, the step is applied to the canvas (entity → its attributes → identifier → relationship with cardinalities → dependency / inheritance), with the reason. Next / Back / Exit; the user's model is set aside and restored (same as the trainer). Steps are **generated** from `cases.ts` (phrase → target → why) plus an order, so they cannot drift from the reference. A new **starter case** comes first (Library: Book, Author, Publisher, Loan — 1:N, an M:N turned into an intermediate entity, one identifier choice), then Ride Hailing → Timetables → TV Shows
-- [ ] **5c. Build it with me.** Examples menu splits into “Show the answer” and “Build it myself”. Build mode = trainer level 3 with a global **Next hint** button: the comparator picks the next missing item in walkthrough order and walks the hint ladder (what to add → which phrase → why → the answer, optionally “do it for me”)
+- [x] **5c. Build it with me.** (done 2026-10-03, sprint 3) Examples menu splits into “Show the answer” and “Build it myself”. Build mode = trainer level 3 with a global **Next hint** button: the comparator picks the next missing item in walkthrough order and walks the hint ladder (what to add → which phrase → why → the answer, optionally “do it for me”)
 - [x] **5d. PowerDesigner import** — `.cdm` / `.cdb` done 2026-10-03; `.pdm` reverse still open. `.cdm` (conceptual) → model; `.pdm` (physical) → reverse into a CDM (tables → entities, FKs → relationships, join tables → intermediate entities), later. `.cdb` / `.pdb` are PowerDesigner's automatic **backup copies** of `.cdm` / `.pdm` (same content), so they are accepted too. Only the XML file format (PD default); a binary file gets a message “save as XML in PowerDesigner”. Needs real class files to test with
 - [ ] **5e. UI polish.** ~~File menu~~ ✅ (+ Examples and Help menus) · File menu (New, Open, Save, Import, Export PNG/SVG) instead of `<select>` lists; icons with text labels (lucide, MIT); toolbar grouped by task; “Saved” indicator for autosave; keyboard-shortcut sheet; empty state links to tour / walkthrough / build; check at 1280 px and on a tablet
 
@@ -156,7 +158,17 @@ Sprint 2 (2026-10-03) — 5b walkthrough, done:
 
 Built with: Claude Opus 5.5 (Claude Code), effort low.
 
-Next sprint: **5c “Build it with me”** (Next hint driven by the comparator, in walkthrough order), then 5e polish.
+Sprint 3 (2026-10-03) — 5c “Build it with me”, done:
+- [x] `src/data/coach.ts` — `coach(case, model, level)`: compares with the reference and picks the next missing or different item **in walkthrough order** (entity → its attributes → identifier → its links; Library's fine steps too); when everything matches, the Timetables “rules become keys” (physical keys over migrated columns) come last. Hint ladder per item: **What** (the comparator's message; a missing entity is not named, only its already-drawn neighbours) → **Where** (the phrases of the text, marked in the specification, plus the case hints) → **Why** (the phrases' reasons) → **Answer**. `applyAnswer` = **Do it for me**: copies that one element of the reference (entity with attributes, domains and identifiers; missing attributes; the right identifier; relationship in the reference orientation with cardinalities, dependency, roles; inheritance children and flags; physical keys), undoable with Ctrl+Z. `compare.ts` exports `missingAttributes` / `sameAttribute`
+- [x] UI: a **💡 Build it with me** box in trainer levels 2 and 3 (Next hint → Another hint → Show the answer → Do it for me, “✓ That one is in”, % done), selects the element in your model. Level 3 renamed **Build it yourself** (was “From scratch”)
+- [x] **Examples** menu in three groups: *Watch it built* · *Build it yourself (with hints)* = level 3 of that case · *Show the answer* = the finished model
+- [x] Tails / inconsistencies fixed: New / Open / a finished example during a trainer task used to load **into the task** (the answer counted as the student's work) or under a running walkthrough — now the trainer closes first; switching level, case or walkthrough asks before discarding work, also after a reload (no undo history then); Help menu “Watch a model being built…” has the ellipsis of a chooser
+- [x] Tests `tests/coach.test.ts` (21): for all 4 cases “do it for me” on every hint builds the model from empty (level 3) and from given entities (level 2) to **100 %**, same tables and AKs as the reference, no lint errors, never the same hint twice; the first hint is the walkthrough's first entity and does not name it; Library order (attributes → identifier → relationship); a reversed non-dependent relationship is fixed; extra entities are left alone. 235 tests in total
+- [x] Checked in the dev build (Playwright 1366×820): Examples → Build it yourself: Library → hints with marked phrases → do it for me to the end → Check = 100 %, saved; Show the answer closes the trainer after a confirm; no console errors
+
+Built with: Claude Opus 5.5 (Claude Code), effort low.
+
+Carried over (5e and later): File menu icons (lucide), toolbar grouped by task, “Saved” indicator, check at 1280 px and on a tablet; `.pdm` reverse import; hints used are not counted in the score.
 
 Acceptance: a first-time user can, without reading docs, finish the tour, watch the starter case built to the end, and build it alone to 100 % using hints. Walkthrough steps of all 4 cases replay to exactly the reference model (unit test). Import of the course `.cdm` files gives the same model as the hand-built reference.
 
