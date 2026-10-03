@@ -305,6 +305,7 @@ function Editor() {
               { label: 'Tour of the screen', onSelect: startTour },
               { label: 'Watch a model being built…', onSelect: () => useTrainer.getState().openPicker(true) },
               { label: 'Keyboard shortcuts', onSelect: () => useOnboarding.getState().showShortcuts(true) },
+              { label: 'About StrataSQL', onSelect: () => useOnboarding.getState().showAbout(true) },
               'separator',
               { label: 'Quaera: SQL & analytics trainer ↗', hint: 'quaera.app', onSelect: () => window.open('https://quaera.app', '_blank', 'noopener') },
             ]}

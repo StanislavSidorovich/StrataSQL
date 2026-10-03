@@ -1,4 +1,4 @@
-// First-visit welcome, the screen tour (coach marks over the real UI) and the shortcut sheet.
+// First-visit welcome, the screen tour (coach marks over the real UI), the shortcut sheet and About.
 
 import { useEffect, useLayoutEffect, useState } from 'react'
 import { create } from 'zustand'
@@ -28,12 +28,14 @@ interface OnboardingState {
   welcome: boolean
   step: number | null
   shortcuts: boolean
+  about: boolean
   startTour: () => void
   next: () => void
   back: () => void
   stop: () => void
   closeWelcome: () => void
   showShortcuts: (on: boolean) => void
+  showAbout: (on: boolean) => void
 }
 
 function firstVisit(): boolean {
@@ -63,6 +65,7 @@ export const useOnboarding = create<OnboardingState>((set, get) => ({
   welcome: firstVisit(),
   step: null,
   shortcuts: false,
+  about: false,
   startTour: () => {
     markWelcomed()
     set({ welcome: false, step: seek(0, 1) })
@@ -82,6 +85,7 @@ export const useOnboarding = create<OnboardingState>((set, get) => ({
     set({ welcome: false })
   },
   showShortcuts: (shortcuts) => set({ shortcuts }),
+  showAbout: (about) => set({ about }),
 }))
 
 function useTargetRect(target: string | undefined): DOMRect | null {
@@ -259,12 +263,64 @@ function Shortcuts() {
   )
 }
 
+function About() {
+  const open = useOnboarding((s) => s.about)
+  const close = () => useOnboarding.getState().showAbout(false)
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && close()
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [open])
+  if (!open) return null
+  return (
+    <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label="About StrataSQL" onClick={close}>
+      <div className="modal about" onClick={(e) => e.stopPropagation()}>
+        <h2>About StrataSQL</h2>
+        <p>
+          Draw a conceptual model and get the physical model and a SQL Server script, following the conventions of the
+          NOVA IMS DBMS course (PowerDesigner, IE notation, intermediate entities).
+        </p>
+        <p className="about-disclaimer">
+          <b>An unofficial student project</b>, not affiliated with or endorsed by NOVA IMS. Where it differs from the
+          course, the course and your professor are right.
+        </p>
+        <p>
+          The three course cases (Ride Hailing, Timetables, TV Shows) are adapted from the class material; their rights
+          stay with their authors. The other cases are the author's own.
+        </p>
+        <p>
+          Made by Stanislav Sidorovich, part of{' '}
+          <a href="https://quaera.app" target="_blank" rel="noopener">
+            Quaera
+          </a>
+          . Source:{' '}
+          <a href="https://github.com/StanislavSidorovich/StrataSQL" target="_blank" rel="noopener">
+            GitHub
+          </a>
+          . Code under Apache-2.0, learning content under CC BY-NC-SA 4.0.
+        </p>
+        <p className="about-small">
+          PowerDesigner is a trademark of SAP SE and SQL Server of Microsoft; StrataSQL is not affiliated with either.
+        </p>
+        <div className="welcome-foot">
+          <span />
+          <button type="button" className="btn btn-small btn-primary" onClick={close} autoFocus>
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function Onboarding(props: { onPractise: () => void; onWatch: () => void }) {
   return (
     <>
       <Welcome {...props} />
       <TourOverlay />
       <Shortcuts />
+      <About />
     </>
   )
 }

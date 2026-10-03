@@ -174,6 +174,7 @@ Sprint 4 (2026-10-03) — 5e polish, part 1 (owner's review before showing class
 - [x] **File** and **Examples** moved to the left of the toolbar, right after the logo (as in most programs)
 - [x] Licenses as in Quaera: code **Apache-2.0** (`LICENSE`), learning content **CC BY-NC-SA 4.0** (`LICENSE-CONTENT`); the course cases and class files stay with their authors
 - [x] Domain **model.quaera.app** (part of Quaera), live 2026-10-03: Cloudflare CNAME `model` → `stanislavsidorovich.github.io` (DNS only), GitHub Pages custom domain + enforced HTTPS; the old github.io link redirects (301). Help menu links to Quaera; the build already uses relative paths, so nothing else changed. Checked: page loads, service worker active with the precache
+- [x] **Help → About StrataSQL**: the unofficial-student-project disclaimer stays reachable after the welcome card (it was only there and in the README), plus where the course cases come from, author, source, licenses and a trademark line (PowerDesigner — SAP SE, SQL Server — Microsoft; also in the README)
 - [x] Checked in the dev build (Playwright 1366×820): walkthrough steps, hide / show both columns, drag-resize, no console errors. 314 tests
 
 Carried over (5e and later): File menu icons (lucide), toolbar grouped by task, “Saved” indicator, check at 1280 px and on a tablet; `.pdm` reverse import; hints used are not counted in the score.

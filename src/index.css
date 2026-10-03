@@ -1586,6 +1586,23 @@ body {
   font-size: 0.75rem;
   color: var(--muted);
 }
+.about p {
+  margin: 0 0 10px;
+  line-height: 1.5;
+}
+.about a {
+  color: var(--accent);
+}
+.about .about-small {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+.about .about-disclaimer {
+  padding: 8px 10px;
+  border-left: 3px solid var(--panel-border);
+  background: var(--canvas-bg);
+  border-radius: 4px;
+}
 .shortcut-table {
   width: 100%;
   margin: 8px 0 14px;

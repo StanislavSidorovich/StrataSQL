@@ -7,3 +7,7 @@ dist
 # local PowerDesigner files (copies with paths removed are in tests/fixtures)
 /*.cdm
 /*.pdm
+
+# local working files
+screenshots-email/
+tsconfig.tsbuildinfo
