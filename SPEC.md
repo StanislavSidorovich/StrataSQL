@@ -129,7 +129,7 @@ Pedagogy: worked example → completion problems → faded scaffolding → indep
 | 1 — Text tagging | Click words in the spec, tag as entity / attribute / relationship / inheritance / rule | Immediate, per tag |
 | 2 — Complete the model | Entities given; add relationships, cardinalities, dependencies, inheritance | Hint ladder: "something is missing here" → "look at the word *X*" → show the answer |
 | 3 — From scratch | Build the whole CDM from the text | Structural comparison with reference + linter |
-| 4 — Open business task | Free text task, no reference | AI review (stage 5) |
+| 4 — Open business task | Free text task, no reference | AI review (stage 6) |
 
 **Comparison with reference (level 3)** is structural, not name-based: entities matched by attribute overlap + synonyms list in the case file; then compare relationships (cardinality, dependency), inheritance, identifiers. Output: matched / missing / extra / different, each with a hint text from the case file.
 
@@ -173,7 +173,8 @@ tests/         core unit tests (one per CDM→PDM rule + per case)
 | 2. PDM + SQL Server DDL | TV Shows, Timetables, Ride Hailing reference CDMs generate the expected PDMs in `cases/` (unit tests); DDL runs without errors on SQL Server |
 | 3. Linter + Help | L01–L10 implemented with tests; ≥ 15 help cards with mini-diagrams; `?` available on every property |
 | 4. Trainer | 3 cases × levels 0–3 playable; comparator gives correct matched/missing/extra on the 3 reference models and on seeded wrong models |
-| 5. AI review | Optional, behind user-provided API key |
+| 5. Guided start | Welcome tour, step-by-step walkthrough of a starter case and the 3 course cases, build-with-hints mode, PowerDesigner `.cdm` import (see ROADMAP) |
+| 6. AI review | Optional, behind user-provided API key |
 
 ## 13. Open questions
 
