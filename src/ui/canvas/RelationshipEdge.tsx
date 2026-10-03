@@ -2,7 +2,7 @@ import { BaseEdge, useInternalNode, type Edge, type EdgeProps, type InternalNode
 import { formatCardinality, type Cardinality } from '../../core/metamodel'
 import { issueTouches } from '../../core/lint'
 import { worstSeverity } from '../lint/IssuesPanel'
-import { useEditor, useLint } from '../store'
+import { useEditor, useLint, useSpotlight } from '../store'
 import { add, edgeEnds, perp, scale, sub, unit, type Rect, type Vec } from './geometry'
 
 export type RelationshipEdgeData = { relationshipId: string; offset: number }
@@ -20,11 +20,14 @@ export function RelationshipEdge({ id, source, target, data, selected }: EdgePro
   const b = nodeRect(useInternalNode(target))
   const severity = worstSeverity(useLint(), 'relationship', data?.relationshipId ?? '')
   const focused = useEditor((s) => (s.focusedIssue ? issueTouches(s.focusedIssue, 'relationship', data?.relationshipId ?? '') : false))
+  const isNew = useSpotlight(data?.relationshipId)
   if (!rel || !a || !b) return null
 
   const stroke = selected
     ? 'var(--edge-selected)'
-    : focused || severity === 'error'
+    : isNew
+      ? 'var(--walk-new)'
+      : focused || severity === 'error'
       ? 'var(--lint-error)'
       : severity === 'warning'
         ? 'var(--lint-warning)'
@@ -40,7 +43,7 @@ export function RelationshipEdge({ id, source, target, data, selected }: EdgePro
 
   return (
     <>
-      <BaseEdge id={id} path={path} interactionWidth={16} style={{ stroke, strokeWidth: selected || focused ? 2.4 : 1.4 }} />
+      <BaseEdge id={id} path={path} interactionWidth={16} style={{ stroke, strokeWidth: selected || focused || isNew ? 2.4 : 1.4 }} />
       <g className="pointer-events-none" stroke={stroke} fill="none" strokeWidth={1.4}>
         <EndMarker at={from} dir={dirA} card={rel.cardinalityA} dependent={rel.dependentSide === 'A'} stroke={stroke} />
         <EndMarker at={to} dir={dirB} card={rel.cardinalityB} dependent={rel.dependentSide === 'B'} stroke={stroke} />

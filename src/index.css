@@ -43,6 +43,7 @@
   --tag-inheritance-soft: #fdf0dc;
   --tag-rule: #be123c;
   --tag-rule-soft: #fde7ec;
+  --walk-new: #0d9488;
   --ok: #0f7a5a;
   --ok-soft: #e1f5ec;
 
@@ -90,6 +91,7 @@
   --tag-inheritance-soft: #3a2c16;
   --tag-rule: #ff8fa6;
   --tag-rule-soft: #3d1a23;
+  --walk-new: #2dd4bf;
   --ok: #4fd1a5;
   --ok-soft: #143329;
 
@@ -1598,4 +1600,77 @@ body {
   white-space: pre-line;
   cursor: pointer;
   box-shadow: 0 4px 16px rgb(0 0 0 / 0.2);
+}
+
+/* ---------------------------------------------------------------- walkthrough (stage 5b) */
+.entity-node.walk-new {
+  box-shadow: 0 0 0 3px var(--walk-new);
+}
+.walk-progress {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--panel-border);
+  margin: 4px 0 10px;
+}
+.walk-progress > div {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--walk-new);
+  transition: width 0.2s;
+}
+.walk-step h3 {
+  margin: 0 0 6px;
+  font-size: 15px;
+}
+.walk-step p {
+  margin: 0 0 6px;
+}
+.walk-kind {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--walk-new);
+  font-weight: 600;
+}
+.walk-tables {
+  margin: 8px 0;
+  padding: 6px 8px;
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  background: var(--code-bg);
+  font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.walk-tables-label {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 8px;
+}
+.walk-nav {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin: 10px 0;
+}
+.walk-spec {
+  max-height: 220px;
+  overflow: auto;
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 13px;
+}
+.walk-spec .spec-span {
+  cursor: default;
+}
+.walk-spec .spec-span.is-later {
+  background: none;
+  box-shadow: none;
+}
+.walk-spec .spec-span.is-past {
+  background: none;
+}
+.walk-spec .spec-span.is-now {
+  outline: 2px solid var(--walk-new);
 }

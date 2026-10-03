@@ -6,6 +6,7 @@ import { create } from 'zustand'
 import { compareModels, type CompareResult } from '../../core/compare'
 import { caseById, type Tag, type TrainerCase } from '../../data/cases'
 import { levelStartModel, recordScore, type Level, type Progress } from '../../data/trainer'
+import { walkthroughSteps, type WalkStep } from '../../data/walkthrough'
 import { lintFor, loadStoredModel, TRAINER_MODEL_KEY, useEditor } from '../store'
 
 const SESSION_KEY = 'stratasql.trainer.session'
@@ -29,6 +30,8 @@ interface Session {
   openSpan: number | null
   /** Hint ladder step per item key. */
   hintSteps: Record<string, number>
+  /** Walkthrough (“watch it built”): the current step; the task level is then 0. */
+  walk?: number
 }
 
 interface TrainerState {
@@ -40,6 +43,8 @@ interface TrainerState {
 
   openPicker: (open: boolean) => void
   start: (caseId: string, level: Level) => void
+  /** Starts (or moves) the walkthrough of a case at a step. */
+  walkTo: (caseId: string, step: number) => void
   exit: () => void
   tag: (span: number, tag: Tag) => void
   resetTags: () => void
@@ -89,14 +94,38 @@ export const useTrainer = create<TrainerState>()((set, get) => ({
       focusedIssue: null,
       view: 'cdm',
       error: null,
+      walkthrough: null,
     })
     set({ session: { caseId, level, tags: {}, openSpan: null, hintSteps: {} }, check: null, pickerOpen: false })
+  },
+
+  walkTo(caseId, step) {
+    const c = caseById(caseId)
+    if (!c) return
+    const steps = walkSteps(c)
+    const s = steps[Math.max(0, Math.min(step, steps.length - 1))]
+    const editor = useEditor.getState()
+    const first = s.focus[0]
+    useEditor.setState({
+      model: s.model,
+      trainerBackup: editor.trainerBackup ?? editor.model,
+      past: [],
+      future: [],
+      selection: first ? { kind: first.kind, id: first.id } : null,
+      tableSelection: null,
+      focusedIssue: null,
+      // Watching the tables grow in the Physical view is allowed; the other views show no canvas.
+      view: editor.view === 'pdm' ? 'pdm' : 'cdm',
+      error: null,
+      walkthrough: { spotlight: s.focus.map((f) => f.id) },
+    })
+    set({ session: { caseId, level: 0, tags: {}, openSpan: null, hintSteps: {}, walk: steps.indexOf(s) }, check: null, pickerOpen: false })
   },
 
   exit() {
     const { trainerBackup } = useEditor.getState()
     if (trainerBackup)
-      useEditor.setState({ model: trainerBackup, trainerBackup: null, past: [], future: [], selection: null, focusedIssue: null })
+      useEditor.setState({ model: trainerBackup, trainerBackup: null, past: [], future: [], selection: null, focusedIssue: null, walkthrough: null })
     writeJson(TRAINER_MODEL_KEY, null)
     set({ session: null, check: null, pickerOpen: false })
   },
@@ -144,6 +173,14 @@ export const useTrainer = create<TrainerState>()((set, get) => ({
   },
 }))
 
+const stepCache = new Map<string, WalkStep[]>()
+/** The walkthrough steps of a case, generated once per page. */
+export function walkSteps(c: TrainerCase): WalkStep[] {
+  let steps = stepCache.get(c.id)
+  if (!steps) stepCache.set(c.id, (steps = walkthroughSteps(c)))
+  return steps
+}
+
 /** Level 1 result: a tag is right when it is the expected one or an accepted alternative. */
 export function isRightTag(c: TrainerCase, span: number, tag: Tag): boolean {
   const s = c.spans[span]
@@ -173,6 +210,7 @@ useTrainer.subscribe((state, prev) => {
 export function restoreTrainer() {
   const session = readJson<Session | null>(SESSION_KEY, null)
   if (!session || !caseById(session.caseId)) return
+  if (session.walk !== undefined) return useTrainer.getState().walkTo(session.caseId, session.walk)
   const model = loadStoredModel(TRAINER_MODEL_KEY) ?? levelStartModel(caseById(session.caseId)!, session.level)
   const editor = useEditor.getState()
   useEditor.setState({ model, trainerBackup: editor.model, past: [], future: [] })

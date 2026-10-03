@@ -5,6 +5,7 @@ import { addEntity, removeEntity, removeInheritance, removeRelationship } from '
 import { importPowerDesigner } from '../core/import/powerdesigner'
 import { FILE_EXTENSION, parseModel, serializeModel } from '../core/serialize'
 import { applyUpdate, useUpdateReady } from '../pwa/register'
+import { buildLibrary } from '../data/examples/library'
 import { buildRideHailing } from '../data/examples/ride-hailing'
 import { buildTimetables } from '../data/examples/timetables'
 import { buildTvShows } from '../data/examples/tv-shows'
@@ -26,10 +27,12 @@ import { Onboarding, useOnboarding } from './onboarding/Tour'
 import { TrainerPane } from './trainer/TrainerPane'
 import { useTrainer } from './trainer/trainerStore'
 
+/** Easiest first, as in the trainer. */
 const EXAMPLES = [
+  { id: 'library', label: 'Library (starter)', build: buildLibrary },
+  { id: 'ride-hailing', label: 'Ride Hailing (Shadow Project)', build: buildRideHailing },
   { id: 'tv-shows', label: 'TV Shows (Class 03)', build: buildTvShows },
   { id: 'timetables', label: 'Timetables (Class 03)', build: buildTimetables },
-  { id: 'ride-hailing', label: 'Ride Hailing (Shadow Project)', build: buildRideHailing },
 ]
 
 const VIEWS: { id: View; label: string; title: string }[] = [
@@ -91,6 +94,7 @@ function Editor() {
   const view = useEditor((s) => s.view)
   const helpOpen = useEditor((s) => s.help !== null)
   const trainerOn = useTrainer((s) => s.session !== null || s.pickerOpen)
+  const walkOn = useEditor((s) => s.walkthrough !== null)
   const { undo, redo, load, apply, select, setLinkKind, setView, showError } = useEditor.getState()
   const fileInput = useRef<HTMLInputElement>(null)
   const flow = useReactFlow()
@@ -102,6 +106,8 @@ function Editor() {
     load(build())
     fit()
   }
+
+  const watchLibrary = () => useTrainer.getState().walkTo('library', 0)
 
   const startTour = () => {
     setView('cdm')
@@ -217,9 +223,12 @@ function Editor() {
           />
           <Menu
             label="Examples"
-            title="Finished reference models of the course cases"
+            title="Reference models of the cases, easiest first: watch one built step by step, or open the finished model"
             items={[
-              ...EXAMPLES.map((x) => ({ label: x.label, onSelect: () => openExample(x.build) })),
+              { label: '▶ Watch it built: Library (start here)', onSelect: watchLibrary },
+              { label: '▶ Watch it built: other cases…', onSelect: () => useTrainer.getState().openPicker(true) },
+              'separator',
+              ...EXAMPLES.map((x) => ({ label: `Finished: ${x.label}`, onSelect: () => openExample(x.build) })),
               'separator',
               { label: 'Build one yourself (Trainer)…', onSelect: () => useTrainer.getState().openPicker(true) },
             ]}
@@ -287,6 +296,7 @@ function Editor() {
             items={[
               { label: 'Glossary of concepts', onSelect: () => useEditor.getState().openHelp() },
               { label: 'Tour of the screen', onSelect: startTour },
+              { label: 'Watch a model being built', onSelect: () => useTrainer.getState().openPicker(true) },
               { label: 'Keyboard shortcuts', onSelect: () => useOnboarding.getState().showShortcuts(true) },
             ]}
           />
@@ -316,14 +326,17 @@ function Editor() {
           {model.entities.length === 0 && view !== 'sql' && (
             <div className="empty-state">
               <h2>Start a conceptual model</h2>
-              <p>Double-click the canvas or press “+ Entity”.{trainerOn ? ' Read the text on the left and model it here.' : ' Or open a worked example:'}</p>
+              <p>{walkOn ? 'Press “Start” on the left: the model appears here step by step.' : `Double-click the canvas or press “+ Entity”.${trainerOn ? ' Read the text on the left and model it here.' : ' Or open a worked example:'}`}</p>
               {!trainerOn && (
               <div className="flex flex-wrap justify-center gap-2">
+                <button type="button" className="btn btn-primary" onClick={watchLibrary}>
+                  ▶ Watch a model being built
+                </button>
                 {EXAMPLES.map((x) => (
                   <button
                     key={x.id}
                     type="button"
-                    className="btn btn-primary"
+                    className="btn"
                     onClick={() => {
                       setView('cdm')
                       load(x.build())
@@ -346,7 +359,7 @@ function Editor() {
             </div>
           )}
           </div>
-          {view === 'cdm' && model.entities.length > 0 && <IssuesDock />}
+          {view === 'cdm' && model.entities.length > 0 && !walkOn && <IssuesDock />}
         </main>
         <aside className="panel" aria-label="Properties" data-tour="panel">
           {view !== 'cdm' && <PdmPanel />}
@@ -363,7 +376,7 @@ function Editor() {
         </div>
       )}
       <HelpDrawer />
-      <Onboarding onPractise={() => useTrainer.getState().openPicker(true)} onExample={() => openExample(buildTvShows)} />
+      <Onboarding onPractise={() => useTrainer.getState().openPicker(true)} onWatch={watchLibrary} />
     </div>
   )
 }

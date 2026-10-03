@@ -47,6 +47,8 @@ interface EditorState {
   focusedIssue: LintIssue | null
   /** While the trainer runs, the user's own model waits here (and is what autosave keeps). */
   trainerBackup: Model | null
+  /** While a walkthrough runs: the elements its current step added (highlighted); linting is muted. */
+  walkthrough: { spotlight: Id[] } | null
 
   /** Runs an edit operation on a draft; on ModelError the model is untouched and the message is shown. */
   apply: (edit: (m: Model) => void, opts?: ApplyOptions) => boolean
@@ -78,6 +80,7 @@ export const useEditor = create<EditorState>()((set, get) => ({
   issuesOpen: false,
   focusedIssue: null,
   trainerBackup: null,
+  walkthrough: null,
 
   apply(edit, opts = {}) {
     const { model, past, lastEdit } = get()
@@ -229,5 +232,14 @@ export function usePdm(): Pdm {
 
 /** Linter issues of the current model. */
 export function useLint(): LintIssue[] {
-  return lintFor(useModel())
+  const model = useModel()
+  // A half-built walkthrough model would light up with "no identifier yet"; the steps explain it instead.
+  const muted = useEditor((s) => s.walkthrough !== null)
+  return muted ? NO_ISSUES : lintFor(model)
+}
+const NO_ISSUES: LintIssue[] = []
+
+/** Is the element new in the current walkthrough step? */
+export function useSpotlight(id: Id | undefined): boolean {
+  return useEditor((s) => !!id && !!s.walkthrough?.spotlight.includes(id))
 }

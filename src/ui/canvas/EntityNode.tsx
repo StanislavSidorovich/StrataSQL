@@ -2,7 +2,7 @@ import { Handle, Position, type Node, type NodeProps } from '@xyflow/react'
 import { formatDataType } from '../../core/metamodel'
 import { issueTouches } from '../../core/lint'
 import { worstSeverity } from '../lint/IssuesPanel'
-import { useEditor, useLint } from '../store'
+import { useEditor, useLint, useSpotlight } from '../store'
 
 export type EntityNodeType = Node<{ entityId: string }, 'entity'>
 
@@ -19,6 +19,7 @@ export function EntityNode({ data, selected }: NodeProps<EntityNodeType>) {
   })
   const issues = useLint()
   const focused = useEditor((s) => (s.focusedIssue ? issueTouches(s.focusedIssue, 'entity', data.entityId) : false))
+  const isNew = useSpotlight(data.entityId)
   if (!entity) return null
   const severity = worstSeverity(issues, 'entity', entity.id)
   const pi = entity.identifiers.find((i) => i.isPrimary)
@@ -27,7 +28,7 @@ export function EntityNode({ data, selected }: NodeProps<EntityNodeType>) {
 
   return (
     <div
-      className={`entity-node ${selected ? 'is-selected' : ''} ${severity ? `lint-${severity}` : ''} ${focused ? 'lint-focus' : ''}`}
+      className={`entity-node ${selected ? 'is-selected' : ''} ${severity ? `lint-${severity}` : ''} ${focused ? 'lint-focus' : ''} ${isNew ? 'walk-new' : ''}`}
       data-testid={`entity-${entity.name}`}
     >
       <HiddenTarget />

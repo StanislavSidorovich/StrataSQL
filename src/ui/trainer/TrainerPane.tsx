@@ -8,6 +8,7 @@ import { progressKey, type Level } from '../../data/trainer'
 import { richText } from '../help/HelpDrawer'
 import { useEditor, type Selection } from '../store'
 import { isRightTag, tagScore, useTrainer } from './trainerStore'
+import { WalkthroughPane } from './Walkthrough'
 
 const TAG_LABEL: Record<Tag, string> = Object.fromEntries(TAGS.map((t) => [t.id, t.label])) as Record<Tag, string>
 
@@ -47,6 +48,7 @@ export function TrainerPane() {
   const pickerOpen = useTrainer((s) => s.pickerOpen)
   if (!session || pickerOpen) return <CasePicker />
   const c = caseById(session.caseId)!
+  if (session.walk !== undefined) return <WalkthroughPane c={c} step={session.walk} />
   return <TaskPane c={c} level={session.level} />
 }
 
@@ -64,7 +66,7 @@ function CasePicker() {
       </div>
       <div className="trainer-body">
         <p className="muted">
-          Worked example → tag the text → complete the model → build it yourself. Your own model is kept aside and comes back when you close the trainer.
+          <b>▶ Watch it built</b> step by step, then practise: worked example → tag the text → complete the model → build it yourself. The cases go from easy to hard. Your own model is kept aside and comes back when you close the trainer.
         </p>
         {CASES.map((c) => (
           <section key={c.id} className="trainer-case">
@@ -75,6 +77,9 @@ function CasePicker() {
             <p className="muted text-xs">{c.source}</p>
             <p className="text-xs">{c.concepts.join(' · ')}</p>
             <div className="trainer-levels">
+              <button type="button" className="btn btn-small btn-primary" onClick={() => useTrainer.getState().walkTo(c.id, 0)} title="The model is built on an empty canvas one step at a time, with the reason for each step">
+                ▶ Watch it built
+              </button>
               {LEVELS.map((l) => {
                 const best = progress[progressKey(c.id, l.level)]
                 return (
@@ -126,6 +131,11 @@ function TaskPane({ c, level }: { c: TrainerCase; level: Level }) {
         <p className="trainer-task">
           <b>Level {level} — {info.title}.</b> {info.task}
         </p>
+        {level === 0 && (
+          <button type="button" className="btn btn-small mb-2" onClick={() => useTrainer.getState().walkTo(c.id, 0)}>
+            ▶ Watch it built step by step
+          </button>
+        )}
         {level === 0 && <WorkedExample c={c} />}
         {level === 1 && <Tagging c={c} />}
         {level >= 2 && <CheckPanel c={c} level={level} />}

@@ -1,5 +1,5 @@
 import { Handle, Position, type Node, type NodeProps } from '@xyflow/react'
-import { useEditor } from '../store'
+import { useEditor, useSpotlight } from '../store'
 import { HiddenTarget } from './EntityNode'
 
 export type InheritanceNodeType = Node<{ inheritanceId: string }, 'inheritance'>
@@ -7,8 +7,9 @@ export type InheritanceNodeType = Node<{ inheritanceId: string }, 'inheritance'>
 /** PD-style inheritance symbol: a half circle; a cross bar marks mutually exclusive children. */
 export function InheritanceNode({ data, selected }: NodeProps<InheritanceNodeType>) {
   const inh = useEditor((s) => s.model.inheritances.find((i) => i.id === data.inheritanceId))
+  const isNew = useSpotlight(data.inheritanceId)
   if (!inh) return null
-  const stroke = selected ? 'var(--edge-selected)' : 'var(--edge)'
+  const stroke = selected ? 'var(--edge-selected)' : isNew ? 'var(--walk-new)' : 'var(--edge)'
   const title = `${inh.name}: ${inh.mutuallyExclusive ? 'exclusive' : 'overlapping'}, ${inh.complete ? 'complete' : 'incomplete'}, generate ${inh.generation}`
   return (
     <div className="inheritance-node" title={title}>

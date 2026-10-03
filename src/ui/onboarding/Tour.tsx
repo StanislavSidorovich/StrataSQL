@@ -155,7 +155,7 @@ function TourOverlay() {
   )
 }
 
-function Welcome(props: { onPractise: () => void; onExample: () => void }) {
+function Welcome(props: { onPractise: () => void; onWatch: () => void }) {
   const open = useOnboarding((s) => s.welcome)
   const { startTour, closeWelcome } = useOnboarding.getState()
   if (!open) return null
@@ -178,22 +178,22 @@ function Welcome(props: { onPractise: () => void; onExample: () => void }) {
             className="welcome-choice"
             onClick={() => {
               closeWelcome()
-              props.onPractise()
+              props.onWatch()
             }}
           >
-            <b>Learn on a course case</b>
-            <span>Worked example, then build it yourself with hints</span>
+            <b>Watch a model being built</b>
+            <span>A small library, from its text to tables, one step at a time</span>
           </button>
           <button
             type="button"
             className="welcome-choice"
             onClick={() => {
               closeWelcome()
-              props.onExample()
+              props.onPractise()
             }}
           >
-            <b>Look at a finished model</b>
-            <span>Open TV Shows and explore it</span>
+            <b>Practise on a case</b>
+            <span>Four cases from easy to hard: tag the text, build the model, check it</span>
           </button>
         </div>
         <div className="welcome-foot">
@@ -255,7 +255,7 @@ function Shortcuts() {
   )
 }
 
-export function Onboarding(props: { onPractise: () => void; onExample: () => void }) {
+export function Onboarding(props: { onPractise: () => void; onWatch: () => void }) {
   return (
     <>
       <Welcome {...props} />
