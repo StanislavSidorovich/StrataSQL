@@ -2,6 +2,7 @@ import { ReactFlowProvider, useReactFlow } from '@xyflow/react'
 import { useEffect, useRef, useState } from 'react'
 import { emptyModel } from '../core/metamodel'
 import { addEntity, removeEntity, removeInheritance, removeRelationship } from '../core/ops'
+import { importPowerDesigner } from '../core/import/powerdesigner'
 import { FILE_EXTENSION, parseModel, serializeModel } from '../core/serialize'
 import { applyUpdate, useUpdateReady } from '../pwa/register'
 import { buildRideHailing } from '../data/examples/ride-hailing'
@@ -20,6 +21,8 @@ import { PdmPanel } from './pdm/PdmPanel'
 import { fileBaseName, SqlView } from './pdm/SqlView'
 import { SandboxView } from './sandbox/SandboxView'
 import { useEditor, type View } from './store'
+import { Menu } from './onboarding/Menu'
+import { Onboarding, useOnboarding } from './onboarding/Tour'
 import { TrainerPane } from './trainer/TrainerPane'
 import { useTrainer } from './trainer/trainerStore'
 
@@ -94,6 +97,17 @@ function Editor() {
 
   const fit = () => setTimeout(() => flow.fitView({ padding: 0.15, duration: 300 }), 50)
 
+  const openExample = (build: () => ReturnType<typeof emptyModel>) => {
+    setView('cdm')
+    load(build())
+    fit()
+  }
+
+  const startTour = () => {
+    setView('cdm')
+    setTimeout(() => useOnboarding.getState().startTour(), 50)
+  }
+
   const addEntityAtCenter = () => {
     const el = document.querySelector('.react-flow')?.getBoundingClientRect()
     const pos = el ? flow.screenToFlowPosition({ x: el.left + el.width / 2 - 90, y: el.top + el.height / 2 - 40 }) : { x: 0, y: 0 }
@@ -102,9 +116,25 @@ function Editor() {
     select({ kind: 'entity', id })
   }
 
+  const [notice, setNotice] = useState<string | null>(null)
+  useEffect(() => {
+    if (!notice) return
+    const t = setTimeout(() => setNotice(null), 10000)
+    return () => clearTimeout(t)
+  }, [notice])
+
   const openFile = async (file: File) => {
     try {
-      load(parseModel(await file.text()))
+      const text = await file.text()
+      if (/\.(cdm|cdb|pdm|pdb)$/i.test(file.name)) {
+        const { model: imported, warnings } = importPowerDesigner(text, file.name)
+        setView('cdm')
+        load(imported)
+        setNotice(
+          `Imported ${imported.entities.length} entities and ${imported.relationships.length} relationships from ${file.name}.` +
+            (warnings.length ? `\n${warnings.join('\n')}` : ''),
+        )
+      } else load(parseModel(text))
       fit()
     } catch (e) {
       showError(`Could not open ${file.name}: ${(e as Error).message}`)
@@ -159,7 +189,7 @@ function Editor() {
         <span className="toolbar-model" title="Model name">
           {model.name}
         </span>
-        <div className="segmented view-switch" role="tablist" aria-label="View">
+        <div className="segmented view-switch" role="tablist" aria-label="View" data-tour="views">
           {VIEWS.map((v) => (
             <button key={v.id} type="button" role="tab" aria-selected={view === v.id} className={view === v.id ? 'on' : ''} onClick={() => setView(v.id)} title={v.title}>
               {v.label}
@@ -167,38 +197,37 @@ function Editor() {
           ))}
         </div>
         <div className="toolbar-group">
-          <button type="button" className="btn" onClick={() => load(emptyModel())} title="New empty model">
-            New
-          </button>
-          <button type="button" className="btn" onClick={() => fileInput.current?.click()} title={`Open a ${FILE_EXTENSION} file`}>
-            Open…
-          </button>
-          <button type="button" className="btn" onClick={downloadModel} title="Save as file (Ctrl+S)">
-            Save
-          </button>
-          <select
-            className="input w-auto"
-            aria-label="Load example"
-            value=""
-            onChange={(e) => {
-              const ex = EXAMPLES.find((x) => x.id === e.target.value)
-              if (ex) {
-                load(ex.build())
-                fit()
-              }
-            }}
-          >
-            <option value="">Examples…</option>
-            {EXAMPLES.map((x) => (
-              <option key={x.id} value={x.id}>
-                {x.label}
-              </option>
-            ))}
-          </select>
+          <Menu
+            label="File"
+            tour="file"
+            items={[
+              { label: 'New model', onSelect: () => load(emptyModel()) },
+              { label: 'Open…', hint: `${FILE_EXTENSION}, .cdm`, onSelect: () => fileInput.current?.click() },
+              { label: 'Save', hint: 'Ctrl+S', onSelect: downloadModel },
+              'separator',
+              ...(['png', 'svg'] as const).map((format) => ({
+                label: `Export diagram as ${format.toUpperCase()}`,
+                disabled: view !== 'cdm' && view !== 'pdm',
+                onSelect: () => {
+                  const suffix = view === 'pdm' ? '_PDM' : '_CDM'
+                  exportDiagram(flow.getNodesBounds(flow.getNodes()), format, fileBaseName(model.name) + suffix).catch((err: Error) => showError(`Export failed: ${err.message}`))
+                },
+              })),
+            ]}
+          />
+          <Menu
+            label="Examples"
+            title="Finished reference models of the course cases"
+            items={[
+              ...EXAMPLES.map((x) => ({ label: x.label, onSelect: () => openExample(x.build) })),
+              'separator',
+              { label: 'Build one yourself (Trainer)…', onSelect: () => useTrainer.getState().openPicker(true) },
+            ]}
+          />
           <input
             ref={fileInput}
             type="file"
-            accept=".json,application/json"
+            accept=".json,application/json,.cdm,.cdb,.pdm,.pdb"
             className="hidden"
             onChange={(e) => {
               const f = e.target.files?.[0]
@@ -208,8 +237,8 @@ function Editor() {
           />
         </div>
         {view === 'cdm' && (
-        <div className="toolbar-group">
-          <button type="button" className="btn btn-primary" onClick={addEntityAtCenter}>
+        <div className="toolbar-group" data-tour="add">
+          <button type="button" className="btn btn-primary" onClick={addEntityAtCenter} title="Add an entity (or double-click the canvas)">
             + Entity
           </button>
           <div className="segmented" role="radiogroup" aria-label="Link kind">
@@ -230,25 +259,9 @@ function Editor() {
             ↷
           </button>
           {(view === 'cdm' || view === 'pdm') && (
-            <>
               <button type="button" className="btn" onClick={() => flow.fitView({ padding: 0.15, duration: 300 })} title="Fit the model on screen">
-                Fit
-              </button>
-              <select
-                className="input w-auto"
-                aria-label="Export diagram"
-                value=""
-                onChange={(e) => {
-                  const format = e.target.value as 'png' | 'svg'
-                  const suffix = view === 'pdm' ? '_PDM' : '_CDM'
-                  exportDiagram(flow.getNodesBounds(flow.getNodes()), format, fileBaseName(model.name) + suffix).catch((err: Error) => showError(`Export failed: ${err.message}`))
-                }}
-              >
-                <option value="">Export…</option>
-                <option value="png">Diagram as PNG</option>
-                <option value="svg">Diagram as SVG</option>
-              </select>
-            </>
+              Fit
+            </button>
           )}
         </div>
         <div className="toolbar-group ml-auto">
@@ -259,20 +272,24 @@ function Editor() {
           )}
           <button
             type="button"
+            data-tour="trainer"
             className={`btn ${trainerOn ? 'btn-primary' : ''}`}
             onClick={() => useTrainer.getState().openPicker(!useTrainer.getState().pickerOpen)}
             title="Practise on the course cases: worked example, text tagging, complete the model, from scratch"
           >
             🎓 Trainer
           </button>
-          <button
-            type="button"
-            className={`btn ${helpOpen ? 'btn-primary' : ''}`}
-            onClick={() => (helpOpen ? useEditor.getState().closeHelp() : useEditor.getState().openHelp())}
-            title="Concepts: entity, dependent entity, inheritance… with mini-models"
-          >
-            ? Help
-          </button>
+          <Menu
+            label="? Help"
+            tour="help"
+            align="right"
+            active={helpOpen}
+            items={[
+              { label: 'Glossary of concepts', onSelect: () => useEditor.getState().openHelp() },
+              { label: 'Tour of the screen', onSelect: startTour },
+              { label: 'Keyboard shortcuts', onSelect: () => useOnboarding.getState().showShortcuts(true) },
+            ]}
+          />
           <button type="button" className="btn" onClick={toggleTheme} title="Toggle light/dark theme">
             {dark ? '☀' : '☾'}
           </button>
@@ -292,7 +309,7 @@ function Editor() {
       <div className="flex min-h-0 flex-1">
         {trainerOn && <TrainerPane />}
         <main className="relative flex min-w-0 flex-1 flex-col">
-          <div className="relative min-h-0 flex-1">
+          <div className="relative min-h-0 flex-1" data-tour="canvas">
           {view === 'cdm' && <Canvas dark={dark} />}
           {view === 'pdm' && <PdmCanvas dark={dark} />}
           {view === 'sql' && <SqlView />}
@@ -331,7 +348,7 @@ function Editor() {
           </div>
           {view === 'cdm' && model.entities.length > 0 && <IssuesDock />}
         </main>
-        <aside className="panel" aria-label="Properties">
+        <aside className="panel" aria-label="Properties" data-tour="panel">
           {view !== 'cdm' && <PdmPanel />}
           {view === 'cdm' && entity && <EntityPanel key={entity.id} entity={entity} model={model} />}
           {view === 'cdm' && rel && <RelationshipPanel key={rel.id} rel={rel} model={model} />}
@@ -340,7 +357,13 @@ function Editor() {
         </aside>
       </div>
       )}
+      {notice && (
+        <div className="notice-toast" role="status" onClick={() => setNotice(null)}>
+          {notice}
+        </div>
+      )}
       <HelpDrawer />
+      <Onboarding onPractise={() => useTrainer.getState().openPicker(true)} onExample={() => openExample(buildTvShows)} />
     </div>
   )
 }

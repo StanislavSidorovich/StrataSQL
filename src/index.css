@@ -1413,3 +1413,189 @@ body {
     width: 300px;
   }
 }
+
+/* ---------------------------------------------------------------- menus, tour, welcome */
+
+.menu {
+  position: relative;
+}
+.menu-caret {
+  font-size: 0.7em;
+  opacity: 0.7;
+}
+.menu-list {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 60;
+  min-width: 230px;
+  padding: 4px;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.16);
+}
+.menu-right {
+  left: auto;
+  right: 0;
+}
+.menu-item {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  text-align: left;
+  color: var(--text);
+  white-space: nowrap;
+}
+.menu-item:hover:not(:disabled),
+.menu-item:focus-visible {
+  background: var(--accent-soft);
+  outline: none;
+}
+.menu-item:disabled {
+  opacity: 0.45;
+}
+.menu-item kbd,
+.shortcut-table kbd {
+  font: inherit;
+  font-size: 0.8em;
+  color: var(--muted);
+}
+.menu-sep {
+  height: 1px;
+  margin: 4px 6px;
+  background: var(--panel-border);
+}
+
+.tour {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+}
+.tour-spot {
+  position: fixed;
+  border-radius: 10px;
+  box-shadow: 0 0 0 9999px rgb(10 14 22 / 0.55);
+  outline: 2px solid var(--accent);
+  pointer-events: none;
+  transition: all 0.25s ease;
+}
+.tour-card,
+.modal {
+  background: var(--panel-bg);
+  color: var(--text);
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  box-shadow: 0 16px 40px rgb(0 0 0 / 0.3);
+}
+.tour-card {
+  position: fixed;
+  padding: 14px 16px 12px;
+  transition: all 0.25s ease;
+}
+.tour-card h3 {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.tour-card p {
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+.tour-count {
+  float: right;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+.tour-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgb(10 14 22 / 0.5);
+}
+.modal {
+  width: min(560px, 100%);
+  padding: 22px 24px 18px;
+}
+.modal h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.welcome h2 span {
+  color: var(--accent);
+}
+.welcome p {
+  line-height: 1.5;
+}
+.welcome-choices {
+  display: grid;
+  gap: 8px;
+  margin: 16px 0 14px;
+}
+.welcome-choice {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 14px;
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  text-align: left;
+  color: var(--text);
+}
+.welcome-choice span {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.welcome-choice:hover,
+.welcome-choice:focus-visible {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  outline: none;
+}
+.welcome-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.shortcut-table {
+  width: 100%;
+  margin: 8px 0 14px;
+  font-size: 0.9rem;
+}
+.shortcut-table td {
+  padding: 5px 0;
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.notice-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 20px;
+  z-index: 70;
+  transform: translateX(-50%);
+  max-width: min(640px, 90vw);
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: var(--panel-bg);
+  color: var(--text);
+  border: 1px solid var(--ok);
+  white-space: pre-line;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.2);
+}

@@ -43,7 +43,7 @@ export function IssuesDock() {
   const setOpen = useEditor((s) => s.setIssuesOpen)
   const c = countBySeverity(issues)
   return (
-    <div className={`issues-dock ${open ? 'is-open' : ''}`} data-testid="issues-dock">
+    <div className={`issues-dock ${open ? 'is-open' : ''}`} data-testid="issues-dock" data-tour="issues">
       <button type="button" className="issues-bar" onClick={() => setOpen(!open)} aria-expanded={open}>
         <b>Model check</b>
         {issues.length === 0 ? (
