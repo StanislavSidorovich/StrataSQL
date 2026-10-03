@@ -305,6 +305,8 @@ function Editor() {
               { label: 'Tour of the screen', onSelect: startTour },
               { label: 'Watch a model being built…', onSelect: () => useTrainer.getState().openPicker(true) },
               { label: 'Keyboard shortcuts', onSelect: () => useOnboarding.getState().showShortcuts(true) },
+              'separator',
+              { label: 'Quaera: SQL & analytics trainer ↗', hint: 'quaera.app', onSelect: () => window.open('https://quaera.app', '_blank', 'noopener') },
             ]}
           />
           <button type="button" className="btn" onClick={toggleTheme} title="Toggle light/dark theme">

@@ -2,7 +2,7 @@
 
 Browser-based CDM → PDM → SQL modeling tool with help cards and a trainer. Full spec: `SPEC.md`. Reference cases: `cases/*.md`.
 
-- Work stage by stage (SPEC §12); a stage is done only when its acceptance criteria pass. Progress and decisions: `ROADMAP.md`. Live: https://stanislavsidorovich.github.io/StrataSQL/ (deployed by GitHub Actions on push to main).
+- Work stage by stage (SPEC §12); a stage is done only when its acceptance criteria pass. Progress and decisions: `ROADMAP.md`. Live: https://model.quaera.app (GitHub Pages custom domain, DNS on Cloudflare; deployed by GitHub Actions on push to main). Part of Quaera (quaera.app). Code Apache-2.0, learning content CC BY-NC-SA 4.0.
 - `src/core/` is pure TypeScript, no React imports. Every CDM→PDM rule (SPEC §6) and linter check (SPEC §7) gets a Vitest test.
 - The cases in `cases/` (3 course cases + 5 own cases: Library, Hotel, Online Shop, Hospital, Football) are the regression suite: their reference CDMs must generate the PDMs listed there. `cases/exercises.md` lists open exercises (no reference). `tests/crosscheck-powerdesigner.test.ts` compares our PDM with PowerDesigner's on the owner's class files.
 - Modeling conventions follow the NOVA IMS DBMS course (PowerDesigner, IE notation, intermediate entities instead of associations, SQL Server DDL).

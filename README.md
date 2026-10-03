@@ -3,8 +3,9 @@
 Browser-based data modeling: **Conceptual Data Model → Physical Data Model → SQL Server DDL**, with help cards and a trainer. A lightweight, learnable companion to SAP PowerDesigner for the NOVA IMS DBMS course (IE notation, intermediate entities, SQL Server).
 
 - Spec: [SPEC.md](SPEC.md) · Progress: [ROADMAP.md](ROADMAP.md) · Reference cases: [cases/](cases/)
-- **Open it: https://stanislavsidorovich.github.io/StrataSQL/** — runs in the browser, no install, no VPN. Works offline after the first visit; Chrome/Edge (also on macOS) offer **Install app** in the address bar, Safari on macOS has *File → Add to Dock*.
-- Status: stages 1–3 done (CDM editor, PDM + SQL Server DDL, SQL sandbox, linter + help cards); next is the trainer.
+- **Open it: https://model.quaera.app** — runs in the browser, no install, no VPN. Works offline after the first visit; Chrome/Edge (also on macOS) offer **Install app** in the address bar, Safari on macOS has *File → Add to Dock*.
+- Status: stages 1–5 done (CDM editor, PDM + SQL Server DDL, SQL sandbox, linter + help cards, trainer, guided start: tour, step-by-step walkthroughs, build with hints, PowerDesigner `.cdm` import); 8 cases and 5 open exercises.
+- Part of **[Quaera](https://quaera.app)**: StrataSQL is where you design the database, Quaera is where you query and analyse one.
 
 ## Run
 
@@ -39,4 +40,6 @@ cases/      reference cases (markdown)
 
 ## License
 
-The code is under the [MIT License](LICENSE). The three course cases (Ride Hailing, Timetables, TV Shows) and the PowerDesigner files in `tests/fixtures/` are adapted from NOVA IMS DBMS class material; their rights stay with their authors, and they are here for study only. The other cases (Library, Hotel, Online Shop, Hospital, Football) and the open exercises are original and covered by the MIT License.
+Code: [Apache-2.0](LICENSE) · Learning content (cases, explanations, hints, help cards, exercises): [CC BY-NC-SA 4.0](LICENSE-CONTENT) — the same split as in [Quaera](https://github.com/StanislavSidorovich/Quaera).
+
+The three course cases (Ride Hailing, Timetables, TV Shows) and the PowerDesigner files in `tests/fixtures/` are adapted from NOVA IMS DBMS class material; their rights stay with their authors, and they are here for study only.

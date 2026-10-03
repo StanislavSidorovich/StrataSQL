@@ -4,7 +4,7 @@ Stages follow SPEC §12. A stage is done only when its acceptance criteria pass.
 
 | Stage | Status | Acceptance |
 |---|---|---|
-| 1. CDM editor | ✅ done (2026-10-02) · live: https://stanislavsidorovich.github.io/StrataSQL/ | Full TV Shows reference model can be built and saved/reloaded |
+| 1. CDM editor | ✅ done (2026-10-02) · live: https://model.quaera.app | Full TV Shows reference model can be built and saved/reloaded |
 | 2. PDM + SQL Server DDL | ✅ done (2026-10-02) | 3 reference CDMs generate the PDMs in `cases/`; DDL runs on SQL Server |
 | 2.5 SQL sandbox | ✅ done (2026-10-02) | Generated schema runs in the browser; inserting conflicting rows shows the constraint that rejects them |
 | 3. Linter + Help | ✅ done (2026-10-02) | L01–L10 with tests; ≥ 15 help cards; `?` on every property (L11 added with stage 4) |
@@ -172,7 +172,8 @@ Sprint 4 (2026-10-03) — 5e polish, part 1 (owner's review before showing class
 - [x] Side columns (trainer on the left, properties on the right) **hide** with a ‹ › tab on their inner edge and **resize** by dragging that edge (260 px – 45 % of the window; double-click resets); the width is remembered. Opening another case, level or the picker shows a hidden trainer again (`src/ui/SideDock.tsx`)
 - [x] Walkthrough: **Back / Next above the explanation**, so the buttons stay in place from step to step; the text fills the rest of the column instead of a fixed 220 px box
 - [x] **File** and **Examples** moved to the left of the toolbar, right after the logo (as in most programs)
-- [x] `LICENSE` (MIT) for the code; README says the course cases and class files stay with their authors
+- [x] Licenses as in Quaera: code **Apache-2.0** (`LICENSE`), learning content **CC BY-NC-SA 4.0** (`LICENSE-CONTENT`); the course cases and class files stay with their authors
+- [x] Domain **model.quaera.app** (part of Quaera): Help menu links to Quaera; the build already uses relative paths, so nothing else changes
 - [x] Checked in the dev build (Playwright 1366×820): walkthrough steps, hide / show both columns, drag-resize, no console errors. 314 tests
 
 Carried over (5e and later): File menu icons (lucide), toolbar grouped by task, “Saved” indicator, check at 1280 px and on a tablet; `.pdm` reverse import; hints used are not counted in the score.
