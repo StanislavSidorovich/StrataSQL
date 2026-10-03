@@ -2,6 +2,7 @@
 
 import { useEffect, useLayoutEffect, useState } from 'react'
 import { create } from 'zustand'
+import { CASES } from '../../data/cases'
 
 const WELCOMED_KEY = 'stratasql.welcomed'
 
@@ -193,7 +194,7 @@ function Welcome(props: { onPractise: () => void; onWatch: () => void }) {
             }}
           >
             <b>Practise on a case</b>
-            <span>Four cases from easy to hard: tag the text, build the model, check it</span>
+            <span>{CASES.length} cases from easy to hard: tag the text, build the model, check it</span>
           </button>
         </div>
         <div className="welcome-foot">
@@ -202,6 +203,9 @@ function Welcome(props: { onPractise: () => void; onWatch: () => void }) {
             Start with an empty model
           </button>
         </div>
+        <p className="welcome-disclaimer">
+          An unofficial student project, not affiliated with or endorsed by NOVA IMS. Where it differs from the course, the course and your professor are right.
+        </p>
       </div>
     </div>
   )

@@ -1581,6 +1581,11 @@ body {
   font-size: 0.85rem;
   color: var(--muted);
 }
+.welcome .welcome-disclaimer {
+  margin: 12px 0 0;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
 .shortcut-table {
   width: 100%;
   margin: 8px 0 14px;
