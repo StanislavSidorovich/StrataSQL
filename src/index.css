@@ -1702,6 +1702,17 @@ body {
   font-size: 0.75rem;
   color: var(--muted);
 }
+.model-panel {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+/* Author line sits at the bottom of the panel, not under the last section */
+.model-panel-author {
+  margin-top: auto;
+  padding: 12px 14px;
+  border-top: 1px solid var(--panel-border);
+}
 .author-links a {
   color: var(--accent);
 }

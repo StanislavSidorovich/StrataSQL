@@ -12,7 +12,20 @@ Stages follow SPEC §12. A stage is done only when its acceptance criteria pass.
 | 5. Guided start | ✅ acceptance met (2026-10-03, v0.5.0) — 5a–5c, 5d (.cdm) done; 5e polish and `.pdm` reverse carried over | A first-time user learns the screen in a tour, watches a case built step by step, and builds one alone with “next hint” |
 | 6. AI review | ⏭ optional | Optional, behind a user-provided API key |
 
-**Where we are (2026-10-04, v0.6.0 + UX review):** 8 cases + 5 exercises, PowerDesigner cross-check, live at model.quaera.app. The UX review fixed the first-minute rough edges (gentle hint for a new entity, name focus, wrapping phrases, zoom, minimap, phone note). Then the two top backlog items: the walkthrough now asks before some steps (predict → see), and level 1 hides the model until the text is tagged. Then the owner's requests: default names as grey hints, text size, canvas/panel colours, Save as. Next from the backlog in “UX review” below: sandbox prediction, visible progress on the picker. LinkedIn post after the professor answers about the 3 course cases.
+**Where we are (2026-10-04, v0.6.0 + UX review):** 8 cases + 5 exercises, PowerDesigner cross-check, live at model.quaera.app. The UX review fixed the first-minute rough edges (gentle hint for a new entity, name focus, wrapping phrases, zoom, minimap, phone note). Then the two top backlog items: the walkthrough now asks before some steps (predict → see), and level 1 hides the model until the text is tagged. Then the owner's requests: default names as grey hints, text size, canvas/panel colours, Save as. Backlog 1–4, name suggestions, text size and author links are done since; the open work is in **Next steps** below. LinkedIn post after the professor answers about the 3 course cases.
+
+## Next steps (by priority, 2026-10-04)
+
+1. **Export to PowerDesigner `.cdm`** — so a model built here can be opened in PowerDesigner and handed in. Write PD 16 XML (entities, data items, identifiers, relationships, inheritances, domains, diagram symbols with positions) using the owner's class files as the template; test = round trip through our `.cdm` import + the owner opens it in PD. Until then the path is: SQL tab → save the script → PD *File → Reverse Engineer → Database* (script file, SQL Server) → *Tools → Generate Conceptual Data Model*. About one sprint
+2. **My task (own text)** — see “Owner's ideas for later” below. About one sprint
+3. **Readable diagrams at 1366 px** (backlog 5)
+4. **Tablet / 1280 px + toolbar on one row** (backlog 6, incl. the long model name)
+5. **Toolbar labels**: “Link as:”, Trainer as a second primary button (backlog 7)
+6. **Walkthrough**: the step box repeats the phrase’s *why* (backlog 8)
+7. **Before the LinkedIn post**: short guide (video + cheat sheet), Open Graph check in Post Inspector (backlog 9); the professor email about the 3 course cases
+8. **`.pdm` reverse import** (tables → entities; `pdm-reader.ts` is the first half)
+9. **5e leftovers**: lucide icons, “Saved” indicator, shortcut sheet
+10. **Stage 6 AI review** (optional, own API key)
 
 **Earlier (2026-10-03, v0.5.0):** guided start is in: a welcome card and a tour, the four cases watched built step by step (Library starter first), built alone with a Next hint that walks the same order, and PowerDesigner `.cdm` import. Next: 5e UI polish, then optional AI review (stage 6).
 
@@ -224,7 +237,7 @@ Sandbox prediction, picker progress, name suggestions (2026-10-04):
 - [x] **Finish line**: a Check (levels 2–3) or a fully tagged text (level 1) at 80 % or more shows the same **Next: … →** button
 - [x] **Name suggestions from the task text** (owner's request): in levels 2–3 and open exercises the entity and attribute name fields complete words of the text (“co…” → *contacts*), with singulars (*books* → *book*) and word pairs (*birth_date*). **Every word** of the text is offered, not only the answers, so nothing is given away ✱. Checkbox “Suggest names from the text while I type” under the task (on by default, remembered). `src/data/suggest.ts`, tests
 - [x] Empty difficulty stars are lighter (★ vs ★★★ was hard to tell)
-- [x] Owner's requests, same day: **text size 110 %** between Normal and Large (the stored setting is now the factor; old index-based settings are migrated); the **diagram text grows with it** (entities, tables, line labels — by font size, so React Flow re-measures the nodes and lines stay attached), with a checkbox “Diagram text too”; **Made by Stanislav Sidorovich · GitHub · LinkedIn** at the bottom of the model panel and on the welcome card, LinkedIn also in About (`src/ui/AuthorLinks.tsx`)
+- [x] Owner's requests, same day: **text size 110 %** between Normal and Large (the stored setting is now the factor; old index-based settings are migrated); the **diagram text grows with it** (entities, tables, line labels — by font size, so React Flow re-measures the nodes and lines stay attached), with a checkbox “Diagram text too”; **Made by Stanislav Sidorovich · GitHub · LinkedIn** at the bottom of the model panel and on the welcome card, LinkedIn also in About (`src/ui/AuthorLinks.tsx`); in the model panel the line sits at the **bottom of the column**, not under the last section
 - [x] Checked in the dev build (Playwright 1366×820): Football scenario with right / wrong guesses and the score line, grid jumps to MATCH with the rejected columns, picker with seeded progress (Library done, Hotel 1/4, Continue button), Library level 3 suggestions (`Mem…` → Member); 345 tests
 
 Built with: Claude Opus 5.5 (Claude Code), effort low.

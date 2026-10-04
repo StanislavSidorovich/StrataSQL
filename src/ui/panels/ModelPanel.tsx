@@ -10,7 +10,7 @@ export function ModelPanel({ model }: { model: Model }) {
     model.entities.reduce((n, e) => n + e.attributes.filter((a) => a.domainId === domainId).length, 0)
 
   return (
-    <div>
+    <div className="model-panel">
       <Section title="Model">
         <Field label="Name">
           <TextInput value={model.name} onChange={(v) => apply((m) => renameModel(m, v), { coalesce: 'model-name' })} />
@@ -89,7 +89,7 @@ export function ModelPanel({ model }: { model: Model }) {
           </li>
         </ul>
       </Section>
-      <AuthorLinks className="px-4 py-3" />
+      <AuthorLinks className="model-panel-author" />
     </div>
   )
 }
