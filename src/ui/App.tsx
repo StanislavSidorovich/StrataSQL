@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { emptyModel } from '../core/metamodel'
 import { addEntity, removeEntity, removeInheritance, removeRelationship } from '../core/ops'
 import { importPowerDesigner } from '../core/import/powerdesigner'
-import { FILE_EXTENSION, parseModel } from '../core/serialize'
+import { FILE_EXTENSION, parseModel, readSavedTask } from '../core/serialize'
 import { applyUpdate, useUpdateReady } from '../pwa/register'
 import { Canvas } from './canvas/Canvas'
 import { exportDiagram } from './exportImage'
@@ -27,7 +27,7 @@ import { Menu } from './onboarding/Menu'
 import { Onboarding, useOnboarding } from './onboarding/Tour'
 import { NameSuggestionLists, TrainerPane } from './trainer/TrainerPane'
 import { MyTaskDialog, openMyTask } from './trainer/MyTask'
-import { confirmDiscardTask, isVeiled, leaveTrainer, useTrainer } from './trainer/trainerStore'
+import { confirmDiscardTask, continueTask, isVeiled, leaveTrainer, savedTaskLabel, useTrainer } from './trainer/trainerStore'
 
 /** The trainer cases, easiest first: their reference models are the examples. */
 const EXAMPLES = CASES.map((c) => ({ id: c.id, label: `${c.title} ${'★'.repeat(c.difficulty)}`, build: c.build }))
@@ -191,7 +191,18 @@ function Editor() {
           `Imported ${imported.entities.length} entities and ${imported.relationships.length} relationships from ${file.name}.` +
             (warnings.length ? `\n${warnings.join('\n')}` : ''),
         )
-      } else load(parseModel(text))
+      } else {
+        const model = parseModel(text)
+        const task = readSavedTask(text)
+        const label = task && savedTaskLabel(task)
+        if (task && label && window.confirm(`This file was saved from the trainer task ${label}.
+
+OK: continue it as that task (text, Check and hints in the left column).
+Cancel: open it as an ordinary model.`)) {
+          continueTask(task, model)
+          setNotice(`Continuing ${label}.`)
+        } else load(model)
+      }
       fit()
     } catch (e) {
       showError(`Could not open ${file.name}: ${(e as Error).message}`)

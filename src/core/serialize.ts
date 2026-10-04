@@ -26,9 +26,28 @@ export class ModelFormatError extends Error {
   }
 }
 
-/** Canonical JSON: fixed key order, so save → load → save is byte-identical. */
-export function serializeModel(m: Model): string {
-  return JSON.stringify(buildModel(m), null, 2) + '\n'
+/** The trainer task a model was saved from, so opening the file can continue it. */
+export interface SavedTask {
+  /** Case or exercise id (`hotel`, `my-task`…). */
+  id: string
+  level: number
+}
+
+/** Canonical JSON: fixed key order, so save → load → save is byte-identical. `task` is written last. */
+export function serializeModel(m: Model, task?: SavedTask): string {
+  const out: Record<string, unknown> = { ...buildModel(m) }
+  if (task) out.task = { id: task.id, level: task.level }
+  return JSON.stringify(out, null, 2) + '\n'
+}
+
+/** The task stored in a model file, if any (a malformed one is ignored: the model still opens). */
+export function readSavedTask(input: string): SavedTask | null {
+  try {
+    const t = (JSON.parse(input) as { task?: Partial<SavedTask> }).task
+    return t && typeof t.id === 'string' && typeof t.level === 'number' ? { id: t.id, level: t.level } : null
+  } catch {
+    return null
+  }
 }
 
 export function parseModel(input: string | unknown): Model {

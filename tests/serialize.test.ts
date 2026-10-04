@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { emptyModel } from '../src/core/metamodel'
 import { addAttribute, addEntity, addInheritance, addRelationship } from '../src/core/ops'
-import { ModelFormatError, integrityProblems, parseModel, serializeModel } from '../src/core/serialize'
+import { ModelFormatError, integrityProblems, parseModel, readSavedTask, serializeModel } from '../src/core/serialize'
 
 function small() {
   const m = emptyModel('Small')
@@ -46,5 +46,23 @@ describe('serialization', () => {
       { id: 'i2', name: 'i2', parentId: b.id, childIds: [a.id], mutuallyExclusive: true, complete: true, generation: 'both', position: { x: 0, y: 0 } },
     )
     expect(integrityProblems(m).some((p) => p.includes('cycle'))).toBe(true)
+  })
+})
+
+describe('the trainer task saved with a model', () => {
+  it('is written last, read back, and does not change the model', () => {
+    const m = emptyModel('Hotel — my model')
+    addEntity(m, { name: 'Guest' })
+    const text = serializeModel(m, { id: 'hotel', level: 3 })
+    expect(readSavedTask(text)).toEqual({ id: 'hotel', level: 3 })
+    expect(text.trimEnd().endsWith('"task": {\n    "id": "hotel",\n    "level": 3\n  }\n}')).toBe(true)
+    expect(serializeModel(parseModel(text))).toBe(serializeModel(m))
+  })
+
+  it('is absent from a plain model file, and a broken one is ignored', () => {
+    const m = emptyModel('x')
+    expect(readSavedTask(serializeModel(m))).toBeNull()
+    expect(readSavedTask(serializeModel(m).replace(/\}\s*$/, ', "task": { "id": 5 } }'))).toBeNull()
+    expect(readSavedTask('not json')).toBeNull()
   })
 })

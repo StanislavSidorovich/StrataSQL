@@ -4,10 +4,11 @@
 
 import { create } from 'zustand'
 import { compareModels, type CompareResult } from '../../core/compare'
-import { caseById, type Tag, type TrainerCase } from '../../data/cases'
+import { caseById, LEVELS, type Tag, type TrainerCase } from '../../data/cases'
 import { exerciseById, type Exercise } from '../../data/exercises'
 import { addMark, MY_TASK_ID, myTaskExercise, remapMarks, type Mark, type MyTask } from '../../data/mytask'
-import { emptyModel } from '../../core/metamodel'
+import { emptyModel, type Model } from '../../core/metamodel'
+import type { SavedTask } from '../../core/serialize'
 import { levelStartModel, recordScore, recordWalk, type Level, type PathStep, type Progress } from '../../data/trainer'
 import { nameSuggestions, type NameSuggestions } from '../../data/suggest'
 import { walkthroughSteps, type WalkQuestion, type WalkStep } from '../../data/walkthrough'
@@ -405,4 +406,26 @@ export function restoreTrainer() {
   const editor = useEditor.getState()
   useEditor.setState({ model, trainerBackup: editor.model, past: [], future: [] })
   useTrainer.setState({ session })
+}
+
+/** “Hotel, level 3 (Build it yourself)” or “My task: …”; null when the case or exercise no longer exists. */
+export function savedTaskLabel(t: SavedTask): string | null {
+  const c = caseById(t.id)
+  const level = LEVELS.find((l) => l.level === t.level)
+  if (c && level) return `${c.title}, level ${t.level} (${level.title})`
+  const x = exerciseFor(t.id)
+  return x ? `${t.id === MY_TASK_ID ? 'My task' : 'Open exercise'}: ${x.title}` : null
+}
+
+/**
+ * Opening a file saved from a trainer task: the task starts again with the file's model in place of
+ * its starting model (the user's own model waits aside as usual). Tags and hints start fresh.
+ */
+export function continueTask(t: SavedTask, model: Model): boolean {
+  const trainer = useTrainer.getState()
+  if (caseById(t.id) && LEVELS.some((l) => l.level === t.level)) trainer.start(t.id, t.level as Level)
+  else if (exerciseFor(t.id)) trainer.startExercise(t.id)
+  else return false
+  useEditor.setState({ model, past: [], future: [] })
+  return true
 }

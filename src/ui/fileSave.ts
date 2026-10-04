@@ -3,15 +3,22 @@
 // Browsers without the API download the file instead (to the downloads folder, or wherever the browser asks).
 
 import { exportPowerDesigner } from '../core/export/powerdesigner'
-import { FILE_EXTENSION, serializeModel } from '../core/serialize'
+import { FILE_EXTENSION, serializeModel, type SavedTask } from '../core/serialize'
 import { fileBaseName } from './pdm/SqlView'
 import { useEditor } from './store'
+import { useTrainer } from './trainer/trainerStore'
 
 interface WritableFile {
   name: string
   createWritable: () => Promise<{ write: (data: string | Blob) => Promise<void>; close: () => Promise<void> }>
 }
 type SavePicker = (opts: object) => Promise<WritableFile>
+
+/** The running trainer task (not a walkthrough), saved with the model so opening the file can continue it. */
+function currentTask(): SavedTask | undefined {
+  const s = useTrainer.getState().session
+  return s && s.walk === undefined ? { id: s.caseId, level: s.level } : undefined
+}
 
 const picker = (): SavePicker | undefined => (window as unknown as { showSaveFilePicker?: SavePicker }).showSaveFilePicker
 
@@ -24,7 +31,7 @@ function download(): string {
   const { model } = useEditor.getState()
   const name = `${fileBaseName(model.name)}${FILE_EXTENSION}`
   const a = document.createElement('a')
-  a.href = URL.createObjectURL(new Blob([serializeModel(model)], { type: 'application/json' }))
+  a.href = URL.createObjectURL(new Blob([serializeModel(model, currentTask())], { type: 'application/json' }))
   a.download = name
   a.click()
   setTimeout(() => URL.revokeObjectURL(a.href), 1000)
@@ -33,7 +40,7 @@ function download(): string {
 
 async function write(file: WritableFile) {
   const out = await file.createWritable()
-  await out.write(serializeModel(useEditor.getState().model))
+  await out.write(serializeModel(useEditor.getState().model, currentTask()))
   await out.close()
 }
 
