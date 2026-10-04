@@ -3,7 +3,7 @@
 // those comes first (entities before their links, the starter case's attributes before identifiers).
 // `applyAnswer` (“do it for me”) copies that one element of the reference into the student model.
 
-import { compareModels, mandatoryDiffs, missingAlternates, missingAttributes, sameAttribute, type CompareItem, type CompareResult } from '../core/compare'
+import { compareModels, duplicateAttributes, mandatoryDiffs, missingAlternates, missingAttributes, sameAttribute, type CompareItem, type CompareResult } from '../core/compare'
 import { type Attribute, type Cardinality, type Entity, type Id, type Model, primaryIdentifier } from '../core/metamodel'
 import {
   addAttribute,
@@ -67,7 +67,7 @@ export interface CoachState {
 
 export const coachKey = (item: CoachItem) => `${item.kind}|${item.refKey ?? item.message}`
 
-const KIND_ORDER: Record<CoachItem['kind'], number> = { entity: 0, attribute: 1, mandatory: 1, identifier: 2, alternate: 2, relationship: 3, inheritance: 3, keys: 4 }
+const KIND_ORDER: Record<CoachItem['kind'], number> = { entity: 0, attribute: 1, mandatory: 1, duplicate: 1, identifier: 2, alternate: 2, relationship: 3, inheritance: 3, keys: 4 }
 
 const orderCache = new Map<string, Map<string, number>>()
 /** Walkthrough step key → index, per case. */
@@ -81,8 +81,8 @@ function itemRank(item: CoachItem, rank: Map<string, number>): number {
   const key = item.refKey ?? ''
   const entity = key.startsWith('entity:') ? key.slice('entity:'.length) : ''
   const r =
-    item.kind === 'attribute' || item.kind === 'mandatory'
-      ? rank.get(`attributes:${entity}`) ?? rank.get(key)
+    item.kind === 'attribute' || item.kind === 'mandatory' || item.kind === 'duplicate'
+      ? rank.get(`attributes:${item.refEntities[0] ?? entity}`) ?? rank.get(key)
       : item.kind === 'identifier' || item.kind === 'alternate'
         ? rank.get(`identifier:${item.refEntities[0] ?? entity}`) ?? rank.get(key)
         : rank.get(key)
@@ -123,6 +123,7 @@ function spansFor(c: TrainerCase, item: CoachItem): number[] {
     case 'entity':
       return about((t) => t === key || t.startsWith(`attribute:${entity}.`))
     case 'attribute':
+    case 'duplicate':
       // Only the missing ones: the words of the attributes the student already has are no hint.
       if (item.refAttrs) return about((t) => item.refAttrs!.some((a) => t === `attribute:${entity}.${a}`))
       return about((t, i) => t.startsWith(`attribute:${entity}.`) && c.spans[i].step !== 'identifier')
@@ -160,7 +161,7 @@ function coaching(c: TrainerCase, item: CoachItem, student: Model): Coaching {
         : `Add an entity: the text talks about a thing your model does not have yet.${near.length ? ` It is linked to ${near.join(' and ')}.` : ''}`,
     })
   } else rungs.push({ label: 'What', text: item.message })
-  const caseHints = item.kind === 'keys' || item.kind === 'attribute' || item.kind === 'alternate' ? [] : hintsFor(c, item.refKey, item.refEntities)
+  const caseHints = item.kind === 'keys' || item.kind === 'attribute' || item.kind === 'alternate' || item.kind === 'duplicate' ? [] : hintsFor(c, item.refKey, item.refEntities)
   if (spans.length || caseHints.length)
     rungs.push({
       label: 'Where',
@@ -277,6 +278,13 @@ export function applyAnswer(m: Model, c: TrainerCase, item: CoachItem): boolean 
     const { must, mayBeEmpty } = mandatoryDiffs(s, r)
     for (const a of must) updateAttribute(m, s.id, a.id, { mandatory: true })
     for (const a of mayBeEmpty) updateAttribute(m, s.id, a.id, { mandatory: false })
+    return true
+  }
+
+  if (item.kind === 'duplicate') {
+    const d = duplicateAttributes(m, ref, match).find((x) => rest === `${x.entity.name}.${x.attr.name}`)
+    if (!d) return false
+    removeAttribute(m, d.entity.id, d.attr.id)
     return true
   }
 

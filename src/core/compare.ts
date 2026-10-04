@@ -18,7 +18,7 @@ import {
 } from './metamodel'
 
 export type CompareStatus = 'matched' | 'missing' | 'extra' | 'different'
-export type CompareKind = 'entity' | 'attribute' | 'mandatory' | 'identifier' | 'alternate' | 'relationship' | 'inheritance'
+export type CompareKind = 'entity' | 'attribute' | 'mandatory' | 'identifier' | 'alternate' | 'duplicate' | 'relationship' | 'inheritance'
 
 export interface CompareItem {
   kind: CompareKind
@@ -191,6 +191,64 @@ export function missingAlternates(s: Entity, r: Entity): { ref: Identifier; attr
     const attrs = ri.attributeIds.map((id) => sameAttribute(s, r, r.attributes.find((a) => a.id === id)!))
     if (attrs.some((a) => !a)) continue
     if (!have.has(key(attrs.map((a) => a!.id)))) out.push({ ref: ri, attrs: attrs as Attribute[] })
+  }
+  return out
+}
+
+/** One-word names many entities have, each its own fact: a book's name is not the publisher's name. */
+const GENERIC = new Set(['name', 'title', 'description', 'comment', 'note', 'phone', 'email', 'address', 'date', 'number', 'code', 'type', 'status', 'price', 'quantity', 'amount'].map(stem))
+const generic = (name: string, entity: string) => {
+  const w = attrWords(name, entity)
+  return w.length === 1 && GENERIC.has(w[0])
+}
+
+/** A student attribute that stores a fact the model already holds: twice in one entity, or in a second entity. */
+export interface DuplicateAttr {
+  /** The student entity and attribute to remove. */
+  entity: Entity
+  attr: Attribute
+  /** The reference entity and attribute it repeats, and the student attribute that already holds it. */
+  refEntity: Entity
+  refAttr: Attribute
+  holder: { entity: Entity; attr: Attribute }
+}
+
+/**
+ * Attributes the reference does not have that repeat one it does: `Price` next to `Nightly_price`
+ * (its words are part of the other name), or `nightly_price` in Room while Room Type holds it.
+ * Identifier attributes of the other entity are left to the linter (L11, an attribute that looks like a FK).
+ */
+export function duplicateAttributes(student: Model, ref: Model, match: Map<Id, Id>): DuplicateAttr[] {
+  const out: DuplicateAttr[] = []
+  const pairs = ref.entities
+    .map((r) => ({ r, s: student.entities.find((e) => e.id === match.get(r.id)) }))
+    .filter((p): p is { r: Entity; s: Entity } => !!p.s)
+  for (const { r, s } of pairs) {
+    const claimed = new Set(r.attributes.map((ra) => sameAttribute(s, r, ra)?.id).filter(Boolean))
+    const sPi = ownPi(s)
+    for (const x of s.attributes) {
+      if (claimed.has(x.id) || sPi.has(x.id)) continue
+      const wx = attrWords(x.name, s.name)
+      const inside = r.attributes.find((ra) => {
+        const holder = sameAttribute(s, r, ra)
+        const wr = attrWords(ra.name, r.name)
+        return holder && holder.id !== x.id && wx.length > 0 && wx.length < wr.length && wx.every((w) => wr.includes(w))
+      })
+      if (inside) {
+        out.push({ entity: s, attr: x, refEntity: r, refAttr: inside, holder: { entity: s, attr: sameAttribute(s, r, inside)! } })
+        continue
+      }
+      for (const p of pairs) {
+        if (p.s.id === s.id) continue
+        const pi = ownPi(p.r)
+        const ra = p.r.attributes.find((a) => !pi.has(a.id) && !generic(a.name, p.r.name) && sameAttrName(x.name, s.name, a.name, p.r.name))
+        const holder = ra && sameAttribute(p.s, p.r, ra)
+        if (ra && holder) {
+          out.push({ entity: s, attr: x, refEntity: p.r, refAttr: ra, holder: { entity: p.s, attr: holder } })
+          break
+        }
+      }
+    }
   }
   return out
 }
@@ -474,6 +532,23 @@ export function compareModels(student: Model, ref: Model, opts: CompareOptions =
         })
       }
     }
+    for (const d of duplicateAttributes(student, ref, match)) {
+      const here = d.holder.entity.id === d.entity.id
+      items.push({
+        kind: 'duplicate',
+        status: 'different',
+        refKey: `duplicate:${d.entity.name}.${d.attr.name}`,
+        refEntities: [d.refEntity.name],
+        refAttrs: [d.refAttr.name],
+        target: { kind: 'entity', id: d.entity.id },
+        message: here
+          ? `${d.entity.name}: ${d.attr.name} and ${d.holder.attr.name} look like the same fact stored twice. Keep one — two copies can disagree.`
+          : `${d.entity.name}: ${d.attr.name} is also in ${d.holder.entity.name}. A fact is stored once, in the entity it belongs to.`,
+        answer: here
+          ? `${d.refEntity.name} has one ${d.refAttr.name}: remove ${d.attr.name} and keep ${d.holder.attr.name}.`
+          : `${d.refAttr.name} belongs to ${d.refEntity.name}: remove it from ${d.entity.name}.`,
+      })
+    }
     for (const s of student.entities)
       if (!back.has(s.id) && !bridgeEntities.has(s.id))
         items.push({
@@ -608,7 +683,7 @@ export function compareModels(student: Model, ref: Model, opts: CompareOptions =
   let total = 0
   for (const i of items) {
     counts[i.status]++
-    if (i.kind === 'attribute' || i.kind === 'mandatory' || i.kind === 'identifier' || i.kind === 'alternate' || i.status === 'extra') continue
+    if (i.kind === 'attribute' || i.kind === 'mandatory' || i.kind === 'identifier' || i.kind === 'alternate' || i.kind === 'duplicate' || i.status === 'extra') continue
     total++
     if (i.status === 'matched') got++
   }

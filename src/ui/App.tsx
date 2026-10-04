@@ -1,5 +1,5 @@
 import { ReactFlowProvider, useReactFlow } from '@xyflow/react'
-import { BookOpen, Check, CircleHelp, FileDown, FilePlus, FolderOpen, GraduationCap, Image as ImageIcon, Info, Keyboard, Maximize2, Moon, Play, Plus, Redo2, Save, SaveAll, Sun, Undo2 } from 'lucide-react'
+import { BookOpen, Check, FilePen, CircleHelp, FileDown, FilePlus, FolderOpen, GraduationCap, Image as ImageIcon, Info, Keyboard, Maximize2, Moon, Play, Plus, Redo2, Save, SaveAll, Sun, Undo2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { emptyModel } from '../core/metamodel'
 import { addEntity, removeEntity, removeInheritance, removeRelationship } from '../core/ops'
@@ -26,7 +26,7 @@ import { CASES } from '../data/cases'
 import { Menu } from './onboarding/Menu'
 import { Onboarding, useOnboarding } from './onboarding/Tour'
 import { NameSuggestionLists, TrainerPane } from './trainer/TrainerPane'
-import { MyTaskDialog } from './trainer/MyTask'
+import { MyTaskDialog, openMyTask } from './trainer/MyTask'
 import { confirmDiscardTask, isVeiled, leaveTrainer, useTrainer } from './trainer/trainerStore'
 
 /** The trainer cases, easiest first: their reference models are the examples. */
@@ -287,6 +287,7 @@ function Editor() {
               ...EXAMPLES.map((x) => ({ label: x.label, onSelect: () => openExample(x.build) })),
               'separator',
               { label: 'Open exercises (no answer)…', icon: <BookOpen size={ICON} />, onSelect: () => useTrainer.getState().openPicker(true) },
+              { label: 'My task (own text)…', icon: <FilePen size={ICON} />, onSelect: openMyTask },
             ]}
           />
           <input

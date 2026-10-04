@@ -327,3 +327,45 @@ describe('alternate identifiers <ai>', () => {
     expect(ent(m, 'Guest').identifiers.filter((i) => !i.isPrimary)).toHaveLength(1)
   })
 })
+
+describe('duplicate attributes', () => {
+  const hotel = MORE_CASES.find((c) => c.id === 'hotel')!
+  const dups = (m: Model) => compareModels(m, buildHotel()).items.filter((i) => i.kind === 'duplicate')
+
+  it('Price next to Nightly_price in one entity (not scored)', () => {
+    const m = buildHotel()
+    const t = ent(m, 'Room Type')
+    t.attributes.find((a) => a.name === 'nightly_price')!.name = 'Nightly_price'
+    addAttribute(m, t.id, { name: 'Price' })
+    const res = compareModels(m, buildHotel())
+    expect(dups(m).map((i) => i.message)).toEqual(['Room Type: Price and Nightly_price look like the same fact stored twice. Keep one — two copies can disagree.'])
+    expect(res.score).toBe(100)
+  })
+
+  it('a fact of Room Type stored in Room too', () => {
+    const m = buildHotel()
+    addAttribute(m, ent(m, 'Room').id, { name: 'nightly_price' })
+    expect(dups(m).map((i) => i.message)).toEqual(['Room: nightly_price is also in Room Type. A fact is stored once, in the entity it belongs to.'])
+  })
+
+  it('ignores extra attributes that repeat nothing, and the reference itself', () => {
+    const m = buildHotel()
+    addAttribute(m, ent(m, 'Room').id, { name: 'has_balcony' })
+    expect(dups(m)).toEqual([])
+    for (const c of [...CASES, ...MORE_CASES]) expect(compareModels(c.build(), c.build()).items.filter((i) => i.kind === 'duplicate')).toEqual([])
+  })
+
+  it('“Do it for me” removes the copy', () => {
+    const m = buildHotel()
+    addAttribute(m, ent(m, 'Room Type').id, { name: 'Price' })
+    expect(applyAnswer(m, hotel, dups(m)[0])).toBe(true)
+    expect(dups(m)).toEqual([])
+    expect(ent(m, 'Room Type').attributes.map((a) => a.name)).toContain('nightly_price')
+  })
+})
+
+it('duplicate attributes: a generic one-word name in two entities is not a duplicate', () => {
+  const m = buildHotel()
+  addAttribute(m, ent(m, 'Room').id, { name: 'name' })
+  expect(compareModels(m, buildHotel()).items.filter((i) => i.kind === 'duplicate')).toEqual([])
+})

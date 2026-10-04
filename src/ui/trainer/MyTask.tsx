@@ -14,6 +14,12 @@ export function openMyTaskDialog(startAfter: boolean) {
   useDialog.setState({ open: true, startAfter })
 }
 
+/** Examples menu → My task: the saved text opens as a task, otherwise the dialog asks for one. */
+export function openMyTask() {
+  if (!useTrainer.getState().myTask) return openMyTaskDialog(true)
+  if (confirmDiscardTask()) useTrainer.getState().startExercise(MY_TASK_ID)
+}
+
 export function MyTaskDialog() {
   const { open, startAfter } = useDialog()
   const myTask = useTrainer((s) => s.myTask)
@@ -105,7 +111,7 @@ export function MyTaskEntry() {
           <button
             type="button"
             className="btn btn-small"
-            onClick={() => (myTask ? confirmDiscardTask() && useTrainer.getState().startExercise(MY_TASK_ID) : openMyTaskDialog(true))}
+            onClick={openMyTask}
           >
             {myTask ? 'Start' : 'Add my text…'}
           </button>
