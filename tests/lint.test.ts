@@ -55,6 +55,13 @@ describe('L02 entity without attributes and relationships', () => {
     ent(m, 'Full')
     expect(only(m, 'L02').map((i) => i.targets[0])).toEqual([{ kind: 'entity', id: empty.id }])
   })
+  it('a just-drawn entity gets one gentle hint, not an L01 error; L01 starts with its first attribute', () => {
+    const m = emptyModel()
+    const e = addEntity(m, { name: 'Entity' })
+    expect(lintModel(m).map((i) => `${i.rule} ${i.severity}`)).toEqual(['L02 info'])
+    addAttribute(m, e.id, { name: 'title' })
+    expect(lintModel(m).map((i) => `${i.rule} ${i.severity}`)).toEqual(['L01 error'])
+  })
 })
 
 describe('L03 many-to-many relationship with data', () => {
@@ -285,9 +292,10 @@ describe('L11 attribute that looks like a foreign key', () => {
 describe('ordering', () => {
   it('lists errors first, then warnings, then info', () => {
     const m = emptyModel()
-    addEntity(m, { name: 'Empty' }) // L01 error + L02 warning
-    const d = ent(m, 'D', ['total'])
-    expect(d).toBeTruthy()
-    expect(rules(m)).toEqual(['L01', 'L02'])
+    const loose = addEntity(m, { name: 'Loose' }) // L01 error
+    addAttribute(m, loose.id, { name: 'note' })
+    addEntity(m, { name: 'Empty' }) // L02 info
+    ent(m, 'Order', ['customer_id']) // L11 warning
+    expect(rules(m)).toEqual(['L01', 'L11', 'L02'])
   })
 })

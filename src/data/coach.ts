@@ -140,9 +140,13 @@ function coaching(c: TrainerCase, item: CoachItem, student: Model): Coaching {
   // What: the comparator's message, except for a missing entity, whose message names the answer.
   if (item.kind === 'entity' && item.status === 'missing') {
     const near = item.refEntities.length ? neighboursInStudent(c, item.refEntities[0], student) : []
+    // A freshly drawn entity still has the default name: the student has started this step already.
+    const unnamed = student.entities.find((e) => /^Entity(_\d+)?$/.test(e.name))
     rungs.push({
       label: 'What',
-      text: `Add an entity: the text talks about a thing your model does not have yet.${near.length ? ` It is linked to ${near.join(' and ')}.` : ''}`,
+      text: unnamed
+        ? `Your new entity is still called “${unnamed.name}”: rename it after a thing the text talks about that your model does not have yet.${near.length ? ` It is linked to ${near.join(' and ')}.` : ''}`
+        : `Add an entity: the text talks about a thing your model does not have yet.${near.length ? ` It is linked to ${near.join(' and ')}.` : ''}`,
     })
   } else rungs.push({ label: 'What', text: item.message })
   const caseHints = item.kind === 'keys' ? [] : hintsFor(c, item.refKey, item.refEntities)

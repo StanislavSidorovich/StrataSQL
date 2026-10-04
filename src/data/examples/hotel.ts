@@ -7,7 +7,7 @@ import { addAttribute, addDomain, addEntity, addIdentifier, addRelationship, upd
 
 export function buildHotel(): Model {
   const m = emptyModel('Hotel')
-  m.comment = 'Own case (cases/hotel.md): a small hotel, its rooms, guests and bookings.'
+  m.comment = 'Own case: a small hotel, its rooms, guests and bookings.'
 
   const name = addDomain(m, { name: 'Name', dataType: 'Variable characters', length: 100 })
 

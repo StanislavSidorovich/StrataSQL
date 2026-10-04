@@ -1548,6 +1548,13 @@ body {
 .welcome p {
   line-height: 1.5;
 }
+.welcome .welcome-narrow {
+  margin-top: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--accent-soft);
+  font-size: 0.85rem;
+}
 .welcome-choices {
   display: grid;
   gap: 8px;

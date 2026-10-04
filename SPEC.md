@@ -99,7 +99,7 @@ Each warning links to a help card and highlights elements on the canvas.
 | ID | Check | Severity |
 |---|---|---|
 | L01 | Entity without primary identifier | error |
-| L02 | Entity without attributes and without relationships | warning |
+| L02 | Entity without attributes and without relationships — "empty so far", a next-step hint; L01 waits until it has attributes or links (2026-10-04) | info |
 | L03 | M:N relationship that is described with attributes in comments/name → suggest intermediate entity | info |
 | L04 | **Cycle of relationships** (e.g. Episode→Show, Episode→Director, Director↔Show) → possible conflicting data | warning |
 | L05 | Same attribute name in parent and child of an inheritance | warning |

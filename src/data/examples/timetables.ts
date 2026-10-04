@@ -6,7 +6,7 @@ import { addAttribute, addEntity, addIdentifier, addPhysicalKey, addRelationship
 
 export function buildTimetables(): Model {
   const m = emptyModel('Timetables')
-  m.comment = 'Reference model for cases/timetables.md (NOVA IMS DBMS, Class 03).'
+  m.comment = 'Course case (NOVA IMS DBMS, Class 03), adapted.'
 
   const program = addEntity(m, { name: 'Program', position: { x: 40, y: 40 } })
   addAttribute(m, program.id, { name: 'program_id', dataType: 'Integer', primary: true })

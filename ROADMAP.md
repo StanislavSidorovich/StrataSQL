@@ -181,6 +181,31 @@ Carried over (5e and later): File menu icons (lucide), toolbar grouped by task, 
 
 Acceptance: a first-time user can, without reading docs, finish the tour, watch the starter case built to the end, and build it alone to 100 % using hints. Walkthrough steps of all 4 cases replay to exactly the reference model (unit test). Import of the course `.cdm` files gives the same model as the hand-built reference.
 
+## UX review (2026-10-04)
+
+Why: the owner asked for a full pass over the live app (first visit, walkthrough, all four views, trainer, phone / tablet / dark) before showing it to classmates and in a LinkedIn post. Tag `v0.6.0` marks the state before it.
+
+Fixed in this pass:
+- [x] A just-drawn entity is **unfinished, not wrong** ✱: L02 becomes one `info` hint (“empty so far — next: attributes and PI”), L01 starts once the entity has attributes or links; no red border, no “no primary key” note in its panel (SPEC §7 updated, test added)
+- [x] New entity (double-click or + Entity): the **Name field takes the focus** with the text selected — type the name at once
+- [x] Build-it-with-me: when a new entity still has the default name, the first hint says “rename it” instead of “add an entity”
+- [x] Phrases in the case text **wrap like words** (a `<button>` is always inline-block, so long phrases jumped to their own lines); span with `role="button"`, Enter / Space work
+- [x] Canvas fit **never zooms past 100 %** (one entity used to fill the screen); **minimap only from 10 nodes** (it covered a corner of small models)
+- [x] Trainer picker: the empty canvas says “Pick a case on the left”, not “model it here”
+- [x] Welcome: course-neutral wording; on a **phone** a note that modelling needs a computer
+- [x] Example comments no longer show repository paths (`cases/library.md`)
+
+Backlog from the review (by value):
+1. **Active walkthrough**: before some steps ask “entity or attribute?” / “which side gets the FK?” and reveal after the answer (prediction → feedback; now 20 passive Next clicks before the first own action)
+2. **Level 1 hides the answer**: the tagging level shows the finished model next to the text, so tagging becomes look-up; veil the canvas until all phrases are tagged (or a “peek” button)
+3. **Sandbox: predict first** — “Will the database accept this row?” before each scenario step; the balance of the screen (grid squeezed in 320 px, right half empty)
+4. **Visible progress**: ✓ / best % per level on the picker cards, “next recommended step” button; a finish line (“Library done → Hotel”)
+5. **Readable diagrams at 1366 px**: tighter example layouts (columns 380 px apart → ~260), or collapse the properties column by default during a walkthrough
+6. **Tablet / 1280 px**: the toolbar wraps into two rows at 1024 px; icons-only toolbar or overflow menu; side columns collapsed by default below 1200 px
+7. Toolbar: “Relationship | Inheritance” looks like tabs but is the link mode — label it “Link as:”; Trainer is a second primary button next to + Entity
+8. Walkthrough step box repeats the phrase’s *why* in the paragraph below it
+9. Short guide (2–3 min video + one-page cheat sheet), Open Graph preview check in LinkedIn Post Inspector
+
 ## More cases + open exercises ✅ (2026-10-03)
 
 Why: one case per difficulty is too few to practise; the owner asked for several per level, some with a check and some without. Textbook exercises were not copied (copyright, and their published answers rarely follow IE / PowerDesigner conventions): the texts are own, on classic domains ✱.

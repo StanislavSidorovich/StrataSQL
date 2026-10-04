@@ -5,7 +5,7 @@ import { addAttribute, addDomain, addEntity, addIdentifier, addRelationship, upd
 
 export function buildRideHailing(): Model {
   const m = emptyModel('Ride Hailing')
-  m.comment = 'Reference model for cases/ride-hailing.md (NOVA IMS DBMS, Shadow Project Part I).'
+  m.comment = 'Course case (NOVA IMS DBMS, Shadow Project Part I), adapted.'
 
   const email = addDomain(m, { name: 'Email', dataType: 'Variable characters', length: 100 })
   const phone = addDomain(m, { name: 'Phone', dataType: 'Variable characters', length: 20 })

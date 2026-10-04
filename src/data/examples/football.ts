@@ -8,7 +8,7 @@ import { addAttribute, addDomain, addEntity, addIdentifier, addPhysicalKey, addR
 
 export function buildFootball(): Model {
   const m = emptyModel('Football League')
-  m.comment = 'Own case (cases/football.md): seasons, teams, players, contracts, matches and goals.'
+  m.comment = 'Own case: seasons, teams, players, contracts, matches and goals.'
 
   const name = addDomain(m, { name: 'Name', dataType: 'Variable characters', length: 100 })
 

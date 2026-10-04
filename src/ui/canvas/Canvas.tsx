@@ -91,6 +91,11 @@ function buildEdges(m: Model, sel: Selection): Edge[] {
   return [...inhs, ...rels]
 }
 
+// Readable on open: never zoom past 100 % (one new entity used to fill the screen).
+const FIT = { padding: 0.15, maxZoom: 1 }
+// A small model fits on screen; the minimap would only hide part of it.
+const MINIMAP_FROM = 10
+
 export function Canvas({ dark }: { dark: boolean }) {
   const model = useEditor((s) => s.model)
   const selection = useEditor((s) => s.selection)
@@ -165,6 +170,7 @@ export function Canvas({ dark }: { dark: boolean }) {
       let createdId = ''
       apply((m) => (createdId = addEntity(m, { position: { x: Math.round(pos.x), y: Math.round(pos.y) } }).id))
       select({ kind: 'entity', id: createdId })
+      useEditor.setState({ focusName: createdId })
     },
     [apply, flow, select],
   )
@@ -188,11 +194,12 @@ export function Canvas({ dark }: { dark: boolean }) {
         multiSelectionKeyCode="Shift"
         colorMode={dark ? 'dark' : 'light'}
         fitView
+        fitViewOptions={FIT}
         minZoom={0.2}
       >
         <Background gap={20} />
         <Controls showInteractive={false} />
-        <MiniMap pannable zoomable className="!bg-[var(--panel-bg)]" />
+        {nodes.length >= MINIMAP_FROM && <MiniMap pannable zoomable className="!bg-[var(--panel-bg)]" />}
       </ReactFlow>
     </div>
   )

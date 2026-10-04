@@ -81,7 +81,7 @@ function CardView({ card }: { card: HelpCard }) {
     const { load, setView } = useEditor.getState()
     setView('cdm')
     load(card.miniModel())
-    setTimeout(() => flow.fitView({ padding: 0.2, duration: 300 }), 80)
+    setTimeout(() => flow.fitView({ padding: 0.2, maxZoom: 1, duration: 300 }), 80)
   }
 
   return (

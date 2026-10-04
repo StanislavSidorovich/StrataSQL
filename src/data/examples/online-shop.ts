@@ -8,7 +8,7 @@ import { addAttribute, addDomain, addEntity, addIdentifier, addRelationship, upd
 
 export function buildOnlineShop(): Model {
   const m = emptyModel('Online Shop')
-  m.comment = 'Own case (cases/online-shop.md): customers, a category tree, products, orders with lines, payments.'
+  m.comment = 'Own case: customers, a category tree, products, orders with lines, payments.'
 
   const name = addDomain(m, { name: 'Name', dataType: 'Variable characters', length: 100 })
   const money = addDomain(m, { name: 'Amount', dataType: 'Decimal', length: 10, precision: 2 })

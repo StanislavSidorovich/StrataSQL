@@ -87,6 +87,7 @@ function Editor() {
   const view = useEditor((s) => s.view)
   const helpOpen = useEditor((s) => s.help !== null)
   const trainerOn = useTrainer((s) => s.session !== null || s.pickerOpen)
+  const pickerOnly = useTrainer((s) => s.session === null && s.pickerOpen)
   const walkOn = useEditor((s) => s.walkthrough !== null)
   // Opening another case, level or the picker shows a hidden trainer column again.
   const trainerKey = useTrainer((s) => `${s.pickerOpen}|${s.session?.caseId}|${s.session?.level}|${s.session?.walk === undefined}`)
@@ -94,7 +95,7 @@ function Editor() {
   const fileInput = useRef<HTMLInputElement>(null)
   const flow = useReactFlow()
 
-  const fit = () => setTimeout(() => flow.fitView({ padding: 0.15, duration: 300 }), 50)
+  const fit = () => setTimeout(() => flow.fitView({ padding: 0.15, maxZoom: 1, duration: 300 }), 50)
 
   const openExample = (build: () => ReturnType<typeof emptyModel>) => {
     if (!leaveTrainer()) return
@@ -121,6 +122,7 @@ function Editor() {
     let id = ''
     apply((m) => (id = addEntity(m, { position: { x: Math.round(pos.x), y: Math.round(pos.y) } }).id))
     select({ kind: 'entity', id })
+    useEditor.setState({ focusName: id })
   }
 
   const [notice, setNotice] = useState<string | null>(null)
@@ -275,7 +277,7 @@ function Editor() {
             ↷
           </button>
           {(view === 'cdm' || view === 'pdm') && (
-              <button type="button" className="btn" onClick={() => flow.fitView({ padding: 0.15, duration: 300 })} title="Fit the model on screen">
+              <button type="button" className="btn" onClick={() => flow.fitView({ padding: 0.15, maxZoom: 1, duration: 300 })} title="Fit the model on screen">
               Fit
             </button>
           )}
@@ -339,8 +341,14 @@ function Editor() {
           {view === 'sql' && <SqlView />}
           {model.entities.length === 0 && view !== 'sql' && (
             <div className="empty-state">
-              <h2>Start a conceptual model</h2>
-              <p>{walkOn ? 'Press “Start” on the left: the model appears here step by step.' : `Double-click the canvas or press “+ Entity”.${trainerOn ? ' Read the text on the left and model it here.' : ' Or start here:'}`}</p>
+              <h2>{pickerOnly ? 'Pick a case on the left' : 'Start a conceptual model'}</h2>
+              <p>
+                {walkOn
+                  ? 'Press “Start” on the left: the model appears here step by step.'
+                  : pickerOnly
+                    ? 'Start with ▶ Watch it built, then try the levels 0 → 3. Your own model comes back when you close the trainer.'
+                    : `Double-click the canvas or press “+ Entity”.${trainerOn ? ' Read the text on the left and model it here.' : ' Or start here:'}`}
+              </p>
               {!trainerOn && (
               <div className="flex flex-wrap justify-center gap-2">
                 <button type="button" className="btn btn-primary" onClick={watchLibrary}>

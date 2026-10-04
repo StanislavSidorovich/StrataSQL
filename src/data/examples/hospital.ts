@@ -8,7 +8,7 @@ import { addAttribute, addDomain, addEntity, addIdentifier, addInheritance, addR
 
 export function buildHospital(): Model {
   const m = emptyModel('Hospital')
-  m.comment = 'Own case (cases/hospital.md): patients, staff, appointments, wards, beds and admissions.'
+  m.comment = 'Own case: patients, staff, appointments, wards, beds and admissions.'
 
   const name = addDomain(m, { name: 'Name', dataType: 'Variable characters', length: 100 })
 

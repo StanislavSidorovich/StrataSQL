@@ -164,6 +164,7 @@ function Welcome(props: { onPractise: () => void; onWatch: () => void }) {
   const open = useOnboarding((s) => s.welcome)
   const { startTour, closeWelcome } = useOnboarding.getState()
   if (!open) return null
+  const narrow = window.matchMedia('(max-width: 899px)').matches
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="welcome-title" onKeyDown={(e) => e.key === 'Escape' && closeWelcome()}>
       <div className="modal welcome">
@@ -171,8 +172,14 @@ function Welcome(props: { onPractise: () => void; onWatch: () => void }) {
           Welcome to Strata<span>SQL</span>
         </h2>
         <p>
-          Draw a <b>conceptual model</b> (entities, attributes, relationships) the way the DBMS course does in PowerDesigner. StrataSQL turns it into <b>tables</b> and a <b>SQL Server script</b>, checks the model and explains every concept.
+          Draw a <b>conceptual model</b> (entities, attributes, relationships) the way database courses teach it with PowerDesigner. StrataSQL turns it into <b>tables</b> and a <b>SQL Server script</b>, checks the model and explains every concept.
         </p>
+        {narrow && (
+          <p className="welcome-narrow">
+            Made for a laptop or desktop screen: drawing needs a mouse and room for three columns. Here you can look around; to model, open{' '}
+            <b>{location.host}</b> on a computer.
+          </p>
+        )}
         <div className="welcome-choices">
           <button type="button" className="welcome-choice" onClick={startTour} autoFocus>
             <b>Show me around</b>

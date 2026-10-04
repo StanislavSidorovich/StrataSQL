@@ -28,7 +28,7 @@ export interface LintIssue {
 
 export const RULES: Record<RuleId, { title: string; severity: Severity; help: string }> = {
   L01: { title: 'Entity without primary identifier', severity: 'error', help: 'identifier' },
-  L02: { title: 'Isolated entity', severity: 'warning', help: 'entity' },
+  L02: { title: 'Empty entity', severity: 'info', help: 'entity' },
   L03: { title: 'Many-to-many relationship with data', severity: 'info', help: 'intermediate-entity' },
   L04: { title: 'Cycle of relationships', severity: 'warning', help: 'circular-relationship' },
   L05: { title: 'Attribute repeated in parent and child', severity: 'warning', help: 'inheritance' },
@@ -88,6 +88,10 @@ class Context {
   inInheritance(id: Id): boolean {
     return this.m.inheritances.some((i) => i.parentId === id || i.childIds.includes(id))
   }
+  /** No attributes, no relationships, no inheritance: just drawn. */
+  isEmpty(e: Entity): boolean {
+    return e.attributes.length === 0 && this.relationshipsOf(e.id).length === 0 && !this.inInheritance(e.id)
+  }
   isChild(id: Id): boolean {
     return this.m.inheritances.some((i) => i.childIds.includes(id))
   }
@@ -99,7 +103,7 @@ const words = (text: string | undefined) => (text ?? '').toLowerCase().split(/[^
 
 function l01(ctx: Context): LintIssue[] {
   return ctx.m.entities
-    .filter((e) => !(primaryIdentifier(e)?.attributeIds.length) && ctx.parentsOf(e.id).length === 0 && !ctx.isChild(e.id))
+    .filter((e) => !ctx.isEmpty(e) && !(primaryIdentifier(e)?.attributeIds.length) && ctx.parentsOf(e.id).length === 0 && !ctx.isChild(e.id))
     .map((e) =>
       issue(
         'L01',
@@ -111,15 +115,21 @@ function l01(ctx: Context): LintIssue[] {
 }
 
 // ---------------------------------------------------------------- L02 isolated entity
+// An empty entity is unfinished, not wrong: one gentle "next step" instead of an L01 error plus a
+// warning the moment it is drawn. L01 starts once it has attributes or links.
 
 function l02(ctx: Context): LintIssue[] {
   return ctx.m.entities
-    .filter((e) => e.attributes.length === 0 && ctx.relationshipsOf(e.id).length === 0 && !ctx.inInheritance(e.id))
-    .map((e) =>
-      issue('L02', `${e.name} has no attributes and no relationships — it stores nothing. Add attributes, link it, or delete it.`, [
-        { kind: 'entity', id: e.id },
-      ]),
-    )
+    .filter((e) => ctx.isEmpty(e))
+    .map((e) => ({
+      ...issue(
+        'L02',
+        `${e.name} is empty so far — it stores nothing yet. Next: add its attributes and tick PI on the one that tells its instances apart, ` +
+          'or link it to another entity.',
+        [{ kind: 'entity', id: e.id }],
+      ),
+      severity: 'info' as const,
+    }))
 }
 
 // ---------------------------------------------------------------- L03 M:N with data

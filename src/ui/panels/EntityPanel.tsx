@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import {
   DATA_TYPES,
   TYPES_WITH_LENGTH,
@@ -37,13 +38,27 @@ export function EntityPanel({ entity, model }: { entity: Entity; model: Model })
   const nameOf = (eid: string) => model.entities.find((e) => e.id === eid)?.name ?? '?'
   const asChild = model.inheritances.find((i) => i.childIds.includes(id))
   const asParent = model.inheritances.find((i) => i.parentId === id)
+  // Just drawn: no attributes and no links yet. The linter gives one next-step hint; the empty table is not worth a warning.
+  const empty = entity.attributes.length === 0 && relationships.length === 0 && !asChild && !asParent
+
+  const nameBox = useRef<HTMLDivElement>(null)
+  const focusName = useEditor((s) => s.focusName)
+  useEffect(() => {
+    if (focusName !== id) return
+    const input = nameBox.current?.querySelector('input')
+    input?.focus()
+    input?.select()
+    useEditor.setState({ focusName: null })
+  }, [focusName, id])
 
   return (
     <div>
       <ElementIssues kind="entity" id={id} />
       <Section title="Entity" help="entity">
         <Field label="Name" help="names-and-codes">
+          <div ref={nameBox} className="contents">
           <TextInput value={entity.name} onChange={(v) => apply((m) => updateEntity(m, id, { name: v }), { coalesce: `en:${id}` })} />
+          </div>
         </Field>
         <Field label="Code" hint="Table name in the PDM" help="names-and-codes">
           <TextInput value={entity.code} onChange={(v) => apply((m) => updateEntity(m, id, { code: v }), { coalesce: `ec:${id}` })} />
@@ -197,7 +212,7 @@ export function EntityPanel({ entity, model }: { entity: Entity; model: Model })
         </ul>
       </Section>
 
-      <EntityResult entityId={id} />
+      {!empty && <EntityResult entityId={id} />}
 
       <div className="panel-footer">
         <button type="button" className="btn btn-danger" onClick={() => apply((m) => removeEntity(m, id))}>

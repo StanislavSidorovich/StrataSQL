@@ -49,6 +49,8 @@ interface EditorState {
   trainerBackup: Model | null
   /** While a walkthrough runs: the elements its current step added (highlighted); linting is muted. */
   walkthrough: { spotlight: Id[] } | null
+  /** A just-created entity whose name field should take the focus (type the name right away). */
+  focusName: Id | null
 
   /** Runs an edit operation on a draft; on ModelError the model is untouched and the message is shown. */
   apply: (edit: (m: Model) => void, opts?: ApplyOptions) => boolean
@@ -71,6 +73,7 @@ export const useEditor = create<EditorState>()((set, get) => ({
   past: [],
   future: [],
   selection: null,
+  focusName: null,
   linkKind: 'relationship',
   view: 'cdm',
   tableSelection: null,

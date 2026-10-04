@@ -7,7 +7,7 @@ import { addAttribute, addDomain, addEntity, addIdentifier, addRelationship, upd
 
 export function buildLibrary(): Model {
   const m = emptyModel('Library')
-  m.comment = 'Starter case (cases/library.md): a small library, its books and loans.'
+  m.comment = 'Starter case: a small library, its books and loans.'
 
   const name = addDomain(m, { name: 'Name', dataType: 'Variable characters', length: 100 })
 

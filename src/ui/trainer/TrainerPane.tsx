@@ -1,7 +1,7 @@
 // Trainer (SPEC §9): case picker and the side pane of an open task — levels 0–3.
 
 import { useReactFlow } from '@xyflow/react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { compareModels, type CompareItem } from '../../core/compare'
 import { CASES, caseById, hintsFor, LEVELS, phrasesFor, splitParagraph, TAGS, type Tag, type TrainerCase } from '../../data/cases'
 import { applyAnswer, coach, referenceOf, type CoachState } from '../../data/coach'
@@ -181,7 +181,7 @@ function TaskPane({ c, level }: { c: TrainerCase; level: Level }) {
   const go = (l: Level) => {
     if (!confirmDiscardTask()) return
     start(c.id, l)
-    setTimeout(() => flow.fitView({ padding: 0.15, duration: 300 }), 50)
+    setTimeout(() => flow.fitView({ padding: 0.15, maxZoom: 1, duration: 300 }), 50)
   }
   const info = LEVELS[level]
   return (
@@ -238,9 +238,8 @@ function WorkedExample({ c }: { c: TrainerCase }) {
           <p key={p}>
             {splitParagraph(c, p).map((part, k) =>
               'span' in part ? (
-                <button
+                <PhraseButton
                   key={k}
-                  type="button"
                   className={`spec-span tag-${part.span.tag} ${open === part.index ? 'is-open' : ''}`}
                   onClick={() => {
                     showSpan(part.index)
@@ -249,7 +248,7 @@ function WorkedExample({ c }: { c: TrainerCase }) {
                   title={TAG_LABEL[part.span.tag]}
                 >
                   {part.text}
-                </button>
+                </PhraseButton>
               ) : (
                 <span key={k}>{part.text}</span>
               ),
@@ -323,9 +322,8 @@ function Tagging({ c }: { c: TrainerCase }) {
               const chosen = tags[part.index]
               const state = chosen === undefined ? 'todo' : isRightTag(c, part.index, chosen) ? 'right' : 'wrong'
               return (
-                <button
+                <PhraseButton
                   key={k}
-                  type="button"
                   className={`spec-span is-${state} ${chosen !== undefined ? `tag-${c.spans[part.index].tag}` : ''} ${open === part.index ? 'is-open' : ''}`}
                   onClick={() => {
                     showSpan(part.index)
@@ -333,7 +331,7 @@ function Tagging({ c }: { c: TrainerCase }) {
                   }}
                 >
                   {part.text}
-                </button>
+                </PhraseButton>
               )
             })}
           </p>
@@ -571,5 +569,26 @@ function ResultItem({ c, item }: { c: TrainerCase; item: CompareItem }) {
         </button>
       )}
     </li>
+  )
+}
+
+/** A clickable phrase of the text. A real <button> is always inline-block, so a long phrase would
+ *  jump to its own line; a span with the button role wraps like the words around it. */
+function PhraseButton({ className, onClick, title, children }: { className: string; onClick: () => void; title?: string; children: ReactNode }) {
+  return (
+    <span
+      role="button"
+      tabIndex={0}
+      className={className}
+      title={title}
+      onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key !== 'Enter' && e.key !== ' ') return
+        e.preventDefault()
+        onClick()
+      }}
+    >
+      {children}
+    </span>
   )
 }

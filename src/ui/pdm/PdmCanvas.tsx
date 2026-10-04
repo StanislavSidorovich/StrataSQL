@@ -90,6 +90,11 @@ function buildEdges(pdm: Pdm, selected: string | null): FkEdgeType[] {
   })
 }
 
+// Readable on open: never zoom past 100 % (one new entity used to fill the screen).
+const FIT = { padding: 0.15, maxZoom: 1 }
+// A small model fits on screen; the minimap would only hide part of it.
+const MINIMAP_FROM = 10
+
 export function PdmCanvas({ dark }: { dark: boolean }) {
   const model = useEditor((s) => s.model)
   const selected = useEditor((s) => s.tableSelection)
@@ -126,11 +131,12 @@ export function PdmCanvas({ dark }: { dark: boolean }) {
         zoomOnDoubleClick={false}
         colorMode={dark ? 'dark' : 'light'}
         fitView
+        fitViewOptions={FIT}
         minZoom={0.15}
       >
         <Background gap={20} />
         <Controls showInteractive={false} />
-        <MiniMap pannable zoomable className="!bg-[var(--panel-bg)]" />
+        {nodes.length >= MINIMAP_FROM && <MiniMap pannable zoomable className="!bg-[var(--panel-bg)]" />}
       </ReactFlow>
     </div>
   )

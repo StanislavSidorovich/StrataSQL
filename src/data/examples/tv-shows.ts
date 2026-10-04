@@ -12,7 +12,7 @@ import {
 
 export function buildTvShows(): Model {
   const m = emptyModel('TV Shows')
-  m.comment = 'Reference model for cases/tv-shows.md (NOVA IMS DBMS, Class 03).'
+  m.comment = 'Course case (NOVA IMS DBMS, Class 03), adapted.'
 
   const email = addDomain(m, { name: 'Email', dataType: 'Variable characters', length: 100 })
   const phone = addDomain(m, { name: 'Phone', dataType: 'Variable characters', length: 20 })
