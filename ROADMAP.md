@@ -12,7 +12,9 @@ Stages follow SPEC §12. A stage is done only when its acceptance criteria pass.
 | 5. Guided start | ✅ acceptance met (2026-10-03, v0.5.0) — 5a–5c, 5d (.cdm) done; 5e polish and `.pdm` reverse carried over | A first-time user learns the screen in a tour, watches a case built step by step, and builds one alone with “next hint” |
 | 6. AI review | ⏭ optional | Optional, behind a user-provided API key |
 
-**Where we are (2026-10-03, v0.5.0):** guided start is in: a welcome card and a tour, the four cases watched built step by step (Library starter first), built alone with a Next hint that walks the same order, and PowerDesigner `.cdm` import. Next: 5e UI polish, then optional AI review (stage 6).
+**Where we are (2026-10-04, v0.6.0 + UX review):** 8 cases + 5 exercises, PowerDesigner cross-check, live at model.quaera.app. The UX review fixed the first-minute rough edges (gentle hint for a new entity, name focus, wrapping phrases, zoom, minimap, phone note); its backlog is in “UX review” below — next: active walkthrough (predict → reveal) and hiding the answer in level 1. LinkedIn post after the professor answers about the 3 course cases.
+
+**Earlier (2026-10-03, v0.5.0):** guided start is in: a welcome card and a tour, the four cases watched built step by step (Library starter first), built alone with a Next hint that walks the same order, and PowerDesigner `.cdm` import. Next: 5e UI polish, then optional AI review (stage 6).
 
 **Earlier (2026-10-02, v0.4.0):** the learning loop is complete. Build a CDM, get the PDM + SQL Server DDL, test the keys in the sandbox, get live linter feedback with help cards, and practise on the three course cases in the trainer (worked example → text tagging → complete the model → from scratch, with a structural check and a hint ladder). Next is stage 5 (guided start, see below); AI review moved to stage 6 and stays optional.
 
