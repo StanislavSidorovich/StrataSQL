@@ -4,7 +4,7 @@
 // `applyAnswer` (“do it for me”) copies that one element of the reference into the student model.
 
 import { compareModels, missingAttributes, sameAttribute, type CompareItem, type CompareResult } from '../core/compare'
-import { type Attribute, type Entity, type Id, type Model, primaryIdentifier } from '../core/metamodel'
+import { type Attribute, type Cardinality, type Entity, type Id, type Model, primaryIdentifier } from '../core/metamodel'
 import {
   addAttribute,
   addDomain,
@@ -287,6 +287,17 @@ export function applyAnswer(m: Model, c: TrainerCase, item: CoachItem): boolean 
     const sa = r && sEntity(r.entityA)
     const sb = r && sEntity(r.entityB)
     if (!r || !sa || !sb) return false
+    if (item.bridge) {
+      // The student's intermediate entity stays; only the cards at its ends follow the reference.
+      const { entity, toA, toB } = item.bridge
+      const atEntity = (id: Id, card: Cardinality) => {
+        const s = m.relationships.find((x) => x.id === id)
+        if (s) updateRelationship(m, id, s.entityA === entity ? { cardinalityA: card } : { cardinalityB: card })
+      }
+      atEntity(toB, r.cardinalityA)
+      atEntity(toA, r.cardinalityB)
+      return true
+    }
     let s = item.status === 'different' && item.target ? m.relationships.find((x) => x.id === item.target!.id) : undefined
     if (!s) s = addRelationship(m, sa.id, sb.id, { name: uniqueName(r.name, m.relationships.map((x) => x.name)) })
     // Reflexive links keep their orientation; otherwise A is the reference's A.

@@ -212,6 +212,10 @@ Owner's requests (2026-10-04, later):
 - [x] Fixed on the way: the Sandbox's right column had no width (an empty model let it take the whole screen); it is now a resizable side column like the others
 - [x] Checked in the dev build (Playwright 1366×820): hint + focus + clear, 130 % text with colours, dark theme, Sandbox; 332 tests
 
+Fairer Check (2026-10-04, from the owner's own Library build at level 3 — 89 %, 3 false “missing”):
+- [x] An **intermediate entity for a plain many-to-many** (Book_Author between Book and Author, two many-to-one links) counts as that many-to-many ✱ — same join table in the PDM; it is no longer listed as extra, its minimums are still compared, “do it for me” fixes the cards on its two links and keeps the entity
+- [x] Attributes match **short forms**: `pub_year` ~ `Publication_year`, `card_no` ~ `Card_number`, `name` ~ `Pname` (entity initial); an attribute chosen as the **primary identifier** still counts (ISBN as PI is the ISBN). A different word (`Name` for `title`) is still reported; 335 tests
+
 Backlog from the review (by value):
 3. **Sandbox: predict first** — “Will the database accept this row?” before each scenario step; the balance of the screen (grid squeezed in 320 px, right half empty)
 4. **Visible progress**: ✓ / best % per level on the picker cards, “next recommended step” button; a finish line (“Library done → Hotel”)
@@ -279,6 +283,7 @@ The owner's guidance: the course's "discussed in class" points are not critical 
 8. (2026-10-03) Own starter case **Library** comes first; cases are ordered by difficulty Library → Ride Hailing → TV Shows → Timetables (Ride Hailing lowered to ★★). In Library the primary identifier of Book is an added `book_id`, the ISBN an alternate identifier — to show the PI/AI choice; Loan has its own id because the pair repeats.
 
 9. (2026-10-03) Inheritance generation = both keeps **only the key** in child tables ✱. PowerDesigner's default “Inherit all attributes” also copies the parent's columns into each child (found by the cross-check with the owner's `TV Show.pdm`); it is a checkbox (`Inheritance.inheritAll`), on for imported PD models, off in the reference cases (no duplicated data).
+- ✱ Check (2026-10-04): a plain many-to-many drawn as an intermediate entity (no data, two many-to-one links) is accepted as equal — the course allows both; the case text still teaches the plain relationship when the pair has no data.
 - ✱ Walkthrough questions (2026-10-04): ask where the FK goes before every relationship, the identifier only when there is a choice, and “what does this phrase become” once plus for two-reading phrases; 1:1 accepts either side, an alternate identifier counts as a right answer to “which attribute tells one X apart”. Level 1 hides the model (with a Peek) — recall first, then compare.
 
 Still open:

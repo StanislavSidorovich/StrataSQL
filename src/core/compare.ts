@@ -31,6 +31,15 @@ export interface CompareItem {
   message: string
   /** The reference solution of this item in words — the last step of the hint ladder. */
   answer?: string
+  /** A reference many-to-many that the student drew as an intermediate entity: its two links. */
+  bridge?: Bridge
+}
+
+/** An intermediate entity standing for a plain many-to-many: `toA` links it to the reference's A, `toB` to B. */
+export interface Bridge {
+  entity: Id
+  toA: Id
+  toB: Id
 }
 
 export interface CompareResult {
@@ -61,12 +70,33 @@ const singular = (w: string) => (w.length > 3 && w.endsWith('s') && !w.endsWith(
 /** `TV Shows` → `tvshow`, `car_shift` → `carshift`. */
 export const normName = (s: string) => singular(words(s).join(''))
 
-/** Attribute name without the entity prefix: Episode.episode_title → `title`. */
-function normAttr(name: string, entityName: string): string {
+/** Words of an attribute name without the entity prefix: Episode.episode_title → [`title`]. */
+function attrWords(name: string, entityName: string): string[] {
   const w = words(name)
   const stem = normName(entityName)
   if (w.length > 1 && (singular(w[0]) === stem || stem.endsWith(singular(w[0])))) w.shift()
-  return singular(w.join(''))
+  return w.map(singular)
+}
+
+/** Attribute name without the entity prefix: Episode.episode_title → `title`. */
+function normAttr(name: string, entityName: string): string {
+  return singular(attrWords(name, entityName).join(''))
+}
+
+const shortFor = (x: string, y: string) => x === y || (Math.min(x.length, y.length) >= 3 && (x.startsWith(y) || y.startsWith(x)))
+
+/**
+ * Same attribute up to the entity prefix and usual short forms: `pub_year` ~ `Publication_year`,
+ * `card_no` ~ `Card_number`, `name` ~ `Pname` (the entity's initial glued on).
+ */
+function sameAttrName(sName: string, sEntity: string, rName: string, rEntity: string): boolean {
+  const a = normAttr(sName, sEntity)
+  const b = normAttr(rName, rEntity)
+  if (a === b) return true
+  const wa = attrWords(sName, sEntity)
+  const wb = attrWords(rName, rEntity)
+  if (wa.length === wb.length && wa.every((w, k) => shortFor(w, wb[k]))) return true
+  return a === normName(sEntity)[0] + b || b === normName(rEntity)[0] + a
 }
 
 function ownPi(e: Entity): Set<Id> {
@@ -78,17 +108,19 @@ function plainAttrs(e: Entity): Set<string> {
   return new Set(e.attributes.filter((a) => !pi.has(a.id)).map((a) => normAttr(a.name, e.name)))
 }
 
-/** Reference attributes (outside its own identifier) that the student entity lacks, compared by name. */
+/**
+ * Reference attributes (outside its own identifier) that the student entity lacks, compared by name.
+ * Any student attribute counts, its identifier too: ISBN chosen as the primary identifier is still the ISBN.
+ */
 export function missingAttributes(s: Entity, r: Entity): Attribute[] {
-  const have = plainAttrs(s)
   const pi = ownPi(r)
-  return r.attributes.filter((a) => !pi.has(a.id) && !have.has(normAttr(a.name, r.name)))
+  return r.attributes.filter((a) => !pi.has(a.id) && !sameAttribute(s, r, a))
 }
 
-/** The student attribute that stands for a reference attribute (same name without entity prefix). */
+/** The student attribute that stands for a reference attribute (same name without entity prefix, or a short form). */
 export function sameAttribute(s: Entity, r: Entity, refAttr: Attribute): Attribute | undefined {
   const want = normAttr(refAttr.name, r.name)
-  return s.attributes.find((a) => normAttr(a.name, s.name) === want)
+  return s.attributes.find((a) => normAttr(a.name, s.name) === want) ?? s.attributes.find((a) => sameAttrName(a.name, s.name, refAttr.name, r.name))
 }
 
 function dice(a: Set<string>, b: Set<string>): number {
@@ -193,6 +225,44 @@ function describeInheritance(i: Inheritance, name: (id: Id) => string): string {
 
 const sameCard = (a: Cardinality, b: Cardinality) => a.min === b.min && a.max === b.max
 
+/** The card drawn at `id`'s end of a relationship. */
+export const cardAt = (s: Relationship, id: Id) => (s.entityA === id ? s.cardinalityA : s.cardinalityB)
+
+/** The link of `x` to `p` where many `x` belong to one `p`. */
+function manyToOne(m: Model, x: Id, p: Id): Relationship | undefined {
+  return m.relationships.find(
+    (s) =>
+      ((s.entityA === x && s.entityB === p) || (s.entityA === p && s.entityB === x)) && cardAt(s, x).max === 'n' && cardAt(s, p).max === 1,
+  )
+}
+
+/**
+ * Reference many-to-manys that the student drew as an intermediate entity (Book_Author between Book
+ * and Author) instead of a plain relationship. Same tables in the PDM, so the course accepts both.
+ */
+function findBridges(student: Model, ref: Model, match: Map<Id, Id>, back: Map<Id, Id>): Map<Id, Bridge> {
+  const out = new Map<Id, Bridge>()
+  const taken = new Set<Id>()
+  for (const r of ref.relationships) {
+    const sa = match.get(r.entityA)
+    const sb = match.get(r.entityB)
+    if (relationshipKind(r) !== 'many-to-many' || !sa || !sb || sa === sb) continue
+    if (student.relationships.some((s) => (s.entityA === sa && s.entityB === sb) || (s.entityA === sb && s.entityB === sa))) continue
+    for (const x of student.entities) {
+      if (back.has(x.id) || taken.has(x.id)) continue
+      if (student.relationships.filter((s) => s.entityA === x.id || s.entityB === x.id).length !== 2) continue
+      if (student.inheritances.some((i) => i.parentId === x.id || i.childIds.includes(x.id))) continue
+      const toA = manyToOne(student, x.id, sa)
+      const toB = manyToOne(student, x.id, sb)
+      if (!toA || !toB) continue
+      out.set(r.id, { entity: x.id, toA: toA.id, toB: toB.id })
+      taken.add(x.id)
+      break
+    }
+  }
+  return out
+}
+
 /** The student relationship seen in the reference orientation (A ↔ A). */
 function oriented(s: Relationship, refA: Id, ctx: Ctx) {
   const flip = s.entityA !== ctx.match.get(refA)
@@ -242,6 +312,8 @@ export function compareModels(student: Model, ref: Model, opts: CompareOptions =
   }
   const items: CompareItem[] = []
   const links = opts.scope === 'links'
+  const bridges = findBridges(student, ref, match, back)
+  const bridgeEntities = new Set([...bridges.values()].map((b) => b.entity))
 
   // Entities, their identifiers and attributes.
   if (!links) {
@@ -283,7 +355,7 @@ export function compareModels(student: Model, ref: Model, opts: CompareOptions =
         })
     }
     for (const s of student.entities)
-      if (!back.has(s.id))
+      if (!back.has(s.id) && !bridgeEntities.has(s.id))
         items.push({
           kind: 'entity',
           status: 'extra',
@@ -309,6 +381,42 @@ export function compareModels(student: Model, ref: Model, opts: CompareOptions =
       (s) => !usedRels.has(s.id) && ((s.entityA === sa && s.entityB === sb) || (s.entityA === sb && s.entityB === sa)),
     )
     const best = candidates.sort((x, y) => relDiffs(r, x, ctx).length - relDiffs(r, y, ctx).length)[0]
+    const bridge = bridges.get(r.id)
+    if (!best && bridge) {
+      usedRels.add(bridge.toA)
+      usedRels.add(bridge.toB)
+      const rel = (id: Id) => student.relationships.find((s) => s.id === id)!
+      // Rows of the intermediate entity per B = A instances per B: the card at A's end of the plain link.
+      const cardA = cardAt(rel(bridge.toB), bridge.entity)
+      const cardB = cardAt(rel(bridge.toA), bridge.entity)
+      const label = `${ctx.sName(sa)} — ${ctx.sName(sb)} through ${ctx.sName(bridge.entity)}`
+      const target = { kind: 'entity' as const, id: bridge.entity }
+      const same = sameCard(cardA, r.cardinalityA) && sameCard(cardB, r.cardinalityB)
+      const [a, b] = names
+      items.push(
+        same
+          ? {
+              kind: 'relationship',
+              status: 'matched',
+              refKey: key,
+              refEntities: names,
+              target,
+              bridge,
+              message: `${label} ✓ An intermediate entity is also correct here; the reference keeps a plain many-to-many because the pair has no data of its own — the PDM gets the same join table.`,
+            }
+          : {
+              kind: 'relationship',
+              status: 'different',
+              refKey: key,
+              refEntities: names,
+              target,
+              bridge,
+              message: `${label}: the minimums differ (optional vs mandatory): ask whether a ${b} can exist without a ${a}, and a ${a} without a ${b}.`,
+              answer,
+            },
+      )
+      continue
+    }
     if (!best) {
       items.push({ kind: 'relationship', status: 'missing', refKey: key, refEntities: names, message: `Something is missing between ${ctx.sName(sa)} and ${ctx.sName(sb)}.`, answer })
       continue

@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from 'vitest'
 import { compareModels, matchEntities } from '../src/core/compare'
-import { CARD, type Model } from '../src/core/metamodel'
+import { CARD, type Cardinality, type Model } from '../src/core/metamodel'
 import {
   addAttribute,
   addEntity,
@@ -17,7 +17,9 @@ import {
   updateInheritance,
   updateRelationship,
 } from '../src/core/ops'
+import { applyAnswer } from '../src/data/coach'
 import { CASES } from '../src/data/cases'
+import { buildLibrary } from '../src/data/examples/library'
 import { buildRideHailing } from '../src/data/examples/ride-hailing'
 import { buildTimetables } from '../src/data/examples/timetables'
 import { buildTvShows } from '../src/data/examples/tv-shows'
@@ -187,5 +189,52 @@ describe('seeded wrong models — Timetables and Ride Hailing', () => {
     const s = summary(m, ref)
     expect(s.res.score).toBe(0)
     expect(s.res.counts.missing).toBe(ref.entities.length + ref.relationships.length)
+  })
+})
+
+describe('seeded models — Library (a student build)', () => {
+  /** The student build from the trainer: Book_Author instead of the plain M:N, own spellings of attributes. */
+  function studentLibrary(mins: { author: Cardinality; book: Cardinality }) {
+    const m = buildLibrary()
+    removeRelationship(m, rel(m, 'writes').id)
+    const book = ent(m, 'Book')
+    for (const [from, to] of [['title', 'Name'], ['pub_year', 'Publication_year']]) book.attributes.find((a) => a.name === from)!.name = to
+    const isbn = book.attributes.find((a) => a.name === 'isbn')!
+    setAttributeInPrimary(m, book.id, book.attributes.find((a) => a.name === 'book_id')!.id, false)
+    setAttributeInPrimary(m, book.id, isbn.id, true)
+    isbn.name = 'ISBN'
+    ent(m, 'Publisher').attributes.find((a) => a.name === 'name')!.name = 'Pname'
+    ent(m, 'Member').attributes.find((a) => a.name === 'card_no')!.name = 'Card_number'
+    const ba = addEntity(m, { name: 'Book_Author' })
+    const toBook = addRelationship(m, book.id, ba.id, { name: 'Books_Entity', cardinalityB: mins.author })
+    const toAuthor = addRelationship(m, ent(m, 'Author').id, ba.id, { name: 'Authors_Entity', cardinalityB: mins.book })
+    setDependentSide(m, toBook.id, 'B')
+    setDependentSide(m, toAuthor.id, 'B')
+    return m
+  }
+
+  it('an intermediate entity for a plain many-to-many counts as the many-to-many', () => {
+    const s = summary(studentLibrary({ author: CARD.oneMany, book: CARD.oneMany }), buildLibrary())
+    expect(s.missing).toEqual([])
+    expect(s.extra).toEqual([])
+    expect(s.different).toEqual([])
+    expect(s.res.items.find((i) => i.refKey === 'relationship:writes')!.message).toContain('through Book_Author ✓')
+    expect(s.res.score).toBe(100)
+  })
+
+  it('…and its minimums are still compared, and “do it for me” fixes them on the two links', () => {
+    const m = studentLibrary({ author: CARD.zeroMany, book: CARD.zeroMany })
+    const c = CASES.find((x) => x.id === 'library')!
+    const item = compareModels(m, c.build()).items.find((i) => i.refKey === 'relationship:writes')!
+    expect(item.status).toBe('different')
+    expect(item.message).toContain('optional vs mandatory')
+    expect(applyAnswer(m, c, item)).toBe(true)
+    expect(compareModels(m, c.build()).items.find((i) => i.refKey === 'relationship:writes')!.status).toBe('matched')
+    expect(findEntityByName(m, 'Book_Author')).toBeDefined()
+  })
+
+  it('accepts short forms and the identifier as an attribute; a real other word is still missing', () => {
+    const attr = compareModels(studentLibrary({ author: CARD.oneMany, book: CARD.oneMany }), buildLibrary()).items.filter((i) => i.kind === 'attribute')
+    expect(attr.map((i) => i.answer)).toEqual(['Book has title.'])
   })
 })
