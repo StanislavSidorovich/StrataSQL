@@ -102,6 +102,13 @@ export function selectStatement(table: PdmTable, limit = 200): string {
   return `SELECT ${table.columns.map((c) => pgIdent(c.name)).join(', ')} FROM ${pgIdent(table.name)}${order} LIMIT ${limit};`
 }
 
+/** The table the last INSERT / UPDATE / DELETE of `sql` writes to (the grid then shows it). */
+export function touchedTable(pdm: Pdm, sql: string): string | undefined {
+  const names = [...sql.matchAll(/\b(?:INSERT\s+INTO|UPDATE|DELETE\s+FROM)\s+(?:"([^"]+)"|(\w+))/gi)].map((m) => m[1] ?? m[2])
+  const name = names.at(-1)
+  return name ? pdm.tables.find((t) => t.name.toLowerCase() === name.toLowerCase())?.name : undefined
+}
+
 /** Hint shown in an empty grid cell: type and whether the value is required. */
 export function cellHint(c: PdmColumn): string {
   return `${postgresType(c)}${c.nullable ? '' : ' *'}`

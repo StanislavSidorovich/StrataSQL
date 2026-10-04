@@ -3,11 +3,11 @@ import { generatePdm } from '../src/core/cdm2pdm'
 import { generatePostgres, pgIdent, postgresType } from '../src/core/ddl/postgres'
 import { createPgliteEngine } from '../src/core/engine-pglite'
 import { findTable } from '../src/core/pdm'
-import { deleteStatement, insertStatement, resetDatabase, run, sqlLiteral, type SqlEngine } from '../src/core/sandbox'
+import { deleteStatement, insertStatement, resetDatabase, run, sqlLiteral, touchedTable, type SqlEngine } from '../src/core/sandbox'
 import { buildTimetables } from '../src/data/examples/timetables'
 import { buildTvShows } from '../src/data/examples/tv-shows'
 import { CASES } from '../src/data/cases'
-import { SCENARIOS, scenariosFor } from '../src/data/scenarios'
+import { asksPrediction, SCENARIOS, scenariosFor } from '../src/data/scenarios'
 
 // Every trainer case (course and own ones) must run in the Sandbox.
 const EXAMPLES = CASES.map((c) => c.build)
@@ -143,6 +143,22 @@ INSERT INTO EPISODE (episode_id, title, show_id, person_id) VALUES (100, 'Secret
 describe('scenarios (acceptance: conflicting rows are rejected by the expected constraint)', () => {
   it('cover every trainer case', () => {
     for (const b of EXAMPLES) expect(scenariosFor(b().name).length).toBeGreaterThan(0)
+  })
+
+  it('ask “will it be accepted?” before every step but the setup, and touch a table of the model', () => {
+    for (const s of SCENARIOS) {
+      const pdm = generatePdm(EXAMPLES.find((b) => b().name === s.model)!())
+      expect(s.steps.filter(asksPrediction).length, s.title).toBeGreaterThan(0)
+      expect(asksPrediction(s.steps[0]), s.title).toBe(false)
+      for (const step of s.steps) if (!/^\s*SELECT/i.test(step.sql)) expect(touchedTable(pdm, step.sql), step.title).toBeDefined()
+    }
+  })
+
+  it('touchedTable names the last table written to', () => {
+    const pdm = generatePdm(buildTvShows())
+    expect(touchedTable(pdm, 'INSERT INTO tvshow (show_id) VALUES (1);\nINSERT INTO PERSON (person_id) VALUES (2);')).toBe('PERSON')
+    expect(touchedTable(pdm, 'DELETE FROM "EPISODE" WHERE episode_id = 1;')).toBe('EPISODE')
+    expect(touchedTable(pdm, 'SELECT * FROM PERSON;')).toBeUndefined()
   })
 
   for (const s of SCENARIOS) {

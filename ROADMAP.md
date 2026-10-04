@@ -217,9 +217,22 @@ Fairer Check (2026-10-04, from the owner's own Library build at level 3 — 89 %
 - [x] Attributes match **short forms**: `pub_year` ~ `Publication_year`, `card_no` ~ `Card_number`, `name` ~ `Pname` (entity initial); an attribute chosen as the **primary identifier** still counts (ISBN as PI is the ISBN). A different word (`Name` for `title`) is still reported; 335 tests
 - [x] **Mandatory (M) compared** (owner's request): an attribute mandatory in the reference but not ticked → “must always have a value — tick M (NOT NULL)”; ticked where the case explains why it is optional (a comment like “NULL while the book is out”) → “can stay empty” ✱. Elsewhere the reference did not decide, so the student's M is accepted (course cases leave many attributes unmarked). Not scored, like attributes; a coach step after the entity's attributes; “do it for me” sets the flags; 336 tests
 
+Sandbox prediction, picker progress, name suggestions (2026-10-04):
+- [x] **Sandbox: predict first** (backlog 3): every scenario step except the setup asks “Will the database accept this?” — ✓ Accepted / ✗ Rejected (keys 1 / 2) or “Just run it”; afterwards “✓ Right / ✗ Not quite — you said …, it was …” above the reason, and at the end “Your predictions: X of Y right”. “Guess before each step” turns it off (remembered); Run all skips the guesses
+- [x] Sandbox layout: **Try this** is now first in the right column (scenario cards with the step count), Last statement under it; after a step the grid **switches to the table it wrote to** (or whose constraint rejected it), so the row or the red columns are in view; an empty table says how to fill it
+- [x] **Picker progress** (backlog 4): each case shows *n / 4* with a bar — the path is ▶ Watch it built, level 1, 2, 3 (level 0 is optional reading); a level counts as done from **80 %** ✱ (the best % stays on its button); the walkthrough gets ✓ when watched to the last step; a finished case has a green frame and “✓ done”. On top: **Continue: Hotel — level 1, text tagging →** (the first step not done, easiest case first)
+- [x] **Finish line**: a Check (levels 2–3) or a fully tagged text (level 1) at 80 % or more shows the same **Next: … →** button
+- [x] **Name suggestions from the task text** (owner's request): in levels 2–3 and open exercises the entity and attribute name fields complete words of the text (“co…” → *contacts*), with singulars (*books* → *book*) and word pairs (*birth_date*). **Every word** of the text is offered, not only the answers, so nothing is given away ✱. Checkbox “Suggest names from the text while I type” under the task (on by default, remembered). `src/data/suggest.ts`, tests
+- [x] Empty difficulty stars are lighter (★ vs ★★★ was hard to tell)
+- [x] Checked in the dev build (Playwright 1366×820): Football scenario with right / wrong guesses and the score line, grid jumps to MATCH with the rejected columns, picker with seeded progress (Library done, Hotel 1/4, Continue button), Library level 3 suggestions (`Mem…` → Member); 345 tests
+
+Built with: Claude Opus 5.5 (Claude Code), effort low.
+
+Owner's ideas for later (2026-10-04):
+- **Own task text** (“My task”): paste a text or load a `.txt` / `.md`; it shows in the left column like an open exercise (Model check counts, self-review checklist, name suggestions from it), saved in the browser. No reference, so no score — but a useful check without one: **the student tags phrases themselves** (select text → entity / attribute / relationship / identifier), and the pane lists tagged phrases with nothing in the model yet, and model elements no phrase mentions. Later, with stage 6 (AI review), the text + model can go to a model for comments. About one sprint
+- Toolbar still wraps into two rows at 1366 px when the model name is long (“Library — my model”) — part of backlog 6
+
 Backlog from the review (by value):
-3. **Sandbox: predict first** — “Will the database accept this row?” before each scenario step; the balance of the screen (grid squeezed in 320 px, right half empty)
-4. **Visible progress**: ✓ / best % per level on the picker cards, “next recommended step” button; a finish line (“Library done → Hotel”)
 5. **Readable diagrams at 1366 px**: tighter example layouts (columns 380 px apart → ~260), or collapse the properties column by default during a walkthrough
 6. **Tablet / 1280 px**: the toolbar wraps into two rows at 1024 px; icons-only toolbar or overflow menu; side columns collapsed by default below 1200 px
 7. Toolbar: “Relationship | Inheritance” looks like tabs but is the link mode — label it “Link as:”; Trainer is a second primary button next to + Entity
@@ -287,6 +300,8 @@ The owner's guidance: the course's "discussed in class" points are not critical 
 - ✱ Check (2026-10-04): M is compared one-way plus explained exceptions — “must” when the reference is mandatory, “may be empty” only for attributes whose case comment says why they are NULL.
 - ✱ Check (2026-10-04): a plain many-to-many drawn as an intermediate entity (no data, two many-to-one links) is accepted as equal — the course allows both; the case text still teaches the plain relationship when the pair has no data.
 - ✱ Walkthrough questions (2026-10-04): ask where the FK goes before every relationship, the identifier only when there is a choice, and “what does this phrase become” once plus for two-reading phrases; 1:1 accepts either side, an alternate identifier counts as a right answer to “which attribute tells one X apart”. Level 1 hides the model (with a Peek) — recall first, then compare.
+- ✱ Learning path (2026-10-04): a case is Watch it built + levels 1–3; a level is done from 80 % (perfect scores are not required to move on), level 0 is optional. Sandbox guesses are asked for every step except the setup.
+- ✱ Name suggestions (2026-10-04): all words of the text (plus singulars and word pairs), never only the answer words; on by default.
 
 Still open:
 - SPEC §13: PD-style `0,n` labels shown by default (toggle later); associations not supported; UI in English first.

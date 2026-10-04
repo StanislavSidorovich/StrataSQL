@@ -5,8 +5,13 @@ import { create } from 'zustand'
 import { generatePostgres } from '../../core/ddl/postgres'
 import { createPgliteEngine } from '../../core/engine-pglite'
 import type { Pdm } from '../../core/pdm'
-import { resetDatabase, run, type RunOutcome, type SqlEngine } from '../../core/sandbox'
+import { resetDatabase, run, touchedTable, type RunOutcome, type SqlEngine } from '../../core/sandbox'
 import type { Scenario } from '../../data/scenarios'
+
+const PREDICT_KEY = 'stratasql.sandbox.predict'
+
+/** The student's guess before a scenario step runs. */
+export type Prediction = 'ok' | 'rejected' | 'skipped'
 
 export type EngineStatus = 'idle' | 'loading' | 'ready' | 'failed'
 
@@ -15,6 +20,8 @@ export interface Executed {
   outcome: RunOutcome
   /** Set for scenario steps: did the outcome match the expectation? */
   expected?: boolean
+  /** Set for scenario steps: what the student predicted before running it. */
+  prediction?: Prediction
 }
 
 interface SandboxState {
@@ -32,6 +39,9 @@ interface SandboxState {
   /** Results of the steps of the open scenario, by index. */
   steps: Executed[]
   console: string
+  /** Scenario steps ask “will the database accept this?” before they run. */
+  predictFirst: boolean
+  setPredictFirst: (on: boolean) => void
   setTable: (name: string | null) => void
   setDraft: (table: string, column: string, value: string) => void
   setConsole: (sql: string) => void
@@ -48,10 +58,27 @@ export const useSandbox = create<SandboxState>()((set) => ({
   scenarioId: null,
   steps: [],
   console: '',
+  predictFirst: readPredictFirst(),
+  setPredictFirst: (predictFirst) => {
+    set({ predictFirst })
+    try {
+      localStorage.setItem(PREDICT_KEY, JSON.stringify(predictFirst))
+    } catch {
+      // Not remembered.
+    }
+  },
   setTable: (table) => set({ table }),
   setDraft: (table, column, value) => set((s) => ({ drafts: { ...s.drafts, [table]: { ...s.drafts[table], [column]: value } } })),
   setConsole: (console) => set({ console }),
 }))
+
+function readPredictFirst(): boolean {
+  try {
+    return localStorage.getItem(PREDICT_KEY) !== 'false'
+  } catch {
+    return true
+  }
+}
 
 let enginePromise: Promise<SqlEngine> | null = null
 let queue: Promise<unknown> = Promise.resolve()
@@ -119,15 +146,24 @@ export async function openScenario(pdm: Pdm, scenario: Scenario | null): Promise
   if (scenario) await resetData(pdm)
 }
 
-export async function runStep(pdm: Pdm, scenario: Scenario, index: number): Promise<void> {
+export async function runStep(pdm: Pdm, scenario: Scenario, index: number, prediction?: Prediction): Promise<void> {
   const step = scenario.steps[index]
   const executed = await execute(pdm, step.sql)
   const got = executed.outcome.ok ? 'ok' : executed.outcome.violation.rejectedBy
   const want = step.expect === 'ok' ? 'ok' : step.expect.rejectedBy
-  const result = { ...executed, expected: got === want }
+  const result: Executed = { ...executed, expected: got === want, prediction }
+  // The grid shows the table the step wrote to (or the one whose constraint rejected it).
+  const table = (!executed.outcome.ok && executed.outcome.violation.table) || touchedTable(pdm, step.sql)
   useSandbox.setState((s) => {
     const steps = [...s.steps]
     steps[index] = result
-    return { steps, last: result }
+    return { steps, last: result, table: table ?? s.table }
   })
+}
+
+/** Predictions that were made (not skipped) and how many were right. */
+export function predictionScore(steps: Executed[]): { made: number; right: number } {
+  const made = steps.filter((r) => r?.prediction === 'ok' || r?.prediction === 'rejected')
+  const right = made.filter((r) => (r.prediction === 'ok') === r.outcome.ok).length
+  return { made: made.length, right }
 }

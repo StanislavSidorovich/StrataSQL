@@ -450,6 +450,11 @@ INSERT INTO TEAM (team_id, name, city) VALUES (1, 'Benfica', 'Lisboa'), (2, 'Por
   },
 ]
 
+/** Setup steps only fill parent tables; every other step is asked first (“will it be accepted?”). */
+export function asksPrediction(step: ScenarioStep): boolean {
+  return !/^setup\b/i.test(step.title)
+}
+
 export function scenariosFor(modelName: string): Scenario[] {
   return SCENARIOS.filter((s) => s.model === modelName)
 }

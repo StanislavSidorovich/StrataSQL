@@ -7,13 +7,15 @@ import { compareModels, type CompareResult } from '../../core/compare'
 import { caseById, type Tag, type TrainerCase } from '../../data/cases'
 import { exerciseById } from '../../data/exercises'
 import { emptyModel } from '../../core/metamodel'
-import { levelStartModel, recordScore, type Level, type Progress } from '../../data/trainer'
+import { levelStartModel, recordScore, recordWalk, type Level, type PathStep, type Progress } from '../../data/trainer'
+import { nameSuggestions, type NameSuggestions } from '../../data/suggest'
 import { walkthroughSteps, type WalkQuestion, type WalkStep } from '../../data/walkthrough'
 import { lintFor, loadStoredModel, TRAINER_MODEL_KEY, useEditor } from '../store'
 
 const SESSION_KEY = 'stratasql.trainer.session'
 const PROGRESS_KEY = 'stratasql.trainer.progress'
 const ASK_KEY = 'stratasql.walk.ask'
+const SUGGEST_KEY = 'stratasql.suggest'
 
 export interface Check {
   result: CompareResult
@@ -51,6 +53,8 @@ interface TrainerState {
   progress: Progress
   /** Walkthrough: ask the step's question before showing it (off = just watch). */
   askFirst: boolean
+  /** Name fields suggest words of the task text while typing. */
+  suggestNames: boolean
 
   openPicker: (open: boolean) => void
   start: (caseId: string, level: Level) => void
@@ -62,6 +66,7 @@ interface TrainerState {
   /** Answers (or skips, with null) the question of the current walkthrough step, which reveals it. */
   answerWalk: (option: number | null) => void
   setAskFirst: (on: boolean) => void
+  setSuggestNames: (on: boolean) => void
   setPeek: (peek: boolean) => void
   exit: () => void
   tag: (span: number, tag: Tag) => void
@@ -95,6 +100,7 @@ export const useTrainer = create<TrainerState>()((set, get) => ({
   check: null,
   progress: readJson<Progress>(PROGRESS_KEY, {}),
   askFirst: readJson<boolean>(ASK_KEY, true),
+  suggestNames: readJson<boolean>(SUGGEST_KEY, true),
 
   openPicker: (pickerOpen) => set({ pickerOpen }),
 
@@ -170,6 +176,7 @@ export const useTrainer = create<TrainerState>()((set, get) => ({
       walkthrough: { spotlight: asking ? s.question!.focus : s.focus.map((f) => f.id) },
     })
     set({ session: { caseId, level: 0, tags: {}, openSpan: null, hintSteps: {}, walk: at, answers }, check: null, pickerOpen: false })
+    if (at === steps.length - 1) saveProgress(recordWalk(get().progress, caseId))
   },
 
   answerWalk(option) {
@@ -184,6 +191,11 @@ export const useTrainer = create<TrainerState>()((set, get) => ({
     writeJson(ASK_KEY, askFirst)
     const s = get().session
     if (s?.walk !== undefined) get().walkTo(s.caseId, s.walk)
+  },
+
+  setSuggestNames(suggestNames) {
+    set({ suggestNames })
+    writeJson(SUGGEST_KEY, suggestNames)
   },
 
   setPeek(peek) {
@@ -306,10 +318,31 @@ export function tagScore(c: TrainerCase, tags: Record<number, Tag>) {
 }
 
 function saveScore(c: TrainerCase, level: Level, score: number) {
-  const progress = recordScore(useTrainer.getState().progress, c.id, level, score)
+  saveProgress(recordScore(useTrainer.getState().progress, c.id, level, score))
+}
+
+function saveProgress(progress: Progress) {
   if (progress === useTrainer.getState().progress) return
   useTrainer.setState({ progress })
   writeJson(PROGRESS_KEY, progress)
+}
+
+const suggestCache = new Map<string, NameSuggestions>()
+/** Words of the open task's text for the name fields; null when off or nothing is typed in this task (levels 0–1, walkthrough). */
+export function taskSuggestions(s: Session | null, on: boolean): NameSuggestions | null {
+  if (!on || !s || s.walk !== undefined || s.level < 2) return null
+  const spec = (s.exercise ? exerciseById(s.caseId) : caseById(s.caseId))?.spec
+  if (!spec) return null
+  let out = suggestCache.get(s.caseId)
+  if (!out) suggestCache.set(s.caseId, (out = nameSuggestions(spec)))
+  return out
+}
+
+/** Opens a step of the learning path: the walkthrough or a trainer level. */
+export function openPathStep(caseId: string, step: PathStep) {
+  if (!confirmDiscardTask()) return
+  if (step === 'walk') useTrainer.getState().walkTo(caseId, 0)
+  else useTrainer.getState().start(caseId, step)
 }
 
 // ---------------------------------------------------------------- persistence

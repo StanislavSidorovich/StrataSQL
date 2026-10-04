@@ -67,6 +67,7 @@ export function EntityPanel({ entity, model }: { entity: Entity; model: Model })
           <NameInput
             value={entity.name}
             isDefault={(n) => DEFAULT_ENTITY.test(n)}
+            list="suggest-entity"
             fallback={uniqueName('Entity', model.entities.filter((e) => e.id !== id).map((e) => e.name))}
             onChange={(v) => apply((m) => updateEntity(m, id, { name: v }), { coalesce: `en:${id}` })}
           />
@@ -278,6 +279,7 @@ function AttributeRow({
         ariaLabel="Attribute name"
         value={attr.name}
         isDefault={(n) => DEFAULT_ATTRIBUTE.test(n)}
+        list="suggest-attribute"
         fallback={uniqueName('attribute', model.entities.find((e) => e.id === entityId)!.attributes.filter((x) => x.id !== aid).map((x) => x.name))}
         autoFocus={autoFocus}
         onChange={(v) => apply((m) => updateAttribute(m, entityId, aid, { name: v }), { coalesce: `an:${aid}` })}

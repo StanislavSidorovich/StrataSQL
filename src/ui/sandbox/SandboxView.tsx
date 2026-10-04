@@ -6,11 +6,11 @@ import { useEffect, useState } from 'react'
 import { pgIdent } from '../../core/ddl/postgres'
 import { columnFlags, findTable, type Pdm, type PdmTable } from '../../core/pdm'
 import { cellHint, deleteStatement, insertStatement, selectStatement, type SqlResult } from '../../core/sandbox'
-import { scenariosFor, type Scenario } from '../../data/scenarios'
+import { asksPrediction, scenariosFor, type Scenario } from '../../data/scenarios'
 import { SourceLink } from '../pdm/PdmPanel'
 import { Section } from '../panels/fields'
 import { usePdm, useModel } from '../store'
-import { ensureSchema, execute, openScenario, query, resetData, runStep, useSandbox, type Executed } from './sandboxStore'
+import { ensureSchema, execute, openScenario, predictionScore, query, resetData, runStep, useSandbox, type Executed, type Prediction } from './sandboxStore'
 import { SideDock } from '../SideDock'
 
 export function SandboxView() {
@@ -48,8 +48,8 @@ export function SandboxView() {
       </main>
       <SideDock side="right" name="scenarios" defaultWidth={390}>
         <aside className="panel" aria-label="Sandbox">
-          <LastResult />
           <Scenarios pdm={pdm} />
+          <LastResult />
         </aside>
       </SideDock>
     </div>
@@ -151,6 +151,13 @@ function TableGrid({ pdm, table }: { pdm: Pdm; table: PdmTable }) {
               </td>
             </tr>
           ))}
+          {rows && rows.rows.length === 0 && (
+            <tr>
+              <td className="grid-empty" colSpan={table.columns.length + 1}>
+                No rows in {table.name} yet — type values in the row below, or follow a scenario under <b>Try this</b>.
+              </td>
+            </tr>
+          )}
           <tr className="insert-row">
             {table.columns.map((c) => (
               <td key={c.name}>
@@ -302,19 +309,20 @@ function Scenarios({ pdm }: { pdm: Pdm }) {
   if (!list.length)
     return (
       <Section title="Try this">
-        <p className="muted">Guided scenarios exist for the worked examples (TV Shows, Timetables, Ride Hailing). Open one from Examples… to try them.</p>
+        <p className="muted">Guided scenarios come with every case. Open one from Examples to try them — or insert your own rows into the tables on the left.</p>
       </Section>
     )
 
   if (!open)
     return (
       <Section title="Try this">
-        <p className="muted">Each scenario empties the tables, then inserts a valid row and a conflicting one.</p>
+        <p className="muted">Each scenario empties the tables, then inserts a valid row and a conflicting one. Before each step, guess: will the database accept it?</p>
         <ul className="scenario-list">
           {list.map((s) => (
             <li key={s.id}>
-              <button type="button" className="link-button" disabled={status !== 'ready'} onClick={() => void openScenario(pdm, s)}>
-                {s.title}
+              <button type="button" className="scenario-card" disabled={status !== 'ready'} onClick={() => void openScenario(pdm, s)}>
+                <b>{s.title}</b>
+                <span className="muted">{s.steps.length} steps</span>
               </button>
             </li>
           ))}
@@ -325,13 +333,32 @@ function Scenarios({ pdm }: { pdm: Pdm }) {
   return <ScenarioSteps pdm={pdm} scenario={open} done={steps} busy={status !== 'ready'} />
 }
 
+const PREDICTION_LABEL: Record<Prediction, string> = { ok: 'accepted', rejected: 'rejected', skipped: '' }
+
 function ScenarioSteps({ pdm, scenario, done, busy }: { pdm: Pdm; scenario: Scenario; done: Executed[]; busy: boolean }) {
+  const predictFirst = useSandbox((s) => s.predictFirst)
   const next = done.length
   const finished = next >= scenario.steps.length
-  const runNext = () => void runStep(pdm, scenario, next)
+  // Predict first: the next step waits for a guess (setup steps just run).
+  const asking = !finished && predictFirst && asksPrediction(scenario.steps[next])
+  const runNext = (prediction?: Prediction) => void runStep(pdm, scenario, next, prediction)
   const runAll = async () => {
-    for (let i = useSandbox.getState().steps.length; i < scenario.steps.length; i++) await runStep(pdm, scenario, i)
+    for (let i = useSandbox.getState().steps.length; i < scenario.steps.length; i++) await runStep(pdm, scenario, i, 'skipped')
   }
+  const score = predictionScore(done)
+
+  useEffect(() => {
+    if (!asking || busy) return
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return
+      if (e.key === '1') runNext('ok')
+      else if (e.key === '2') runNext('rejected')
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  })
+
   return (
     <Section
       title="Try this"
@@ -347,6 +374,8 @@ function ScenarioSteps({ pdm, scenario, done, busy }: { pdm: Pdm; scenario: Scen
         {scenario.steps.map((step, i) => {
           const r = done[i]
           const state = r ? (r.expected ? 'is-as-expected' : 'is-unexpected') : i === next ? 'is-next' : ''
+          const guessed = r?.prediction === 'ok' || r?.prediction === 'rejected'
+          const right = guessed && (r.prediction === 'ok') === r.outcome.ok
           return (
             <li key={i} className={`step ${state}`} data-testid="scenario-step">
               <div className="step-head">
@@ -354,6 +383,27 @@ function ScenarioSteps({ pdm, scenario, done, busy }: { pdm: Pdm; scenario: Scen
                 <span>{step.title}</span>
               </div>
               <pre className="stmt">{step.sql}</pre>
+              {i === next && asking && (
+                <div className="predict" aria-live="polite" aria-label="Predict first">
+                  <span className="predict-q">Will the database accept this?</span>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button type="button" className="btn btn-small" disabled={busy} onClick={() => runNext('ok')} title="Key 1">
+                      ✓ Accepted
+                    </button>
+                    <button type="button" className="btn btn-small" disabled={busy} onClick={() => runNext('rejected')} title="Key 2">
+                      ✗ Rejected
+                    </button>
+                    <button type="button" className="link-button text-xs" disabled={busy} onClick={() => runNext('skipped')}>
+                      Just run it →
+                    </button>
+                  </div>
+                </div>
+              )}
+              {r && guessed && (
+                <p className={`predict-result ${right ? 'is-right' : 'is-wrong'}`}>
+                  {right ? '✓ Right' : '✗ Not quite'} — you said {PREDICTION_LABEL[r.prediction!]}, it was {r.outcome.ok ? 'accepted' : 'rejected'}.
+                </p>
+              )}
               {r && (
                 <p className="step-why">
                   {r.outcome.ok ? 'Accepted. ' : `Rejected by ${r.outcome.violation.rejectedBy ?? 'the database'}. `}
@@ -370,21 +420,32 @@ function ScenarioSteps({ pdm, scenario, done, busy }: { pdm: Pdm; scenario: Scen
           )
         })}
       </ol>
-      <div className="flex gap-2">
+      {finished && score.made > 0 && (
+        <p className="predict-score">
+          Your predictions: <b>{score.right} of {score.made}</b> right
+        </p>
+      )}
+      <div className="flex flex-wrap items-center gap-2">
         {finished ? (
           <button type="button" className="btn" disabled={busy} onClick={() => void openScenario(pdm, scenario)}>
             Run again
           </button>
         ) : (
           <>
-            <button type="button" className="btn btn-primary" disabled={busy} onClick={runNext}>
-              Run step {next + 1}
-            </button>
+            {!asking && (
+              <button type="button" className="btn btn-primary" disabled={busy} onClick={() => runNext()}>
+                Run step {next + 1}
+              </button>
+            )}
             <button type="button" className="btn" disabled={busy} onClick={() => void runAll()}>
               Run all
             </button>
           </>
         )}
+        <label className="ml-auto flex items-center gap-1 text-xs muted">
+          <input type="checkbox" checked={predictFirst} onChange={(e) => useSandbox.getState().setPredictFirst(e.target.checked)} />
+          Guess before each step
+        </label>
       </div>
     </Section>
   )

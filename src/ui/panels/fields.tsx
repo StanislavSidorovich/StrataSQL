@@ -70,6 +70,7 @@ export function NameInput({
   onChange,
   ariaLabel,
   autoFocus,
+  list,
 }: {
   value: string
   isDefault: (name: string) => boolean
@@ -78,6 +79,8 @@ export function NameInput({
   onChange: (v: string) => void
   ariaLabel?: string
   autoFocus?: boolean
+  /** Id of a datalist with suggestions (words of the task text). */
+  list?: string
 }) {
   // While the user is typing, show exactly what they typed (even if it looks like a default name).
   const [typing, setTyping] = useState(false)
@@ -89,6 +92,8 @@ export function NameInput({
       placeholder={hint ? value : undefined}
       aria-label={ariaLabel}
       autoFocus={autoFocus}
+      list={list}
+      autoComplete="off"
       onChange={(e) => {
         setTyping(true)
         onChange(e.target.value.trim() === '' ? fallback : e.target.value)

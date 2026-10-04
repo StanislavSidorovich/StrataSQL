@@ -37,3 +37,37 @@ export function recordScore(p: Progress, caseId: string, level: Level, score: nu
   const k = progressKey(caseId, level)
   return score > (p[k] ?? -1) ? { ...p, [k]: score } : p
 }
+
+// ---------------------------------------------------------------- the learning path
+
+/** One step of a case on the path: watch it built, then levels 1–3 (level 0 is optional reading). */
+export type PathStep = 'walk' | 1 | 2 | 3
+
+export const PATH: PathStep[] = ['walk', 1, 2, 3]
+
+/** A level counts as done from this score ✱ (100 % is not required to move on; the best score stays visible). */
+export const DONE_AT = 80
+
+export function pathKey(caseId: string, step: PathStep): string {
+  return step === 'walk' ? `${caseId}:walk` : progressKey(caseId, step)
+}
+
+/** Records that the walkthrough of a case was watched to the end. */
+export function recordWalk(p: Progress, caseId: string): Progress {
+  return p[pathKey(caseId, 'walk')] === 100 ? p : { ...p, [pathKey(caseId, 'walk')]: 100 }
+}
+
+export function isStepDone(p: Progress, caseId: string, step: PathStep): boolean {
+  return (p[pathKey(caseId, step)] ?? -1) >= (step === 'walk' ? 100 : DONE_AT)
+}
+
+/** How many path steps of a case are done (0–4). */
+export function stepsDone(p: Progress, caseId: string): number {
+  return PATH.filter((s) => isStepDone(p, caseId, s)).length
+}
+
+/** The first step not done yet, cases in the given (easy → hard) order; null when everything is done. */
+export function nextPathStep(p: Progress, caseIds: string[]): { caseId: string; step: PathStep } | null {
+  for (const caseId of caseIds) for (const step of PATH) if (!isStepDone(p, caseId, step)) return { caseId, step }
+  return null
+}

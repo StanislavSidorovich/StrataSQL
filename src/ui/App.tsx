@@ -24,7 +24,7 @@ import { useEditor, type View } from './store'
 import { CASES } from '../data/cases'
 import { Menu } from './onboarding/Menu'
 import { Onboarding, useOnboarding } from './onboarding/Tour'
-import { TrainerPane } from './trainer/TrainerPane'
+import { NameSuggestionLists, TrainerPane } from './trainer/TrainerPane'
 import { confirmDiscardTask, isVeiled, leaveTrainer, useTrainer } from './trainer/trainerStore'
 
 /** The trainer cases, easiest first: their reference models are the examples. */
@@ -341,6 +341,7 @@ function Editor() {
             <TrainerPane />
           </SideDock>
         )}
+        <NameSuggestionLists />
         <main className="relative flex min-w-0 flex-1 flex-col">
           <div className="relative min-h-0 flex-1" data-tour="canvas">
           {view === 'cdm' && <Canvas dark={dark} />}

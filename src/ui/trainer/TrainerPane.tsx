@@ -6,10 +6,10 @@ import { compareModels, type CompareItem } from '../../core/compare'
 import { CASES, caseById, hintsFor, LEVELS, phrasesFor, splitParagraph, TAGS, type Tag, type TrainerCase } from '../../data/cases'
 import { applyAnswer, coach, referenceOf, type CoachState } from '../../data/coach'
 import { EXERCISES, exerciseById, type Exercise } from '../../data/exercises'
-import { progressKey, type Level } from '../../data/trainer'
+import { DONE_AT, isStepDone, nextPathStep, PATH, progressKey, stepsDone, type Level, type PathStep } from '../../data/trainer'
 import { richText } from '../help/HelpDrawer'
 import { lintFor, useEditor, type Selection } from '../store'
-import { confirmDiscardTask, isRightTag, isVeiled, tagScore, useTrainer } from './trainerStore'
+import { confirmDiscardTask, isRightTag, isVeiled, openPathStep, tagScore, taskSuggestions, useTrainer } from './trainerStore'
 import { WalkthroughPane } from './Walkthrough'
 
 const TAG_LABEL: Record<Tag, string> = Object.fromEntries(TAGS.map((t) => [t.id, t.label])) as Record<Tag, string>
@@ -55,6 +55,69 @@ export function TrainerPane() {
   return <TaskPane c={c} level={session.level} />
 }
 
+/** Name fields complete words of the task text (“co…” → contacts). */
+function SuggestToggle() {
+  const on = useTrainer((s) => s.suggestNames)
+  return (
+    <label className="flex items-center gap-1 text-xs muted mb-2" title="Every word of the text is offered, not only the answers">
+      <input type="checkbox" checked={on} onChange={(e) => useTrainer.getState().setSuggestNames(e.target.checked)} />
+      Suggest names from the text while I type
+    </label>
+  )
+}
+
+/** Datalists the entity and attribute name fields point at; empty outside a task. */
+export function NameSuggestionLists() {
+  const session = useTrainer((s) => s.session)
+  const on = useTrainer((s) => s.suggestNames)
+  const s = taskSuggestions(session, on)
+  if (!s) return null
+  return (
+    <>
+      <datalist id="suggest-entity">
+        {s.entities.map((w) => (
+          <option key={w} value={w} />
+        ))}
+      </datalist>
+      <datalist id="suggest-attribute">
+        {s.attributes.map((w) => (
+          <option key={w} value={w} />
+        ))}
+      </datalist>
+    </>
+  )
+}
+
+function pathStepLabel(step: PathStep): string {
+  return step === 'walk' ? 'watch it built' : `level ${step}, ${LEVELS[step].title.toLowerCase()}`
+}
+
+/** The first step of the path not done yet (cases easy → hard), as one button. */
+function NextStepButton({ label = 'Next' }: { label?: string }) {
+  const progress = useTrainer((s) => s.progress)
+  const next = nextPathStep(
+    progress,
+    CASES.map((c) => c.id),
+  )
+  if (!next) return <p className="trainer-done">✓ Every case is done — try the open exercises below the cases.</p>
+  const c = caseById(next.caseId)!
+  return (
+    <button type="button" className="btn btn-primary next-step" onClick={() => openPathStep(next.caseId, next.step)}>
+      {label}: {c.title} — {pathStepLabel(next.step)} →
+    </button>
+  )
+}
+
+function NextUp() {
+  const progress = useTrainer((s) => s.progress)
+  const started = Object.keys(progress).length > 0
+  return (
+    <div className="next-up">
+      <NextStepButton label={started ? 'Continue' : 'Start'} />
+    </div>
+  )
+}
+
 function CasePicker() {
   const progress = useTrainer((s) => s.progress)
   const session = useTrainer((s) => s.session)
@@ -71,30 +134,41 @@ function CasePicker() {
         <p className="muted">
           <b>▶ Watch it built</b> step by step, then practise: worked example → tag the text → complete the model → build it yourself. The cases go from easy to hard. Your own model is kept aside and comes back when you close the trainer.
         </p>
-        {CASES.map((c) => (
-          <section key={c.id} className="trainer-case">
+        <NextUp />
+        {CASES.map((c) => {
+          const done = stepsDone(progress, c.id)
+          return (
+          <section key={c.id} className={`trainer-case ${done === PATH.length ? 'is-done' : ''}`}>
             <div className="flex items-baseline gap-2">
               <h3>{c.title}</h3>
               <Stars n={c.difficulty} />
+              <span className="case-progress ml-auto" title={`${done} of ${PATH.length} steps done: watch it built, then levels 1–3 (from ${DONE_AT} %)`}>
+                {done === PATH.length ? '✓ done' : `${done} / ${PATH.length}`}
+                <span className="case-progress-bar" aria-hidden>
+                  <span style={{ width: `${(100 * done) / PATH.length}%` }} />
+                </span>
+              </span>
             </div>
             <p className="muted text-xs">{c.source}</p>
             <p className="text-xs">{c.concepts.join(' · ')}</p>
             <div className="trainer-levels">
-              <button type="button" className="btn btn-small btn-primary" onClick={() => confirmDiscardTask() && useTrainer.getState().walkTo(c.id, 0)} title="The model is built on an empty canvas one step at a time, with the reason for each step">
+              <button type="button" className="btn btn-small btn-primary" onClick={() => openPathStep(c.id, 'walk')} title="The model is built on an empty canvas one step at a time, with the reason for each step">
                 ▶ Watch it built
+                {isStepDone(progress, c.id, 'walk') && <span className="trainer-best is-full">✓</span>}
               </button>
               {LEVELS.map((l) => {
                 const best = progress[progressKey(c.id, l.level)]
                 return (
                   <button key={l.level} type="button" className="btn btn-small" onClick={() => confirmDiscardTask() && start(c.id, l.level)} title={l.task}>
                     <b>{l.level}</b> {l.title}
-                    {best !== undefined && <span className={`trainer-best ${best === 100 ? 'is-full' : ''}`}>{l.level === 0 ? '✓' : `${best}%`}</span>}
+                    {best !== undefined && <span className={`trainer-best ${best >= DONE_AT ? 'is-full' : ''}`}>{l.level === 0 ? '✓' : `${best}%`}</span>}
                   </button>
                 )
               })}
             </div>
           </section>
-        ))}
+          )
+        })}
         <h3 className="trainer-h3">Open exercises</h3>
         <p className="muted text-xs">
           A text with <b>no reference answer</b>, so there is no score and no hints. Model it, then use the Model check, the Physical view, the Sandbox and a list of questions to review your own decisions.
@@ -140,6 +214,7 @@ function ExercisePane({ x, ticked }: { x: Exercise; ticked: number[] }) {
         <p className="trainer-task">
           <b>Open exercise — no reference answer, no score.</b> Model the text. Then check your decisions: the Model check under the canvas, the tables in the Physical view, rows in the Sandbox, and the questions below.
         </p>
+        <SuggestToggle />
         <div className="trainer-spec walk-spec">
           {x.spec.map((t, p) => (
             <p key={p}>{t}</p>
@@ -215,6 +290,7 @@ function TaskPane({ c, level }: { c: TrainerCase; level: Level }) {
         )}
         {level === 0 && <WorkedExample c={c} />}
         {level === 1 && <Tagging c={c} />}
+        {level >= 2 && <SuggestToggle />}
         {level >= 2 && <CheckPanel c={c} level={level} />}
         {level < 3 && (
           <button type="button" className="btn btn-primary mt-3" onClick={() => go((level + 1) as Level)}>
@@ -327,6 +403,7 @@ function Tagging({ c }: { c: TrainerCase }) {
           )}
         </span>
       </div>
+      {score.answered === score.total && score.percent >= DONE_AT && <NextStepButton />}
       <div className="trainer-spec">
         {c.spec.map((_, p) => (
           <p key={p}>
@@ -442,6 +519,7 @@ function CheckPanel({ c, level }: { c: TrainerCase; level: Level }) {
             </p>
           )}
           {check.result.score === 100 && check.lintErrors === 0 && <p className="trainer-done">✓ Everything the reference has is in your model.</p>}
+          {!stale && check.result.score >= DONE_AT && <NextStepButton />}
           {groups.map(([st, items]) =>
             items.length === 0 ? null : (
               <details key={st} className={`trainer-group status-${st}`} open={st !== 'matched'}>

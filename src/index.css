@@ -882,6 +882,62 @@ body {
 .step-warn {
   color: var(--danger);
 }
+.scenario-list:has(.scenario-card) {
+  list-style: none;
+  padding: 0;
+}
+.scenario-card {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  background: var(--panel-bg);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.scenario-card:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+.scenario-card:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.predict {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 5px;
+  background: var(--accent-soft);
+}
+.predict-q {
+  font-weight: 600;
+}
+.predict-result {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+}
+.predict-result.is-right {
+  color: var(--migrated);
+}
+.predict-result.is-wrong {
+  color: var(--danger);
+}
+.predict-score {
+  margin: 0;
+}
+.data-grid td.grid-empty {
+  white-space: normal;
+  color: var(--muted);
+  font-family: system-ui, sans-serif;
+  padding: 10px 8px;
+}
 
 /* ------------------------------------------------------------ help buttons and drawer */
 
@@ -1249,10 +1305,53 @@ body {
   color: var(--ok);
   font-weight: 700;
 }
+.btn-primary .trainer-best.is-full {
+  color: inherit;
+}
+.trainer-case.is-done {
+  border-color: var(--ok);
+}
+.case-progress {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.trainer-case.is-done .case-progress {
+  color: var(--ok);
+  font-weight: 700;
+}
+.case-progress-bar {
+  display: inline-block;
+  width: 44px;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--panel-border);
+  overflow: hidden;
+}
+.case-progress-bar > span {
+  display: block;
+  height: 100%;
+  background: var(--ok);
+}
+.next-up {
+  display: flex;
+}
+.next-step {
+  align-self: flex-start;
+  white-space: normal;
+  text-align: left;
+}
 .stars {
   color: var(--warning);
   font-size: 12px;
   letter-spacing: 1px;
+}
+.stars .muted {
+  color: var(--panel-border);
+  font-size: inherit;
 }
 .trainer-spec p {
   margin: 0 0 8px;
