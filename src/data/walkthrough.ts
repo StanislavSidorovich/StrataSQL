@@ -42,6 +42,8 @@ export interface WalkStep {
   text: string[]
   /** Indices into `case.spans`: the words of the text this step turns into the model. */
   spans: number[]
+  /** Spans whose *why* the step's note already says: the pane shows only “phrase → tag” for them. */
+  quiet?: number[]
   /** Tables the step creates or changes, PowerDesigner style: `BOOK: book_id <pk>, isbn <ak>, …`. */
   tables: string[]
   /** Elements added by this step (highlighted on the canvas; the first one is selected). */
@@ -51,6 +53,24 @@ export interface WalkStep {
   /** Asked before the step is revealed (only some steps have one). */
   question?: WalkQuestion
   model: Model
+}
+
+const FILLER = new Set(['with', 'that', 'this', 'from', 'into', 'have', 'here', 'there', 'them', 'they', 'their', 'only', 'each', 'every', 'which', 'what', 'when', 'also', 'gets', 'than', 'then', 'just', 'does', 'more', 'some', 'same'])
+/** Content words of a paragraph: markup and short or filler words dropped, a plural *s* cut. */
+const contentWords = (text: string) =>
+  text
+    .toLowerCase()
+    .replace(/[*`<>“”"(),.:;!?…—→]/g, ' ')
+    .split(/\s+/)
+    .filter((w) => w.length >= 4 && !FILLER.has(w))
+    .map((w) => w.replace(/(?<=[a-z]{3})(es|s)$/, '').replace(/ness$/, ''))
+
+/** True when at least 60 % of the paragraph's content words are already in the other texts. */
+export function repeats(paragraph: string, others: string[]): boolean {
+  const words = contentWords(paragraph)
+  if (!words.length || !others.length) return false
+  const known = new Set(others.flatMap(contentWords))
+  return words.filter((w) => known.has(w)).length / words.length >= 0.6
 }
 
 interface Shown {
@@ -149,13 +169,27 @@ export function walkthroughSteps(c: TrainerCase, ref: Model = c.build()): WalkSt
   ) => {
     const model = snapshot(ref, shown)
     const pdm = generatePdm(model)
-    const text = step.text.filter((t): t is string => !!t)
+    const spans = spansOf.get(step.key) ?? []
+    // The phrase boxes come first: a generated paragraph that only repeats their *why* is left out,
+    // and a phrase whose *why* the authored note says again shows without it. Readings with the
+    // model's own data (cardinalities, attribute lists, key columns) always stay.
+    const whys = spans.map((i) => c.spans[i].why)
+    const data = /^(Relationship `|Attributes:|Each fact|`)/
+    const text = step.text.filter((t): t is string => !!t && (data.test(t) || !repeats(t, whys)))
     const n = note(step.key)
     if (n) text.push(n)
-    const spans = spansOf.get(step.key) ?? []
+    const quiet = n ? spans.filter((i) => repeats(c.spans[i].why, [n])) : []
     const { question: ask, ...rest } = step
     const question = typeof ask === 'function' ? ask(spans) : ask
-    steps.push({ ...rest, text, spans, tables: (step.tables?.(pdm) ?? []).map(tableLine), model, ...(question ? { question } : {}) })
+    steps.push({
+      ...rest,
+      text,
+      spans,
+      ...(quiet.length ? { quiet } : {}),
+      tables: (step.tables?.(pdm) ?? []).map(tableLine),
+      model,
+      ...(question ? { question } : {}),
+    })
   }
 
   const dependentOn = (e: Entity) =>
@@ -430,7 +464,7 @@ export function walkthroughSteps(c: TrainerCase, ref: Model = c.build()): WalkSt
     title: `${c.title}: read the text`,
     text: [
       'We build the model from the text, the way you would on paper: first the **things** it talks about (entities), then their **facts** (attributes), how each one is **told apart** (identifier), and how they are **linked** (relationships).',
-      'Each step marks its words in the text, adds the new element to the canvas (highlighted) and shows the tables it produces. The panel on the right shows the selected element.',
+      'Each step marks its words in the text, adds the new element to the canvas (highlighted) and shows the tables it produces. The panel on the right is hidden to give the diagram room; open it with › to see the selected element.',
       'Before some steps it is **your turn**: predict first (an entity or an attribute? which table gets the foreign key?), then see the step.',
     ],
     focus: [],

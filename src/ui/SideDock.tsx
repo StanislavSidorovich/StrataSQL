@@ -1,5 +1,6 @@
 // A side column that can be hidden and resized: drag its inner edge, double-click the edge to reset.
-// The width is remembered per side; a change of `revealKey` opens a hidden column again.
+// The width is remembered per side; a change of `revealKey` opens a hidden column again, `autoHide`
+// starts it closed.
 // The body is zoomed by the text size (Appearance.tsx); dividing by the zoom keeps the width on screen.
 
 import { useEffect, useRef, useState, type ReactNode } from 'react'
@@ -13,14 +14,26 @@ const readWidth = (key: string) => {
   }
 }
 
-export function SideDock(props: { side: 'left' | 'right'; name: string; defaultWidth: number; revealKey?: string; children: ReactNode }) {
-  const { side, name, defaultWidth, revealKey, children } = props
+export function SideDock(props: { side: 'left' | 'right'; name: string; defaultWidth: number; revealKey?: string; autoHide?: boolean; children: ReactNode }) {
+  const { side, name, defaultWidth, revealKey, autoHide = false, children } = props
   const storageKey = `stratasql.dock.${side}`
   const [width, setWidth] = useState(() => readWidth(storageKey) ?? defaultWidth)
-  const [open, setOpen] = useState(true)
+  const [open, setOpen] = useState(!autoHide)
   const drag = useRef<{ x: number; w: number } | null>(null)
 
-  useEffect(() => setOpen(true), [revealKey])
+  // `autoHide` (a walkthrough, a narrow screen) closes the column and opens it again when it ends;
+  // a new non-empty `revealKey` opens it in any case.
+  const seen = useRef({ revealKey, autoHide })
+  useEffect(() => {
+    if (revealKey === seen.current.revealKey) return
+    seen.current.revealKey = revealKey
+    if (revealKey) setOpen(true)
+  }, [revealKey])
+  useEffect(() => {
+    if (autoHide === seen.current.autoHide) return
+    seen.current.autoHide = autoHide
+    setOpen(!autoHide)
+  }, [autoHide])
   useEffect(() => {
     try {
       localStorage.setItem(storageKey, String(Math.round(width)))

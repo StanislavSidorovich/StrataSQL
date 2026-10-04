@@ -9,10 +9,12 @@ Stages follow SPEC §12. A stage is done only when its acceptance criteria pass.
 | 2.5 SQL sandbox | ✅ done (2026-10-02) | Generated schema runs in the browser; inserting conflicting rows shows the constraint that rejects them |
 | 3. Linter + Help | ✅ done (2026-10-02) | L01–L10 with tests; ≥ 15 help cards; `?` on every property (L11 added with stage 4) |
 | 4. Trainer | ✅ done (2026-10-02) | 3 cases × levels 0–3; comparator correct on references and seeded wrong models |
-| 5. Guided start | ✅ acceptance met (2026-10-03, v0.5.0) — 5a–5c, 5d (.cdm) done; 5e polish and `.pdm` reverse carried over | A first-time user learns the screen in a tour, watches a case built step by step, and builds one alone with “next hint” |
+| 5. Guided start | ✅ acceptance met (2026-10-03, v0.5.0) — 5a–5e done (5e finished in v0.8.0); `.pdm` reverse carried over | A first-time user learns the screen in a tour, watches a case built step by step, and builds one alone with “next hint” |
 | 6. AI review | ⏭ optional | Optional, behind a user-provided API key |
 
-**Where we are (2026-10-04, v0.7.0):** export to PowerDesigner `.cdm` and **My task** (own text with self-tagging) are in; next is backlog 5–9 in **Next steps**.
+**Where we are (2026-10-04, v0.8.0):** the pre-LinkedIn polish sprint is in: readable diagrams at 1366 px, the toolbar on one row down to a 1024 px tablet, “Link as:” and Trainer as a second call to action, icons, a “Saved” indicator, no repeated *why* in the walkthrough. Next: the owner's checks before the post (Post Inspector, guide, professor's answer), then `.pdm` reverse import.
+
+**Earlier (2026-10-04, v0.7.0):** export to PowerDesigner `.cdm` and **My task** (own text with self-tagging).
 
 **Earlier (2026-10-04, v0.6.0 + UX review):** 8 cases + 5 exercises, PowerDesigner cross-check, live at model.quaera.app. The UX review fixed the first-minute rough edges (gentle hint for a new entity, name focus, wrapping phrases, zoom, minimap, phone note). Then the two top backlog items: the walkthrough now asks before some steps (predict → see), and level 1 hides the model until the text is tagged. Then the owner's requests: default names as grey hints, text size, canvas/panel colours, Save as. Backlog 1–4, name suggestions, text size and author links are done since; the open work is in **Next steps** below. LinkedIn post after the professor answers about the 3 course cases.
 
@@ -20,14 +22,15 @@ Stages follow SPEC §12. A stage is done only when its acceptance criteria pass.
 
 1. ✅ **Export to PowerDesigner `.cdm`** (2026-10-04) — **File → Export for PowerDesigner**; still to do: the owner opens an exported file in PowerDesigner 16 and generates the PDM from it (only our own import has read these files so far)
 2. ✅ **My task (own text)** (2026-10-04, v0.7.0)
-3. **Readable diagrams at 1366 px** (backlog 5)
-4. **Tablet / 1280 px + toolbar on one row** (backlog 6, incl. the long model name)
-5. **Toolbar labels**: “Link as:”, Trainer as a second primary button (backlog 7)
-6. **Walkthrough**: the step box repeats the phrase’s *why* (backlog 8)
-7. **Before the LinkedIn post**: short guide (video + cheat sheet), Open Graph check in Post Inspector (backlog 9); the professor email about the 3 course cases
+3. ✅ **Readable diagrams at 1366 px** (backlog 5, v0.8.0)
+4. ✅ **Tablet / 1280 px + toolbar on one row** (backlog 6, v0.8.0)
+5. ✅ **Toolbar labels**: “Link as:”, Trainer as a second call to action (backlog 7, v0.8.0)
+6. ✅ **Walkthrough**: no repeated *why* (backlog 8, v0.8.0)
+7. **Before the LinkedIn post** (owner): LinkedIn Post Inspector on https://model.quaera.app (the tags and the 1200×630 image are checked and live ✅), the professor's answer about the 3 course cases, a short guide (2–3 min video; the in-app shortcut sheet is `?`)
 8. **`.pdm` reverse import** (tables → entities; `pdm-reader.ts` is the first half)
-9. **5e leftovers**: lucide icons, “Saved” indicator, shortcut sheet
+9. ✅ **5e leftovers**: lucide icons, “Saved” indicator, shortcut sheet on `?` (v0.8.0)
 10. **Stage 6 AI review** (optional, own API key)
+11. Smaller, found on the way: parallel relationships (Football home / away) draw their labels on top of each other; Timetables still fits at ~58 % at 1366 px (12 entities, its columns are already tight); the walkthrough does not refit when the window is resized
 
 **Earlier (2026-10-03, v0.5.0):** guided start is in: a welcome card and a tour, the four cases watched built step by step (Library starter first), built alone with a Next hint that walks the same order, and PowerDesigner `.cdm` import. Next: 5e UI polish, then optional AI review (stage 6).
 
@@ -258,11 +261,22 @@ My task (2026-10-04, v0.7.0):
 - [x] Fixed on the way: in a long left column the text box of open exercises shrank to nothing (flex); it keeps its height now
 - [x] `src/data/mytask.ts` + tests; checked in the dev build (Playwright 1366×820): dialog, tagging by selection, Bike entity clears its line, reload, edit text; 364 tests
 
+Pre-LinkedIn polish (2026-10-04, v0.8.0) — backlog 5–8 and the 5e leftovers:
+- [x] **Readable diagrams at 1366 px** (backlog 5): during a walkthrough the Properties column starts hidden (open it with ›; it comes back when the walkthrough ends), so the canvas grows from ~590 to ~980 px; wide example layouts are tighter (Hospital, Football, Ride Hailing x × 0.8, TV Shows × 0.85, Timetables y × 0.8). Final step zoom at 1366 px: Library / Hotel / Online Shop 50 % → 88 %, Ride Hailing 73 %, Hospital and Football 75 %, TV Shows 66 %, Timetables 58 %
+- [x] **Tablet / 1280 px** (backlog 6): the toolbar stays on one row at 1366, 1280 and 1024 px (breakpoints: model name hidden below 1440 — it is in the Model panel —, Help shows only its icon below 1280, views read CDM / PDM / SQL / Sandbox below 1200, brand and the word “Saved” go below 1100, icons only below 900); on a 768 px portrait tablet it wraps neatly into two rows. Below 1200 px the Properties column starts hidden and opens when something is selected
+- [x] **Toolbar labels** (backlog 7): **Link as:** before Relationship | Inheritance (a radio group labelled by it); **Trainer** is an accent-outlined button right after the views, filled while the trainer is on
+- [x] **Walkthrough repeats** (backlog 8): a generated paragraph that only repeats a phrase's *why* is left out (`repeats()`: ≥ 60 % of its content words already in the phrase boxes ✱), except readings with the model's data (cardinalities, attribute lists, key columns); a phrase whose *why* the authored note says again shows as “phrase → tag” only (`WalkStep.quiet`). Library: 6 repeated paragraphs gone, e.g. “Primary identifier <pi>: `card_no`.” after “The text names the identifier: `card_no` → primary identifier”
+- [x] **5e leftovers**: lucide icons (ISC) in the toolbar and the menus; **✓ Saved** next to the model name after every autosave (tooltip: saved in this browser at hh:mm, File → Save keeps a file); `?` opens the shortcut sheet (listed in it and in the Help menu)
+- [x] Open Graph: tags and `og-image.png` (1200×630) checked on the live site; the LinkedIn Post Inspector itself needs the owner's login
+- [x] Tests: `repeats()` and “no step repeats a phrase's why” for all 8 cases; 374 tests. Checked in the dev build (Playwright 1366×820, 1280, 1024, 768): all 8 final walkthrough steps (no overlaps), Exit reopens Properties, `?`, select-to-reveal at 1024, no console errors
+
+Built with: Claude Opus 5.5 (Claude Code), effort low.
+
 Owner's ideas for later (2026-10-04):
 - ✅ done in v0.7.0 — **Own task text** (“My task”): paste a text or load a `.txt` / `.md`; it shows in the left column like an open exercise (Model check counts, self-review checklist, name suggestions from it), saved in the browser. No reference, so no score — but a useful check without one: **the student tags phrases themselves** (select text → entity / attribute / relationship / identifier), and the pane lists tagged phrases with nothing in the model yet, and model elements no phrase mentions. Later, with stage 6 (AI review), the text + model can go to a model for comments. About one sprint
-- Toolbar still wraps into two rows at 1366 px when the model name is long (“Library — my model”) — part of backlog 6
+- ✅ Toolbar still wraps into two rows at 1366 px when the model name is long — fixed in v0.8.0 (the name moves to the Model panel below 1440 px)
 
-Backlog from the review (by value):
+Backlog from the review (by value; 5–8 done in v0.8.0):
 5. **Readable diagrams at 1366 px**: tighter example layouts (columns 380 px apart → ~260), or collapse the properties column by default during a walkthrough
 6. **Tablet / 1280 px**: the toolbar wraps into two rows at 1024 px; icons-only toolbar or overflow menu; side columns collapsed by default below 1200 px
 7. Toolbar: “Relationship | Inheritance” looks like tabs but is the link mode — label it “Link as:”; Trainer is a second primary button next to + Entity
@@ -332,6 +346,7 @@ The owner's guidance: the course's "discussed in class" points are not critical 
 - ✱ Walkthrough questions (2026-10-04): ask where the FK goes before every relationship, the identifier only when there is a choice, and “what does this phrase become” once plus for two-reading phrases; 1:1 accepts either side, an alternate identifier counts as a right answer to “which attribute tells one X apart”. Level 1 hides the model (with a Peek) — recall first, then compare.
 - ✱ Learning path (2026-10-04): a case is Watch it built + levels 1–3; a level is done from 80 % (perfect scores are not required to move on), level 0 is optional. Sandbox guesses are asked for every step except the setup.
 - ✱ Name suggestions (2026-10-04): all words of the text (plus singulars and word pairs), never only the answer words; on by default.
+- ✱ Walkthrough repeats (2026-10-04): the phrase box wins — a generated paragraph that says the same (≥ 60 % of its content words) is dropped, but cardinality readings, attribute lists and key columns always stay; the authored note wins over a phrase's *why*. The Properties column is hidden during a walkthrough (the diagram needs the room more).
 
 Still open:
 - SPEC §13: PD-style `0,n` labels shown by default (toggle later); associations not supported; UI in English first.

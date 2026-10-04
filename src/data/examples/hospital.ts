@@ -18,41 +18,41 @@ export function buildHospital(): Model {
   addAttribute(m, patient.id, { name: 'birth_date', dataType: 'Date', mandatory: true })
   addAttribute(m, patient.id, { name: 'phone', length: 20 })
 
-  const staff = addEntity(m, { name: 'Staff Member', position: { x: 600, y: 0 } })
+  const staff = addEntity(m, { name: 'Staff Member', position: { x: 490, y: 0 } })
   addAttribute(m, staff.id, { name: 'employee_no', dataType: 'Integer', primary: true })
   addAttribute(m, staff.id, { name: 'name', domainId: name.id, mandatory: true })
   addAttribute(m, staff.id, { name: 'hire_date', dataType: 'Date', mandatory: true })
 
-  const doctor = addEntity(m, { name: 'Doctor', position: { x: 420, y: 260 } })
+  const doctor = addEntity(m, { name: 'Doctor', position: { x: 340, y: 260 } })
   const licence = addAttribute(m, doctor.id, { name: 'licence_no', length: 20, mandatory: true })
   addIdentifier(m, doctor.id, { name: 'licence_no', isPrimary: false, attributeIds: [licence.id] })
 
-  const nurse = addEntity(m, { name: 'Nurse', position: { x: 800, y: 260 } })
+  const nurse = addEntity(m, { name: 'Nurse', position: { x: 650, y: 260 } })
   addAttribute(m, nurse.id, { name: 'grade', length: 20, mandatory: true })
 
-  addInheritance(m, staff.id, [doctor.id, nurse.id], { name: 'staff_kind', mutuallyExclusive: true, complete: true, generation: 'both', position: { x: 660, y: 170 } })
+  addInheritance(m, staff.id, [doctor.id, nurse.id], { name: 'staff_kind', mutuallyExclusive: true, complete: true, generation: 'both', position: { x: 540, y: 170 } })
 
   const specialty = addEntity(m, { name: 'Specialty', position: { x: 40, y: 40 } })
   addAttribute(m, specialty.id, { name: 'specialty_id', dataType: 'Integer', primary: true })
   addAttribute(m, specialty.id, { name: 'name', length: 50, mandatory: true })
 
-  const appointment = addEntity(m, { name: 'Appointment', position: { x: 200, y: 560 } })
+  const appointment = addEntity(m, { name: 'Appointment', position: { x: 170, y: 560 } })
   addAttribute(m, appointment.id, { name: 'appointment_id', dataType: 'Integer', primary: true })
   addAttribute(m, appointment.id, { name: 'starts_at', dataType: 'Date & time', mandatory: true })
   addAttribute(m, appointment.id, { name: 'reason', length: 200, mandatory: true })
   addAttribute(m, appointment.id, { name: 'notes', dataType: 'Text', comment: 'Written after the visit' })
   updateEntity(m, appointment.id, { comment: 'Patient × Doctor at a time; the same pair meets many times, hence an own id.' })
 
-  const ward = addEntity(m, { name: 'Ward', position: { x: 1180, y: 40 } })
+  const ward = addEntity(m, { name: 'Ward', position: { x: 950, y: 40 } })
   addAttribute(m, ward.id, { name: 'ward_id', dataType: 'Integer', primary: true })
   addAttribute(m, ward.id, { name: 'name', length: 50, mandatory: true })
   addAttribute(m, ward.id, { name: 'floor', dataType: 'Short integer', mandatory: true })
 
-  const bed = addEntity(m, { name: 'Bed', position: { x: 1180, y: 340 } })
+  const bed = addEntity(m, { name: 'Bed', position: { x: 950, y: 340 } })
   addAttribute(m, bed.id, { name: 'bed_no', dataType: 'Short integer', primary: true })
   updateEntity(m, bed.id, { comment: 'Numbered inside its ward: bed 1 of ward A is not bed 1 of ward B.' })
 
-  const admission = addEntity(m, { name: 'Admission', position: { x: 800, y: 560 } })
+  const admission = addEntity(m, { name: 'Admission', position: { x: 650, y: 560 } })
   addAttribute(m, admission.id, { name: 'admission_id', dataType: 'Integer', primary: true })
   addAttribute(m, admission.id, { name: 'admitted_on', dataType: 'Date', mandatory: true })
   addAttribute(m, admission.id, { name: 'discharged_on', dataType: 'Date', comment: 'NULL while the patient is in hospital' })

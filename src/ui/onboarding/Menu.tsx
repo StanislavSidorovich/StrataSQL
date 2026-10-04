@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 
 export interface MenuItem {
   label: string
+  icon?: ReactNode
   hint?: string
   onSelect: () => void
   disabled?: boolean
@@ -13,7 +14,7 @@ export interface MenuHeading {
   heading: string
 }
 
-export function Menu(props: { label: ReactNode; title?: string; items: (MenuItem | MenuHeading | 'separator')[]; align?: 'left' | 'right'; active?: boolean; tour?: string }) {
+export function Menu(props: { label: ReactNode; title?: string; className?: string; items: (MenuItem | MenuHeading | 'separator')[]; align?: 'left' | 'right'; active?: boolean; tour?: string }) {
   const [open, setOpen] = useState(false)
   const root = useRef<HTMLDivElement>(null)
 
@@ -35,7 +36,7 @@ export function Menu(props: { label: ReactNode; title?: string; items: (MenuItem
 
   return (
     <div className="menu" ref={root} data-tour={props.tour}>
-      <button type="button" className={`btn ${props.active ? 'btn-primary' : ''}`} aria-haspopup="menu" aria-expanded={open} title={props.title} onClick={() => setOpen((o) => !o)}>
+      <button type="button" className={`btn ${props.active ? 'btn-primary' : ''} ${props.className ?? ''}`} aria-haspopup="menu" aria-expanded={open} title={props.title} onClick={() => setOpen((o) => !o)}>
         {props.label} <span aria-hidden className="menu-caret">▾</span>
       </button>
       {open && (
@@ -59,7 +60,10 @@ export function Menu(props: { label: ReactNode; title?: string; items: (MenuItem
                   it.onSelect()
                 }}
               >
-                <span>{it.label}</span>
+                <span className="menu-item-label">
+                  {it.icon && <span className="menu-icon">{it.icon}</span>}
+                  {it.label}
+                </span>
                 {it.hint && <kbd>{it.hint}</kbd>}
               </button>
             ),

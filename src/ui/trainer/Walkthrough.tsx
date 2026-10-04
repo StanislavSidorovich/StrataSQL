@@ -142,7 +142,7 @@ export function WalkthroughPane({ c, step }: { c: TrainerCase; step: number }) {
               <div>
                 <b>“{c.spans[i].phrase}”</b> → {TAG_LABEL[c.spans[i].tag]}
               </div>
-              <div>{richText(c.spans[i].why)}</div>
+              {!s.quiet?.includes(i) && <div>{richText(c.spans[i].why)}</div>}
             </div>
           ))}
           {s.text.map((t, k) => (

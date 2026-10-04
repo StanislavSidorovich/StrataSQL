@@ -23,44 +23,44 @@ export function buildTvShows(): Model {
   addAttribute(m, show.id, { name: 'genre', length: 50 })
   addAttribute(m, show.id, { name: 'release_year', dataType: 'Short integer' })
 
-  const episode = addEntity(m, { name: 'Episode', position: { x: 40, y: 300 } })
+  const episode = addEntity(m, { name: 'Episode', position: { x: 40, y: 260 } })
   addAttribute(m, episode.id, { name: 'episode_id', dataType: 'Integer', primary: true })
   addAttribute(m, episode.id, { name: 'title', length: 100, mandatory: true })
   addAttribute(m, episode.id, { name: 'summary', dataType: 'Text' })
   addAttribute(m, episode.id, { name: 'duration_min', dataType: 'Short integer' })
 
-  const scene = addEntity(m, { name: 'Scene', position: { x: 40, y: 560 } })
+  const scene = addEntity(m, { name: 'Scene', position: { x: 40, y: 480 } })
   addAttribute(m, scene.id, { name: 'order_no', dataType: 'Integer', primary: true })
   updateEntity(m, scene.id, { comment: 'Identified by its episode and a (not sequential) order number.' })
 
-  const indoor = addEntity(m, { name: 'IndoorScene', position: { x: -110, y: 860 } })
+  const indoor = addEntity(m, { name: 'IndoorScene', position: { x: -90, y: 740 } })
   addAttribute(m, indoor.id, { name: 'scenario', length: 100 })
   addAttribute(m, indoor.id, { name: 'studio', length: 100 })
 
-  const outdoor = addEntity(m, { name: 'OutdoorScene', position: { x: 160, y: 860 } })
+  const outdoor = addEntity(m, { name: 'OutdoorScene', position: { x: 140, y: 740 } })
   addAttribute(m, outdoor.id, { name: 'location', length: 100 })
   addAttribute(m, outdoor.id, { name: 'landscape_type', length: 50 })
 
-  const person = addEntity(m, { name: 'Person', position: { x: 1130, y: 330 } })
+  const person = addEntity(m, { name: 'Person', position: { x: 970, y: 290 } })
   addAttribute(m, person.id, { name: 'person_id', dataType: 'Integer', primary: true })
   addAttribute(m, person.id, { name: 'name', length: 100, mandatory: true })
   addAttribute(m, person.id, { name: 'phone', domainId: phone.id })
   addAttribute(m, person.id, { name: 'email', domainId: email.id })
 
-  const director = addEntity(m, { name: 'Director', position: { x: 760, y: 200 } })
-  const actor = addEntity(m, { name: 'Actor', position: { x: 760, y: 520 } })
-  const technician = addEntity(m, { name: 'Technician', position: { x: 760, y: 760 } })
+  const director = addEntity(m, { name: 'Director', position: { x: 650, y: 180 } })
+  const actor = addEntity(m, { name: 'Actor', position: { x: 650, y: 450 } })
+  const technician = addEntity(m, { name: 'Technician', position: { x: 650, y: 650 } })
 
-  const role = addEntity(m, { name: 'Role', position: { x: 420, y: 520 } })
+  const role = addEntity(m, { name: 'Role', position: { x: 360, y: 450 } })
   addAttribute(m, role.id, { name: 'role_name', length: 100, mandatory: true })
   updateEntity(m, role.id, { comment: 'Actor × Scene, no own id: just one role per actor in each scene.' })
 
-  const techFn = addEntity(m, { name: 'TechnicianFunction', position: { x: 400, y: 760 } })
+  const techFn = addEntity(m, { name: 'TechnicianFunction', position: { x: 350, y: 650 } })
   addAttribute(m, techFn.id, { name: 'function_no', dataType: 'Integer', primary: true })
   addAttribute(m, techFn.id, { name: 'function_name', length: 50, mandatory: true })
   updateEntity(m, techFn.id, { comment: 'Technician × Scene with own id: several functions in the same scene.' })
 
-  const showDirector = addEntity(m, { name: 'ShowDirector', position: { x: 420, y: 60 } })
+  const showDirector = addEntity(m, { name: 'ShowDirector', position: { x: 360, y: 60 } })
 
   addRelationship(m, show.id, episode.id, { name: 'has_episodes', cardinalityA: CARD.oneOne, cardinalityB: CARD.oneMany })
   addRelationship(m, episode.id, scene.id, { name: 'has_scenes', cardinalityB: CARD.oneMany, dependentSide: 'B' })
@@ -83,14 +83,14 @@ export function buildTvShows(): Model {
     mutuallyExclusive: true,
     complete: true,
     generation: 'both',
-    position: { x: 110, y: 760 },
+    position: { x: 100, y: 650 },
   })
   const participants = addInheritance(m, person.id, [director.id, actor.id, technician.id], {
     name: 'participant_kind',
     mutuallyExclusive: false,
     complete: true,
     generation: 'both',
-    position: { x: 1010, y: 520 },
+    position: { x: 860, y: 450 },
   })
   participants.comment = 'Not exclusive: the same person may act in one show and direct another.'
 

@@ -132,11 +132,36 @@ body {
   color: var(--accent);
 }
 .toolbar-model {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
   color: var(--muted);
-  max-width: 160px;
+  white-space: nowrap;
+}
+.toolbar-model-name {
+  max-width: 180px;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
+}
+/* Autosave: fades in on every save (the element is re-keyed), then stays quiet. */
+.saved-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 12px;
+  color: var(--muted);
+  animation: saved-flash 1.2s ease-out;
+}
+@keyframes saved-flash {
+  from {
+    color: var(--accent);
+  }
+}
+.toolbar-label {
+  color: var(--muted);
+  font-size: 12px;
+  margin-left: 4px;
 }
 .toolbar-group {
   display: flex;
@@ -165,6 +190,30 @@ body {
   background: var(--accent);
   border-color: var(--accent);
   color: #fff;
+}
+/* A second call to action (Trainer): accent outline, filled while it is on. */
+.btn-accent {
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
+.btn-icon,
+.menu-item-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.btn-icon svg {
+  flex: none;
+}
+.menu-icon {
+  display: inline-flex;
+  width: 16px;
+  color: var(--muted);
+}
+/* Short labels for narrow screens (CDM / PDM), see the toolbar breakpoints. */
+.label-short {
+  display: none;
 }
 .btn-small {
   padding: 1px 8px;
@@ -525,7 +574,52 @@ body {
 /* ------------------------------------------------------------ physical model */
 
 .view-switch button {
-  min-width: 78px;
+  padding: 4px 9px;
+}
+/* An icon alone: a square-ish button. */
+.btn-icon:not(:has(span)) {
+  padding: 4px 7px;
+}
+
+/* Toolbar on one row down to a 1024 px tablet: tighter below 1440 px, short labels below 1200 px, no brand below 1100 px, icons only below 900 px. */
+@media (max-width: 1439px) {
+  .toolbar {
+    gap: 10px;
+  }
+  .toolbar-model-name {
+    display: none;
+  }
+}
+@media (max-width: 1279px) {
+  .menu .btn-icon .label-long {
+    display: none;
+  }
+}
+@media (max-width: 1199px) {
+  .toolbar {
+    gap: 8px;
+    padding: 8px 10px;
+  }
+  .label-long {
+    display: none;
+  }
+  .label-short {
+    display: inline;
+  }
+  .toolbar-label {
+    display: none;
+  }
+}
+@media (max-width: 1099px) {
+  .brand,
+  .saved-label {
+    display: none;
+  }
+}
+@media (max-width: 899px) {
+  .btn-icon > span:not(.menu-caret) {
+    display: none;
+  }
 }
 .table-node {
   min-width: calc(220px * var(--diagram-zoom, 1));

@@ -53,6 +53,8 @@ interface EditorState {
   focusName: Id | null
   /** Goes up on every load (New, Open, example): a file chosen with “Save as” belongs to one document. */
   doc: number
+  /** When autosave last wrote the model to the browser (0 = not in this visit); shown as “Saved”. */
+  savedAt: number
 
   /** Runs an edit operation on a draft; on ModelError the model is untouched and the message is shown. */
   apply: (edit: (m: Model) => void, opts?: ApplyOptions) => boolean
@@ -77,6 +79,7 @@ export const useEditor = create<EditorState>()((set, get) => ({
   selection: null,
   focusName: null,
   doc: 0,
+  savedAt: 0,
   linkKind: 'relationship',
   view: 'cdm',
   tableSelection: null,
@@ -195,6 +198,7 @@ function saveNow() {
       localStorage.setItem(STORAGE_KEY, serializeModel(trainerBackup))
       localStorage.setItem(TRAINER_MODEL_KEY, serializeModel(model))
     } else localStorage.setItem(STORAGE_KEY, serializeModel(model))
+    useEditor.setState({ savedAt: Date.now() })
   } catch {
     // Storage full or unavailable: the file save still works.
   }

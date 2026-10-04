@@ -31,26 +31,26 @@ export function buildTimetables(): Model {
   const year = addEntity(m, { name: 'AcademicYear', position: { x: 1200, y: 40 } })
   addAttribute(m, year.id, { name: 'year_id', length: 7, primary: true, comment: '2026/27' })
 
-  const assignment = addEntity(m, { name: 'TeachingAssignment', position: { x: 920, y: 260 } })
+  const assignment = addEntity(m, { name: 'TeachingAssignment', position: { x: 920, y: 220 } })
   updateEntity(m, assignment.id, {
     comment: '"Assignment of Teaching Service": a professor teaches a course in an academic year. Class must reference it.',
   })
 
-  const room = addEntity(m, { name: 'Room', position: { x: 330, y: 330 } })
+  const room = addEntity(m, { name: 'Room', position: { x: 330, y: 270 } })
   addAttribute(m, room.id, { name: 'room_id', dataType: 'Integer', primary: true })
   addAttribute(m, room.id, { name: 'name', length: 50, mandatory: true })
   addAttribute(m, room.id, { name: 'capacity', dataType: 'Short integer' })
 
-  const shift = addEntity(m, { name: 'Shift', position: { x: 1260, y: 330 } })
+  const shift = addEntity(m, { name: 'Shift', position: { x: 1260, y: 270 } })
   addAttribute(m, shift.id, { name: 'shift_code', length: 2, primary: true, comment: 'TP, P1, P2, P3, P4' })
 
-  const period = addEntity(m, { name: 'Period', position: { x: 1260, y: 520 } })
+  const period = addEntity(m, { name: 'Period', position: { x: 1260, y: 420 } })
   addAttribute(m, period.id, { name: 'period_id', dataType: 'Integer', primary: true })
   addAttribute(m, period.id, { name: 'start_date', dataType: 'Date', mandatory: true })
   addAttribute(m, period.id, { name: 'end_date', dataType: 'Date', mandatory: true })
   updateEntity(m, period.id, { comment: 'Weeks in which one version of the timetable is valid.' })
 
-  const klass = addEntity(m, { name: 'Class', position: { x: 920, y: 500 } })
+  const klass = addEntity(m, { name: 'Class', position: { x: 920, y: 410 } })
   addAttribute(m, klass.id, { name: 'weekday', dataType: 'Short integer', primary: true, comment: '1 = Monday … 7 = Sunday' })
   updateEntity(m, klass.id, {
     comment:
@@ -58,11 +58,11 @@ export function buildTimetables(): Model {
       'Identified by that context, so all of it migrates into ClassSlot, where the clash rules become AKs.',
   })
 
-  const slot = addEntity(m, { name: 'Slot', position: { x: 330, y: 760 } })
+  const slot = addEntity(m, { name: 'Slot', position: { x: 330, y: 620 } })
   addAttribute(m, slot.id, { name: 'slot_id', dataType: 'Integer', primary: true })
   addAttribute(m, slot.id, { name: 'start_time', dataType: 'Time', mandatory: true, comment: '08:00, 08:30, …' })
 
-  const classSlot = addEntity(m, { name: 'ClassSlot', position: { x: 920, y: 820 } })
+  const classSlot = addEntity(m, { name: 'ClassSlot', position: { x: 920, y: 660 } })
   updateEntity(m, classSlot.id, {
     comment: 'One row per 30-minute slot a class occupies: overlapping intervals become equal values, so UNIQUE can catch them.',
   })

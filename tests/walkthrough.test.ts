@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest'
 import { foreignKeyHolder, generatePdm, relationshipKind } from '../src/core/cdm2pdm'
 import { integrityProblems } from '../src/core/serialize'
 import { CASES } from '../src/data/cases'
-import { walkthroughSteps } from '../src/data/walkthrough'
+import { repeats, walkthroughSteps } from '../src/data/walkthrough'
 
 describe.each(CASES.map((c) => [c.id, c] as const))('%s', (_, c) => {
   const ref = c.build()
@@ -32,6 +32,14 @@ describe.each(CASES.map((c) => [c.id, c] as const))('%s', (_, c) => {
   it('explains every phrase of the text exactly once', () => {
     const used = steps.flatMap((s) => s.spans)
     expect([...used].sort((a, b) => a - b)).toEqual(c.spans.map((_, i) => i))
+  })
+
+  it('does not repeat a phrase’s why in the step text', () => {
+    for (const s of steps) {
+      const whys = s.spans.filter((i) => !s.quiet?.includes(i)).map((i) => c.spans[i].why)
+      for (const t of s.text) if (!/^(Relationship `|Attributes:|Each fact|`)/.test(t) && t !== c.walk.notes?.[s.key]) expect(repeats(t, whys), `${s.key}: ${t}`).toBe(false)
+      for (const i of s.quiet ?? []) expect(s.spans).toContain(i)
+    }
   })
 
   it('introduces each relationship after both of its entities', () => {
@@ -129,5 +137,16 @@ describe('library (starter case)', () => {
     expect(loan.primaryKey?.columns).toEqual(['loan_id'])
     expect(loan.columns.find((x) => x.name === 'return_date')!.nullable).toBe(true)
     expect(loan.foreignKeys.map((f) => f.refTable).sort()).toEqual(['BOOK', 'MEMBER'])
+  })
+})
+
+describe('repeats', () => {
+  it('finds a paragraph that says what a phrase box already says', () => {
+    expect(repeats('Primary identifier <pi>: `card_no`.', ['The text names the identifier: `card_no` → primary identifier <pi>.'])).toBe(true)
+    expect(repeats('Alternate identifier <ai>: `isbn` — also unique, so the table gets a UNIQUE key.', ['A uniqueness rule → `isbn` becomes an alternate identifier <ai>, i.e. UNIQUE in the table.'])).toBe(true)
+  })
+  it('keeps a paragraph that adds something', () => {
+    expect(repeats('The **primary identifier** tells one instance from all others; it becomes the PRIMARY KEY of the table.', ['One value per book → attribute.'])).toBe(false)
+    expect(repeats('anything', [])).toBe(false)
   })
 })

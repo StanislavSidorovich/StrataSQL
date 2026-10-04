@@ -1,4 +1,5 @@
 import { ReactFlowProvider, useReactFlow } from '@xyflow/react'
+import { BookOpen, Check, CircleHelp, FileDown, FilePlus, FolderOpen, GraduationCap, Image as ImageIcon, Info, Keyboard, Maximize2, Moon, Play, Plus, Redo2, Save, SaveAll, Sun, Undo2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { emptyModel } from '../core/metamodel'
 import { addEntity, removeEntity, removeInheritance, removeRelationship } from '../core/ops'
@@ -31,12 +32,51 @@ import { confirmDiscardTask, isVeiled, leaveTrainer, useTrainer } from './traine
 /** The trainer cases, easiest first: their reference models are the examples. */
 const EXAMPLES = CASES.map((c) => ({ id: c.id, label: `${c.title} ${'★'.repeat(c.difficulty)}`, build: c.build }))
 
-const VIEWS: { id: View; label: string; title: string }[] = [
-  { id: 'cdm', label: 'Conceptual', title: 'Edit the conceptual data model (CDM)' },
-  { id: 'pdm', label: 'Physical', title: 'Tables generated from the CDM (PDM)' },
-  { id: 'sql', label: 'SQL', title: 'SQL Server DDL generated from the PDM' },
-  { id: 'sandbox', label: 'Sandbox', title: 'Run the schema in the browser: insert rows and see which constraint rejects them' },
+const VIEWS: { id: View; label: string; short: string; title: string }[] = [
+  { id: 'cdm', label: 'Conceptual', short: 'CDM', title: 'Edit the conceptual data model (CDM)' },
+  { id: 'pdm', label: 'Physical', short: 'PDM', title: 'Tables generated from the CDM (PDM)' },
+  { id: 'sql', label: 'SQL', short: 'SQL', title: 'SQL Server DDL generated from the PDM' },
+  { id: 'sandbox', label: 'Sandbox', short: 'Sandbox', title: 'Run the schema in the browser: insert rows and see which constraint rejects them' },
 ]
+
+/** Toolbar and menu icon size (lucide). */
+const ICON = 15
+
+/** Narrow screens (tablet, small laptop): the properties column starts hidden. */
+function useNarrow(): boolean {
+  const query = '(max-width: 1199px)'
+  const [narrow, setNarrow] = useState(() => window.matchMedia(query).matches)
+  useEffect(() => {
+    const mq = window.matchMedia(query)
+    const on = () => setNarrow(mq.matches)
+    mq.addEventListener('change', on)
+    return () => mq.removeEventListener('change', on)
+  }, [])
+  return narrow
+}
+
+/** The model name with the autosave state: “Saved” once the browser holds the latest edit. */
+function SavedState({ name }: { name: string }) {
+  const savedAt = useEditor((s) => s.savedAt)
+  const time = savedAt ? new Date(savedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''
+  return (
+    <div className="toolbar-model ml-auto">
+      <span className="toolbar-model-name" title="Model name">
+        {name}
+      </span>
+      {savedAt > 0 && (
+        <span
+          key={savedAt}
+          className="saved-state"
+          title={`Saved in this browser at ${time}: it comes back when you open the page again. File → Save keeps a copy as a file.`}
+        >
+          <Check size={13} aria-hidden />
+          <span className="saved-label">Saved</span>
+        </span>
+      )}
+    </div>
+  )
+}
 
 export function App() {
   return (
@@ -83,6 +123,7 @@ function Editor() {
   const pickerOnly = useTrainer((s) => s.session === null && s.pickerOpen)
   const walkOn = useEditor((s) => s.walkthrough !== null)
   const veiled = useTrainer((s) => isVeiled(s.session))
+  const narrow = useNarrow()
   // Opening another case, level or the picker shows a hidden trainer column again.
   const trainerKey = useTrainer((s) => `${s.pickerOpen}|${s.session?.caseId}|${s.session?.level}|${s.session?.walk === undefined}`)
   const { undo, redo, load, apply, select, setLinkKind, setView, showError } = useEditor.getState()
@@ -172,6 +213,8 @@ function Editor() {
       } else if (mod && (e.key.toLowerCase() === 'y' || (e.key.toLowerCase() === 'z' && e.shiftKey))) {
         e.preventDefault()
         redo()
+      } else if (e.key === '?') {
+        useOnboarding.getState().showShortcuts(true)
       } else if ((e.key === 'Delete' || e.key === 'Backspace') && useEditor.getState().view === 'cdm') {
         deleteSelection()
       } else if (e.key === 'Escape') {
@@ -207,14 +250,15 @@ function Editor() {
             label="File"
             tour="file"
             items={[
-              { label: 'New model', onSelect: () => leaveTrainer() && load(emptyModel()) },
-              { label: 'Open…', hint: `${FILE_EXTENSION}, .cdm`, onSelect: () => fileInput.current?.click() },
-              { label: 'Save', hint: 'Ctrl+S', onSelect: () => save(false) },
-              { label: 'Save as…', hint: 'Ctrl+Shift+S', onSelect: () => save(true) },
+              { label: 'New model', icon: <FilePlus size={ICON} />, onSelect: () => leaveTrainer() && load(emptyModel()) },
+              { label: 'Open…', icon: <FolderOpen size={ICON} />, hint: `${FILE_EXTENSION}, .cdm`, onSelect: () => fileInput.current?.click() },
+              { label: 'Save', icon: <Save size={ICON} />, hint: 'Ctrl+S', onSelect: () => save(false) },
+              { label: 'Save as…', icon: <SaveAll size={ICON} />, hint: 'Ctrl+Shift+S', onSelect: () => save(true) },
               'separator',
-              { label: 'Export for PowerDesigner', hint: '.cdm', onSelect: () => setNotice(exportCdm()) },
+              { label: 'Export for PowerDesigner', icon: <FileDown size={ICON} />, hint: '.cdm', onSelect: () => setNotice(exportCdm()) },
               ...(['png', 'svg'] as const).map((format) => ({
                 label: `Export diagram as ${format.toUpperCase()}`,
+                icon: <ImageIcon size={ICON} />,
                 disabled: view !== 'cdm' && view !== 'pdm',
                 onSelect: () => {
                   const suffix = view === 'pdm' ? '_PDM' : '_CDM'
@@ -228,8 +272,8 @@ function Editor() {
             title="The course cases, easiest first: watch one built step by step, build it yourself with hints, or open the finished model"
             items={[
               { heading: 'Watch it built' },
-              { label: '▶ Library (start here)', onSelect: watchLibrary },
-              { label: '▶ Other cases…', onSelect: () => useTrainer.getState().openPicker(true) },
+              { label: 'Library (start here)', icon: <Play size={ICON} />, onSelect: watchLibrary },
+              { label: 'Other cases…', icon: <Play size={ICON} />, onSelect: () => useTrainer.getState().openPicker(true) },
               'separator',
               { heading: 'Build it yourself (with hints)' },
               ...EXAMPLES.map((x) => ({ label: x.label, onSelect: () => buildCase(x.id) })),
@@ -237,7 +281,7 @@ function Editor() {
               { heading: 'Show the answer' },
               ...EXAMPLES.map((x) => ({ label: x.label, onSelect: () => openExample(x.build) })),
               'separator',
-              { label: 'Open exercises (no answer)…', onSelect: () => useTrainer.getState().openPicker(true) },
+              { label: 'Open exercises (no answer)…', icon: <BookOpen size={ICON} />, onSelect: () => useTrainer.getState().openPicker(true) },
             ]}
           />
           <input
@@ -252,77 +296,88 @@ function Editor() {
             }}
           />
         </div>
-        <span className="toolbar-model" title="Model name">
-          {model.name}
-        </span>
         <div className="segmented view-switch" role="tablist" aria-label="View" data-tour="views">
           {VIEWS.map((v) => (
             <button key={v.id} type="button" role="tab" aria-selected={view === v.id} className={view === v.id ? 'on' : ''} onClick={() => setView(v.id)} title={v.title}>
-              {v.label}
+              <span className="label-long">{v.label}</span>
+              <span className="label-short">{v.short}</span>
             </button>
           ))}
         </div>
+        <button
+          type="button"
+          data-tour="trainer"
+          className={`btn btn-icon ${trainerOn ? 'btn-primary' : 'btn-accent'}`}
+          onClick={() => useTrainer.getState().openPicker(!useTrainer.getState().pickerOpen)}
+          title="Practise on the course cases: watch it built, worked example, text tagging, complete the model, build it yourself with hints"
+        >
+          <GraduationCap size={ICON} aria-hidden />
+          <span>Trainer</span>
+        </button>
         {view === 'cdm' && (
         <div className="toolbar-group" data-tour="add">
-          <button type="button" className="btn btn-primary" onClick={addEntityAtCenter} title="Add an entity (or double-click the canvas)">
-            + Entity
+          <button type="button" className="btn btn-primary btn-icon" onClick={addEntityAtCenter} title="Add an entity (or double-click the canvas)">
+            <Plus size={ICON} aria-hidden />
+            <span>Entity</span>
           </button>
-          <div className="segmented" role="radiogroup" aria-label="Link kind">
-            <button type="button" role="radio" aria-checked={linkKind === 'relationship'} className={linkKind === 'relationship' ? 'on' : ''} onClick={() => setLinkKind('relationship')} title="Dragging between entities creates a relationship">
+          <span className="toolbar-label" id="link-as">
+            Link as:
+          </span>
+          <div className="segmented" role="radiogroup" aria-labelledby="link-as">
+            <button type="button" role="radio" aria-checked={linkKind === 'relationship'} className={linkKind === 'relationship' ? 'on' : ''} onClick={() => setLinkKind('relationship')} title="Dragging from the ● handle of an entity to another entity creates a relationship">
               Relationship
             </button>
-            <button type="button" role="radio" aria-checked={linkKind === 'inheritance'} className={linkKind === 'inheritance' ? 'on' : ''} onClick={() => setLinkKind('inheritance')} title="Drag from a child entity to its parent">
+            <button type="button" role="radio" aria-checked={linkKind === 'inheritance'} className={linkKind === 'inheritance' ? 'on' : ''} onClick={() => setLinkKind('inheritance')} title="Dragging from the ● handle of a child entity to its parent creates an inheritance">
               Inheritance
             </button>
           </div>
         </div>
         )}
         <div className="toolbar-group">
-          <button type="button" className="btn" onClick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)">
-            ↶
+          <button type="button" className="btn btn-icon" onClick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)" aria-label="Undo">
+            <Undo2 size={ICON} aria-hidden />
           </button>
-          <button type="button" className="btn" onClick={redo} disabled={!canRedo} title="Redo (Ctrl+Y)">
-            ↷
+          <button type="button" className="btn btn-icon" onClick={redo} disabled={!canRedo} title="Redo (Ctrl+Y)" aria-label="Redo">
+            <Redo2 size={ICON} aria-hidden />
           </button>
           {(view === 'cdm' || view === 'pdm') && (
-              <button type="button" className="btn" onClick={() => flow.fitView({ padding: 0.15, maxZoom: 1, duration: 300 })} title="Fit the model on screen">
-              Fit
+            <button type="button" className="btn btn-icon" onClick={() => flow.fitView({ padding: 0.15, maxZoom: 1, duration: 300 })} title="Fit the model on screen" aria-label="Fit">
+              <Maximize2 size={ICON} aria-hidden />
             </button>
           )}
         </div>
-        <div className="toolbar-group ml-auto">
+        <SavedState name={model.name} />
+        <div className="toolbar-group">
           {updateReady && (
             <button type="button" className="btn btn-primary" onClick={applyUpdate} title="A new version of StrataSQL is ready. Your model is kept.">
               Update
             </button>
           )}
-          <button
-            type="button"
-            data-tour="trainer"
-            className={`btn ${trainerOn ? 'btn-primary' : ''}`}
-            onClick={() => useTrainer.getState().openPicker(!useTrainer.getState().pickerOpen)}
-            title="Practise on the course cases: watch it built, worked example, text tagging, complete the model, build it yourself with hints"
-          >
-            🎓 Trainer
-          </button>
           <Menu
-            label="? Help"
+            label={
+              <>
+                <CircleHelp size={ICON} aria-hidden />
+                <span className="label-long">Help</span>
+              </>
+            }
+            className="btn-icon"
+            title="Help: glossary, tour, keyboard shortcuts"
             tour="help"
             align="right"
             active={helpOpen}
             items={[
-              { label: 'Glossary of concepts', onSelect: () => useEditor.getState().openHelp() },
-              { label: 'Tour of the screen', onSelect: startTour },
-              { label: 'Watch a model being built…', onSelect: () => useTrainer.getState().openPicker(true) },
-              { label: 'Keyboard shortcuts', onSelect: () => useOnboarding.getState().showShortcuts(true) },
+              { label: 'Glossary of concepts', icon: <BookOpen size={ICON} />, onSelect: () => useEditor.getState().openHelp() },
+              { label: 'Tour of the screen', icon: <Info size={ICON} />, onSelect: startTour },
+              { label: 'Watch a model being built…', icon: <Play size={ICON} />, onSelect: () => useTrainer.getState().openPicker(true) },
+              { label: 'Keyboard shortcuts', icon: <Keyboard size={ICON} />, hint: '?', onSelect: () => useOnboarding.getState().showShortcuts(true) },
               { label: 'About StrataSQL', onSelect: () => useOnboarding.getState().showAbout(true) },
               'separator',
               { label: 'Quaera: SQL & analytics trainer ↗', hint: 'quaera.app', onSelect: () => window.open('https://quaera.app', '_blank', 'noopener') },
             ]}
           />
           <AppearanceButton dark={dark} />
-          <button type="button" className="btn" onClick={toggleTheme} title="Toggle light/dark theme">
-            {dark ? '☀' : '☾'}
+          <button type="button" className="btn btn-icon" onClick={toggleTheme} title="Toggle light/dark theme" aria-label="Toggle light/dark theme">
+            {dark ? <Sun size={ICON} aria-hidden /> : <Moon size={ICON} aria-hidden />}
           </button>
         </div>
       </header>
@@ -391,7 +446,13 @@ function Editor() {
           </div>
           {view === 'cdm' && model.entities.length > 0 && !walkOn && <IssuesDock />}
         </main>
-        <SideDock side="right" name="properties" defaultWidth={390}>
+        <SideDock
+          side="right"
+          name="properties"
+          defaultWidth={390}
+          autoHide={walkOn || narrow}
+          revealKey={narrow && !walkOn && selection ? `${selection.kind}:${selection.id}` : undefined}
+        >
         <aside className="panel" aria-label="Properties" data-tour="panel">
           {view !== 'cdm' && <PdmPanel />}
           {view === 'cdm' && entity && <EntityPanel key={entity.id} entity={entity} model={model} />}
