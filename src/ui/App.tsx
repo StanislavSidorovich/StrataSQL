@@ -25,6 +25,7 @@ import { CASES } from '../data/cases'
 import { Menu } from './onboarding/Menu'
 import { Onboarding, useOnboarding } from './onboarding/Tour'
 import { NameSuggestionLists, TrainerPane } from './trainer/TrainerPane'
+import { MyTaskDialog } from './trainer/MyTask'
 import { confirmDiscardTask, isVeiled, leaveTrainer, useTrainer } from './trainer/trainerStore'
 
 /** The trainer cases, easiest first: their reference models are the examples. */
@@ -407,6 +408,7 @@ function Editor() {
         </div>
       )}
       <HelpDrawer />
+      <MyTaskDialog />
       <Onboarding onPractise={() => useTrainer.getState().openPicker(true)} onWatch={watchLibrary} />
     </div>
   )

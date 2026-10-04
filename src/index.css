@@ -1387,6 +1387,8 @@ body {
 .spec-span.is-open {
   outline: 2px solid var(--accent);
 }
+.spec-span.tag-identifier { background: var(--tag-attribute-soft); box-shadow: inset 0 -2px 0 var(--tag-entity); text-decoration: underline; text-underline-offset: 2px; }
+.spec-tag-btn.tag-identifier { border-color: var(--tag-entity); color: var(--tag-entity); text-decoration: underline; }
 .spec-tag-btn.tag-entity { border-color: var(--tag-entity); color: var(--tag-entity); }
 .spec-tag-btn.tag-attribute { border-color: var(--tag-attribute); color: var(--tag-attribute); }
 .spec-tag-btn.tag-relationship { border-color: var(--tag-relationship); color: var(--tag-relationship); }
@@ -1822,6 +1824,10 @@ body {
 .walk-spec .spec-span {
   cursor: default;
 }
+/* In a long column the scrolling text box keeps its height instead of shrinking to nothing */
+.trainer-body > .walk-spec {
+  flex-shrink: 0;
+}
 .walk-spec .spec-span.is-later {
   background: none;
   box-shadow: none;
@@ -2070,4 +2076,49 @@ body {
   inset: 0;
   opacity: 0;
   cursor: pointer;
+}
+
+/* My task: own text, tag bar, coverage lists */
+.mytask-dialog {
+  width: min(720px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.mytask-textarea {
+  min-height: 260px;
+  resize: vertical;
+  font-family: inherit;
+  line-height: 1.5;
+}
+.mytask-error {
+  color: var(--lint-error);
+  font-size: 0.85rem;
+}
+.mytask-text {
+  max-height: 45vh;
+  user-select: text;
+  cursor: text;
+}
+.mytask-text .spec-span {
+  cursor: pointer;
+}
+.mytask-tagbar {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  background: var(--panel-bg);
+}
+.mytask-list {
+  margin: 0 0 6px;
+  padding-left: 16px;
+  list-style: disc;
+  font-size: 0.8rem;
+  line-height: 1.6;
 }

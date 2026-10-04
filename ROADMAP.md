@@ -12,12 +12,14 @@ Stages follow SPEC §12. A stage is done only when its acceptance criteria pass.
 | 5. Guided start | ✅ acceptance met (2026-10-03, v0.5.0) — 5a–5c, 5d (.cdm) done; 5e polish and `.pdm` reverse carried over | A first-time user learns the screen in a tour, watches a case built step by step, and builds one alone with “next hint” |
 | 6. AI review | ⏭ optional | Optional, behind a user-provided API key |
 
-**Where we are (2026-10-04, v0.6.0 + UX review):** 8 cases + 5 exercises, PowerDesigner cross-check, live at model.quaera.app. The UX review fixed the first-minute rough edges (gentle hint for a new entity, name focus, wrapping phrases, zoom, minimap, phone note). Then the two top backlog items: the walkthrough now asks before some steps (predict → see), and level 1 hides the model until the text is tagged. Then the owner's requests: default names as grey hints, text size, canvas/panel colours, Save as. Backlog 1–4, name suggestions, text size and author links are done since; the open work is in **Next steps** below. LinkedIn post after the professor answers about the 3 course cases.
+**Where we are (2026-10-04, v0.7.0):** export to PowerDesigner `.cdm` and **My task** (own text with self-tagging) are in; next is backlog 5–9 in **Next steps**.
+
+**Earlier (2026-10-04, v0.6.0 + UX review):** 8 cases + 5 exercises, PowerDesigner cross-check, live at model.quaera.app. The UX review fixed the first-minute rough edges (gentle hint for a new entity, name focus, wrapping phrases, zoom, minimap, phone note). Then the two top backlog items: the walkthrough now asks before some steps (predict → see), and level 1 hides the model until the text is tagged. Then the owner's requests: default names as grey hints, text size, canvas/panel colours, Save as. Backlog 1–4, name suggestions, text size and author links are done since; the open work is in **Next steps** below. LinkedIn post after the professor answers about the 3 course cases.
 
 ## Next steps (by priority, 2026-10-04)
 
 1. ✅ **Export to PowerDesigner `.cdm`** (2026-10-04) — **File → Export for PowerDesigner**; still to do: the owner opens an exported file in PowerDesigner 16 and generates the PDM from it (only our own import has read these files so far)
-2. **My task (own text)** — see “Owner's ideas for later” below. About one sprint
+2. ✅ **My task (own text)** (2026-10-04, v0.7.0)
 3. **Readable diagrams at 1366 px** (backlog 5)
 4. **Tablet / 1280 px + toolbar on one row** (backlog 6, incl. the long model name)
 5. **Toolbar labels**: “Link as:”, Trainer as a second primary button (backlog 7)
@@ -249,8 +251,15 @@ PowerDesigner export (2026-10-04):
 - [x] Tests: every case and both class files survive export → our import with the same SQL Server DDL (when there are no warnings), unique object ids, all refs resolve, layout kept; 359 tests. Checked in the dev build: File → Export for PowerDesigner gives `Library.cdm`
 - Licence: the file format is written from scratch for interoperability, no SAP code or files are shipped; the trademark note is in README and About
 
+My task (2026-10-04, v0.7.0):
+- [x] Trainer picker → **My task**: paste a text or load `.txt` / `.md` (title from the file name; Markdown headings and bullets lose their marks); saved in the browser; **Edit text** in the pane, tagged phrases follow their words (a deleted word loses its tag)
+- [x] Works like an open exercise (Model check counts, name suggestions from the text, self-review checklist written for any text ✱) — plus **self-tagging**: select words → Entity / Attribute / Identifier / Relationship / Inheritance / Rule (keys 1–6), click a tag to change or remove it
+- [x] **Your tags and your model**: tagged phrases not in the model yet (names compared by words, singular, filler words dropped: *books* ~ Book, *card number* ~ Card_number; an identifier phrase must be in an identifier; a relationship phrase only gets a soft note, since links are often named differently or become an intermediate entity ✱), entities and attributes no tagged phrase names (click → selects it), rules listed to check by hand. Nothing is shown before the first tag
+- [x] Fixed on the way: in a long left column the text box of open exercises shrank to nothing (flex); it keeps its height now
+- [x] `src/data/mytask.ts` + tests; checked in the dev build (Playwright 1366×820): dialog, tagging by selection, Bike entity clears its line, reload, edit text; 364 tests
+
 Owner's ideas for later (2026-10-04):
-- **Own task text** (“My task”): paste a text or load a `.txt` / `.md`; it shows in the left column like an open exercise (Model check counts, self-review checklist, name suggestions from it), saved in the browser. No reference, so no score — but a useful check without one: **the student tags phrases themselves** (select text → entity / attribute / relationship / identifier), and the pane lists tagged phrases with nothing in the model yet, and model elements no phrase mentions. Later, with stage 6 (AI review), the text + model can go to a model for comments. About one sprint
+- ✅ done in v0.7.0 — **Own task text** (“My task”): paste a text or load a `.txt` / `.md`; it shows in the left column like an open exercise (Model check counts, self-review checklist, name suggestions from it), saved in the browser. No reference, so no score — but a useful check without one: **the student tags phrases themselves** (select text → entity / attribute / relationship / identifier), and the pane lists tagged phrases with nothing in the model yet, and model elements no phrase mentions. Later, with stage 6 (AI review), the text + model can go to a model for comments. About one sprint
 - Toolbar still wraps into two rows at 1366 px when the model name is long (“Library — my model”) — part of backlog 6
 
 Backlog from the review (by value):

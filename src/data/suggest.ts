@@ -2,7 +2,7 @@
 // name fields can complete "co…" to "contacts". All words are offered, not only those that are
 // answers, so a suggestion gives nothing away.
 
-const STOP = new Set(
+export const STOP = new Set(
   `a an the and or but nor of to in on at by for from with without into onto about as is are was were be been being has have had
   do does did can could may might must shall should will would this that these those it its they them their there here who whom whose
   which what when where why how each every any some all both either neither one two three no not only also than then so such very

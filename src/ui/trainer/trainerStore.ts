@@ -5,7 +5,8 @@
 import { create } from 'zustand'
 import { compareModels, type CompareResult } from '../../core/compare'
 import { caseById, type Tag, type TrainerCase } from '../../data/cases'
-import { exerciseById } from '../../data/exercises'
+import { exerciseById, type Exercise } from '../../data/exercises'
+import { addMark, MY_TASK_ID, myTaskExercise, remapMarks, type Mark, type MyTask } from '../../data/mytask'
 import { emptyModel } from '../../core/metamodel'
 import { levelStartModel, recordScore, recordWalk, type Level, type PathStep, type Progress } from '../../data/trainer'
 import { nameSuggestions, type NameSuggestions } from '../../data/suggest'
@@ -16,6 +17,7 @@ const SESSION_KEY = 'stratasql.trainer.session'
 const PROGRESS_KEY = 'stratasql.trainer.progress'
 const ASK_KEY = 'stratasql.walk.ask'
 const SUGGEST_KEY = 'stratasql.suggest'
+const MY_TASK_KEY = 'stratasql.mytask'
 
 export interface Check {
   result: CompareResult
@@ -55,12 +57,18 @@ interface TrainerState {
   askFirst: boolean
   /** Name fields suggest words of the task text while typing. */
   suggestNames: boolean
+  /** The student's own task text with the phrases they tagged (saved in the browser). */
+  myTask: MyTask | null
 
   openPicker: (open: boolean) => void
   start: (caseId: string, level: Level) => void
   /** Starts an open exercise (no reference) on an empty model. */
   startExercise: (id: string) => void
   toggleChecklist: (item: number) => void
+  /** Saves the own task's title and text; tagged phrases follow their words. */
+  saveMyTask: (title: string, text: string) => void
+  markPhrase: (mark: Mark) => void
+  unmarkPhrase: (index: number) => void
   /** Starts (or moves) the walkthrough of a case at a step. */
   walkTo: (caseId: string, step: number) => void
   /** Answers (or skips, with null) the question of the current walkthrough step, which reveals it. */
@@ -101,6 +109,7 @@ export const useTrainer = create<TrainerState>()((set, get) => ({
   progress: readJson<Progress>(PROGRESS_KEY, {}),
   askFirst: readJson<boolean>(ASK_KEY, true),
   suggestNames: readJson<boolean>(SUGGEST_KEY, true),
+  myTask: readJson<MyTask | null>(MY_TASK_KEY, null),
 
   openPicker: (pickerOpen) => set({ pickerOpen }),
 
@@ -125,11 +134,11 @@ export const useTrainer = create<TrainerState>()((set, get) => ({
   },
 
   startExercise(id) {
-    const x = exerciseById(id)
+    const x = exerciseFor(id)
     if (!x) return
     const editor = useEditor.getState()
     useEditor.setState({
-      model: { ...emptyModel(`${x.title} — my model`), comment: `Open exercise: ${x.title}.` },
+      model: { ...emptyModel(`${x.title} — my model`), comment: id === MY_TASK_ID ? `My task: ${x.title}.` : `Open exercise: ${x.title}.` },
       trainerBackup: editor.trainerBackup ?? editor.model,
       past: [],
       future: [],
@@ -148,6 +157,29 @@ export const useTrainer = create<TrainerState>()((set, get) => ({
     if (!s?.exercise) return
     const exercise = s.exercise.includes(item) ? s.exercise.filter((x) => x !== item) : [...s.exercise, item]
     set({ session: { ...s, exercise } })
+  },
+
+  saveMyTask(title, text) {
+    const prev = get().myTask
+    const myTask: MyTask = { title: title.trim() || 'My task', text, marks: prev ? remapMarks(prev.marks, text) : [] }
+    set({ myTask })
+    writeJson(MY_TASK_KEY, myTask)
+  },
+
+  markPhrase(mark) {
+    const t = get().myTask
+    if (!t) return
+    const myTask = { ...t, marks: addMark(t.marks, mark) }
+    set({ myTask })
+    writeJson(MY_TASK_KEY, myTask)
+  },
+
+  unmarkPhrase(index) {
+    const t = get().myTask
+    if (!t) return
+    const myTask = { ...t, marks: t.marks.filter((_, k) => k !== index) }
+    set({ myTask })
+    writeJson(MY_TASK_KEY, myTask)
   },
 
   walkTo(caseId, step) {
@@ -327,14 +359,23 @@ function saveProgress(progress: Progress) {
   writeJson(PROGRESS_KEY, progress)
 }
 
+/** An open exercise, or the student's own task. */
+export function exerciseFor(id: string): Exercise | undefined {
+  if (id !== MY_TASK_ID) return exerciseById(id)
+  const t = useTrainer.getState().myTask
+  return t ? myTaskExercise(t) : undefined
+}
+
 const suggestCache = new Map<string, NameSuggestions>()
 /** Words of the open task's text for the name fields; null when off or nothing is typed in this task (levels 0–1, walkthrough). */
 export function taskSuggestions(s: Session | null, on: boolean): NameSuggestions | null {
   if (!on || !s || s.walk !== undefined || s.level < 2) return null
-  const spec = (s.exercise ? exerciseById(s.caseId) : caseById(s.caseId))?.spec
+  const spec = (s.exercise ? exerciseFor(s.caseId) : caseById(s.caseId))?.spec
   if (!spec) return null
-  let out = suggestCache.get(s.caseId)
-  if (!out) suggestCache.set(s.caseId, (out = nameSuggestions(spec)))
+  // The own task's text can change, so its words are cached by the text itself.
+  const key = s.caseId === MY_TASK_ID ? spec.join('\n') : s.caseId
+  let out = suggestCache.get(key)
+  if (!out) suggestCache.set(key, (out = nameSuggestions(spec)))
   return out
 }
 
@@ -354,7 +395,7 @@ useTrainer.subscribe((state, prev) => {
 /** After a reload: resume the open task with its working model. */
 export function restoreTrainer() {
   const session = readJson<Session | null>(SESSION_KEY, null)
-  if (!session || !(session.exercise ? exerciseById(session.caseId) : caseById(session.caseId))) return
+  if (!session || !(session.exercise ? exerciseFor(session.caseId) : caseById(session.caseId))) return
   if (session.walk !== undefined) {
     // Set first, so walkTo keeps the answers given before the reload.
     useTrainer.setState({ session })

@@ -5,11 +5,13 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { compareModels, type CompareItem } from '../../core/compare'
 import { CASES, caseById, hintsFor, LEVELS, phrasesFor, splitParagraph, TAGS, type Tag, type TrainerCase } from '../../data/cases'
 import { applyAnswer, coach, referenceOf, type CoachState } from '../../data/coach'
-import { EXERCISES, exerciseById, type Exercise } from '../../data/exercises'
+import { EXERCISES, type Exercise } from '../../data/exercises'
+import { MY_TASK_ID } from '../../data/mytask'
 import { DONE_AT, isStepDone, nextPathStep, PATH, progressKey, stepsDone, type Level, type PathStep } from '../../data/trainer'
 import { richText } from '../help/HelpDrawer'
 import { lintFor, useEditor, type Selection } from '../store'
-import { confirmDiscardTask, isRightTag, isVeiled, openPathStep, tagScore, taskSuggestions, useTrainer } from './trainerStore'
+import { confirmDiscardTask, exerciseFor, isRightTag, isVeiled, openPathStep, tagScore, taskSuggestions, useTrainer } from './trainerStore'
+import { MyTaskCoverage, MyTaskEntry, MyTaskText, openMyTaskDialog } from './MyTask'
 import { WalkthroughPane } from './Walkthrough'
 
 const TAG_LABEL: Record<Tag, string> = Object.fromEntries(TAGS.map((t) => [t.id, t.label])) as Record<Tag, string>
@@ -49,7 +51,10 @@ export function TrainerPane() {
   const session = useTrainer((s) => s.session)
   const pickerOpen = useTrainer((s) => s.pickerOpen)
   if (!session || pickerOpen) return <CasePicker />
-  if (session.exercise) return <ExercisePane x={exerciseById(session.caseId)!} ticked={session.exercise} />
+  if (session.exercise) {
+    const x = exerciseFor(session.caseId)
+    if (x) return <ExercisePane x={x} ticked={session.exercise} />
+  }
   const c = caseById(session.caseId)!
   if (session.walk !== undefined) return <WalkthroughPane c={c} step={session.walk} />
   return <TaskPane c={c} level={session.level} />
@@ -173,6 +178,7 @@ function CasePicker() {
         <p className="muted text-xs">
           A text with <b>no reference answer</b>, so there is no score and no hints. Model it, then use the Model check, the Physical view, the Sandbox and a list of questions to review your own decisions.
         </p>
+        <MyTaskEntry />
         {EXERCISES.map((x) => (
           <section key={x.id} className="trainer-case">
             <div className="flex items-baseline gap-2">
@@ -197,29 +203,43 @@ function ExercisePane({ x, ticked }: { x: Exercise; ticked: number[] }) {
   const issues = useMemo(() => lintFor(model), [model])
   const errors = issues.filter((i) => i.severity === 'error').length
   const warnings = issues.filter((i) => i.severity === 'warning').length
+  const own = x.id === MY_TASK_ID
   return (
-    <aside className="trainer-pane" aria-label="Open exercise">
+    <aside className="trainer-pane" aria-label={own ? 'My task' : 'Open exercise'}>
       <div className="trainer-header">
         <button type="button" className="btn btn-small" onClick={() => openPicker(true)} title="All cases and exercises">
           ☰
         </button>
-        <h2>
-          {x.title} <Stars n={x.difficulty} />
-        </h2>
-        <button type="button" className="btn btn-small ml-auto" onClick={exit} title="Close and get your own model back">
+        <h2>{own ? x.title : <>{x.title} <Stars n={x.difficulty} /></>}</h2>
+        {own && (
+          <button type="button" className="btn btn-small ml-auto" onClick={() => openMyTaskDialog(false)} title="Change the task text; tagged phrases follow their words">
+            Edit text
+          </button>
+        )}
+        <button type="button" className={`btn btn-small ${own ? '' : 'ml-auto'}`} onClick={exit} title="Close and get your own model back">
           Exit
         </button>
       </div>
       <div className="trainer-body">
+        {own ? (
+          <p className="trainer-task">
+            <b>My task — no reference answer, no score.</b> Tag the phrases of your text, model it, and the list below shows what is not in the model yet. Then review your decisions with the questions.
+          </p>
+        ) : (
         <p className="trainer-task">
           <b>Open exercise — no reference answer, no score.</b> Model the text. Then check your decisions: the Model check under the canvas, the tables in the Physical view, rows in the Sandbox, and the questions below.
         </p>
+        )}
         <SuggestToggle />
-        <div className="trainer-spec walk-spec">
-          {x.spec.map((t, p) => (
-            <p key={p}>{t}</p>
-          ))}
-        </div>
+        {own ? (
+          <MyTaskText />
+        ) : (
+          <div className="trainer-spec walk-spec">
+            {x.spec.map((t, p) => (
+              <p key={p}>{t}</p>
+            ))}
+          </div>
+        )}
         <div className="trainer-score">
           {model.entities.length} entities · {model.relationships.length} relationships ·{' '}
           {errors + warnings === 0 ? (
@@ -231,6 +251,7 @@ function ExercisePane({ x, ticked }: { x: Exercise; ticked: number[] }) {
             </>
           )}
         </div>
+        {own && <MyTaskCoverage />}
         <h3 className="trainer-h3">Review your decisions</h3>
         <ul className="exercise-checklist">
           {x.checklist.map((q, k) => (
