@@ -279,8 +279,11 @@ function describeInheritance(i: Inheritance, name: (id: Id) => string): string {
 const sameCard = (a: Cardinality, b: Cardinality) => a.min === b.min && a.max === b.max
 
 const article = (w: string) => (/^[aeiou]/i.test(w) ? 'an' : 'a')
-const minimumsDiffer = (a: string, b: string) =>
-  `the minimums differ (optional vs mandatory): ask whether ${article(b)} ${b} can exist without ${article(a)} ${a}, and ${article(a)} ${a} without ${article(b)} ${b}.`
+/** Optional vs mandatory differs at A's end (`atA`: can a B have no A?) and/or at B's end. */
+const minimumsDiffer = (a: string, b: string, atA = true, atB = true) => {
+  const ask = [atB && `can ${article(a)} ${a} have no ${b} at all`, atA && `can ${article(b)} ${b} have no ${a} at all`].filter(Boolean)
+  return `the minimums differ (optional vs mandatory). Ask yourself: ${ask.join(', and ')}?`
+}
 
 /** The card drawn at `id`'s end of a relationship. */
 export const cardAt = (s: Relationship, id: Id) => (s.entityA === id ? s.cardinalityA : s.cardinalityB)
@@ -330,18 +333,27 @@ function oriented(s: Relationship, refA: Id, ctx: Ctx) {
   }
 }
 
+/** How many of the other entity one instance has, in words: 1,n → `one or more`. */
+const howMany = (c: Cardinality) => (c.max === 1 ? (c.min ? 'exactly one' : 'at most one') : c.min ? 'one or more' : 'any number of')
+
 function relDiffs(r: Relationship, s: Relationship, ctx: Ctx): string[] {
   const o = oriented(s, r.entityA, ctx)
-  const a = ctx.rName(r.entityA)
-  const b = ctx.rName(r.entityB)
+  // The student's names: the message talks about their model.
+  const a = ctx.sName(ctx.match.get(r.entityA)!)
+  const b = ctx.sName(ctx.match.get(r.entityB)!)
   const out: string[] = []
   if (!sameCard(o.cardA, r.cardinalityA) || !sameCard(o.cardB, r.cardinalityB)) {
     const maxDiff = o.cardA.max !== r.cardinalityA.max || o.cardB.max !== r.cardinalityB.max
+    const reversed = maxDiff && o.cardA.max === r.cardinalityB.max && o.cardB.max === r.cardinalityA.max
+    // One A has cardB B's (the card at B's end), one B has cardA A's.
+    const yours = `in your model one ${a} has ${howMany(o.cardB)} ${b}, and one ${b} has ${howMany(o.cardA)} ${a}.`
     out.push(
-      maxDiff
-        ? `the kind of link differs — you have ${relationshipKind({ ...s, cardinalityA: o.cardA, cardinalityB: o.cardB }).replace(/-/g, ' ')}, ` +
-            `the text implies ${relationshipKind(r).replace(/-/g, ' ')}. Read again how many ${b} one ${a} has, and how many ${a} one ${b} has.`
-        : minimumsDiffer(a, b),
+      reversed
+        ? `the “many” end is on the wrong side — ${yours} Read again which of the two has many of the other.`
+        : maxDiff
+          ? `the kind of link differs — you have ${relationshipKind({ ...s, cardinalityA: o.cardA, cardinalityB: o.cardB }).replace(/-/g, ' ')}, ` +
+            `the text implies ${relationshipKind(r).replace(/-/g, ' ')}: ${yours} Read again how many ${b} one ${a} has, and how many ${a} one ${b} has.`
+          : minimumsDiffer(a, b, o.cardA.min !== r.cardinalityA.min, o.cardB.min !== r.cardinalityB.min),
     )
   }
   if (o.dep !== r.dependentSide) {
@@ -468,7 +480,7 @@ export function compareModels(student: Model, ref: Model, opts: CompareOptions =
       const label = `${ctx.sName(sa)} — ${ctx.sName(sb)} through ${ctx.sName(bridge.entity)}`
       const target = { kind: 'entity' as const, id: bridge.entity }
       const same = sameCard(cardA, r.cardinalityA) && sameCard(cardB, r.cardinalityB)
-      const [a, b] = names
+      const [a, b] = [ctx.sName(sa), ctx.sName(sb)]
       items.push(
         same
           ? {
@@ -487,7 +499,7 @@ export function compareModels(student: Model, ref: Model, opts: CompareOptions =
               refEntities: names,
               target,
               bridge,
-              message: `${label}: ${minimumsDiffer(a, b)}`,
+              message: `${label}: ${minimumsDiffer(a, b, !sameCard(cardA, r.cardinalityA), !sameCard(cardB, r.cardinalityB))}`,
               // Where to set it: the cards at the intermediate entity's ends of its two links.
               answer:
                 `At ${ctx.sName(bridge.entity)}'s end of ${rel(bridge.toB).name}: ${formatCardinality(r.cardinalityA)} (${a}s per ${b}); ` +

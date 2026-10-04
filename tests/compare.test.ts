@@ -278,3 +278,18 @@ describe('attribute names — a student build of Hotel', () => {
     expect(items.map((i) => i.refAttrs)).toEqual([['nightly_price']])
   })
 })
+
+describe('relationship messages — a student build of Hotel', () => {
+  it('names the student entities, spots a reversed many end and asks only about the differing minimum', () => {
+    const ref = buildHotel()
+    const m = buildHotel()
+    ent(m, 'Booked Room').name = 'Room_booking'
+    const type = rel(m, 'is_of_type')
+    ;[type.cardinalityA, type.cardinalityB] = [type.cardinalityB, type.cardinalityA]
+    rel(m, 'includes').cardinalityB = CARD.zeroMany
+    const msg = (k: string) => compareModels(m, ref).items.find((i) => i.refKey === k)!.message
+    expect(msg('relationship:is_of_type')).toContain('the “many” end is on the wrong side')
+    expect(msg('relationship:is_of_type')).toContain('one Room has any number of Room Type')
+    expect(msg('relationship:includes')).toBe('Booking — Room_booking: the minimums differ (optional vs mandatory). Ask yourself: can a Booking have no Room_booking at all?')
+  })
+})
