@@ -11,13 +11,14 @@ import {
   type Cardinality,
   type Entity,
   type Id,
+  type Identifier,
   type Inheritance,
   type Model,
   type Relationship,
 } from './metamodel'
 
 export type CompareStatus = 'matched' | 'missing' | 'extra' | 'different'
-export type CompareKind = 'entity' | 'attribute' | 'mandatory' | 'identifier' | 'relationship' | 'inheritance'
+export type CompareKind = 'entity' | 'attribute' | 'mandatory' | 'identifier' | 'alternate' | 'relationship' | 'inheritance'
 
 export interface CompareItem {
   kind: CompareKind
@@ -174,6 +175,24 @@ export function mandatoryDiffs(s: Entity, r: Entity): { must: Attribute[]; mayBe
     else if (!ra.mandatory && ra.comment && sa.mandatory) mayBeEmpty.push(sa)
   }
   return { must, mayBeEmpty }
+}
+
+/**
+ * Alternate identifiers <ai> of the reference (a value that never repeats: passport_no, email) that
+ * the student has not declared. Any student identifier over the same attributes counts, the primary
+ * one too. Skipped while one of its attributes is missing (that is reported as a missing attribute).
+ */
+export function missingAlternates(s: Entity, r: Entity): { ref: Identifier; attrs: Attribute[] }[] {
+  const out: { ref: Identifier; attrs: Attribute[] }[] = []
+  const key = (ids: Id[]) => [...ids].sort().join(',')
+  const have = new Set(s.identifiers.map((i) => key(i.attributeIds)))
+  for (const ri of r.identifiers) {
+    if (ri.isPrimary) continue
+    const attrs = ri.attributeIds.map((id) => sameAttribute(s, r, r.attributes.find((a) => a.id === id)!))
+    if (attrs.some((a) => !a)) continue
+    if (!have.has(key(attrs.map((a) => a!.id)))) out.push({ ref: ri, attrs: attrs as Attribute[] })
+  }
+  return out
 }
 
 function dice(a: Set<string>, b: Set<string>): number {
@@ -441,6 +460,19 @@ export function compareModels(student: Model, ref: Model, opts: CompareOptions =
               .join(' '),
           answer: `${r.name}: mandatory ${r.attributes.filter((a) => a.mandatory && !ownPi(r).has(a.id)).map((a) => a.name).join(', ') || '—'}; optional ${r.attributes.filter((a) => !a.mandatory).map((a) => a.name).join(', ') || '—'}.`,
         })
+      for (const { ref: ri, attrs } of missingAlternates(s, r)) {
+        const names = attrs.map((a) => a.name).join(' + ')
+        items.push({
+          kind: 'alternate',
+          status: 'missing',
+          refKey: `alternate:${r.name}.${ri.name}`,
+          refEntities: [r.name],
+          refAttrs: ri.attributeIds.map((id) => r.attributes.find((a) => a.id === id)!.name),
+          target: { kind: 'entity', id: s.id },
+          message: `${s.name}: the text says some value never repeats between two ${s.name} instances — your model does not mark it as unique yet.`,
+          answer: `${names} is an alternate identifier <ai>: + Identifier on ${s.name}, tick ${names}, leave Primary off. In SQL it becomes UNIQUE.`,
+        })
+      }
     }
     for (const s of student.entities)
       if (!back.has(s.id) && !bridgeEntities.has(s.id))
@@ -576,7 +608,7 @@ export function compareModels(student: Model, ref: Model, opts: CompareOptions =
   let total = 0
   for (const i of items) {
     counts[i.status]++
-    if (i.kind === 'attribute' || i.kind === 'mandatory' || i.kind === 'identifier' || i.status === 'extra') continue
+    if (i.kind === 'attribute' || i.kind === 'mandatory' || i.kind === 'identifier' || i.kind === 'alternate' || i.status === 'extra') continue
     total++
     if (i.status === 'matched') got++
   }

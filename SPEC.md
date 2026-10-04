@@ -131,7 +131,7 @@ Pedagogy: worked example → completion problems → faded scaffolding → indep
 | 3 — From scratch | Build the whole CDM from the text | Structural comparison with reference + linter |
 | 4 — Open business task | Free text task, no reference | AI review (stage 6) |
 
-**Comparison with reference (level 3)** is structural, not name-based: entities matched by attribute overlap + synonyms list in the case file; then compare relationships (cardinality, dependency), inheritance, identifiers, attributes (short forms accepted) and mandatory M (“must” where the reference is mandatory; “may be empty” only where the case explains why it is optional). A plain many-to-many drawn as an intermediate entity with two many-to-one links counts as the same relationship. Attributes and M are hints, not scored. Output: matched / missing / extra / different, each with a hint text from the case file.
+**Comparison with reference (level 3)** is structural, not name-based: entities matched by attribute overlap + synonyms list in the case file; then compare relationships (cardinality, dependency), inheritance, identifiers, attributes (short forms accepted) and mandatory M (“must” where the reference is mandatory; “may be empty” only where the case explains why it is optional), alternate identifiers <ai> (a reference <ai> must be some identifier of the student over the same attributes). A plain many-to-many drawn as an intermediate entity with two many-to-one links counts as the same relationship. Attributes, M and <ai> are hints, not scored. Output: matched / missing / extra / different, each with a hint text from the case file.
 
 ## 10. Case file format
 

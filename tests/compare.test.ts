@@ -19,6 +19,7 @@ import {
 } from '../src/core/ops'
 import { applyAnswer } from '../src/data/coach'
 import { CASES } from '../src/data/cases'
+import { MORE_CASES } from '../src/data/cases-more'
 import { buildHotel } from '../src/data/examples/hotel'
 import { buildLibrary } from '../src/data/examples/library'
 import { buildRideHailing } from '../src/data/examples/ride-hailing'
@@ -291,5 +292,38 @@ describe('relationship messages — a student build of Hotel', () => {
     expect(msg('relationship:is_of_type')).toContain('the “many” end is on the wrong side')
     expect(msg('relationship:is_of_type')).toContain('one Room has any number of Room Type')
     expect(msg('relationship:includes')).toBe('Booking — Room_booking: the minimums differ (optional vs mandatory). Ask yourself: can a Booking have no Room_booking at all?')
+  })
+})
+
+describe('alternate identifiers <ai>', () => {
+  const hotel = CASES.find((c) => c.id === 'hotel') ?? MORE_CASES.find((c) => c.id === 'hotel')!
+  const noAi = () => {
+    const m = buildHotel()
+    const g = ent(m, 'Guest')
+    g.identifiers = g.identifiers.filter((i) => i.isPrimary)
+    return m
+  }
+
+  it('reports a missing <ai> (not scored) and accepts it on any identifier over the same attributes', () => {
+    const res = compareModels(noAi(), buildHotel())
+    const alt = res.items.filter((i) => i.kind === 'alternate')
+    expect(alt.map((i) => [i.status, i.refAttrs])).toEqual([['missing', ['passport_no']]])
+    expect(res.score).toBe(100)
+    expect(compareModels(buildHotel(), buildHotel()).items.some((i) => i.kind === 'alternate')).toBe(false)
+  })
+
+  it('waits while the attribute itself is missing', () => {
+    const m = noAi()
+    const g = ent(m, 'Guest')
+    g.attributes = g.attributes.filter((a) => a.name !== 'passport_no')
+    expect(compareModels(m, buildHotel()).items.some((i) => i.kind === 'alternate')).toBe(false)
+  })
+
+  it('“Do it for me” adds the identifier, and the coach quotes the rule', () => {
+    const m = noAi()
+    const item = compareModels(m, buildHotel()).items.find((i) => i.kind === 'alternate')!
+    expect(applyAnswer(m, hotel, item)).toBe(true)
+    expect(compareModels(m, buildHotel()).items.some((i) => i.kind === 'alternate')).toBe(false)
+    expect(ent(m, 'Guest').identifiers.filter((i) => !i.isPrimary)).toHaveLength(1)
   })
 })
