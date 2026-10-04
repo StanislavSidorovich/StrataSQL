@@ -239,4 +239,19 @@ describe('seeded models — Library (a student build)', () => {
     const attr = compareModels(studentLibrary({ author: CARD.oneMany, book: CARD.oneMany }), buildLibrary()).items.filter((i) => i.kind === 'attribute')
     expect(attr.map((i) => i.answer)).toEqual(['Book has title.'])
   })
+  it('mandatory (M): “must” from the reference, “may be empty” only where the case says why', () => {
+    const m = studentLibrary({ author: CARD.oneMany, book: CARD.oneMany })
+    const attr = (e: string, a: string) => ent(m, e).attributes.find((x) => x.name === a)!
+    attr('Publisher', 'Pname').mandatory = false
+    attr('Loan', 'return_date').mandatory = true
+    attr('Author', 'birth_year').mandatory = true // the reference did not decide: accepted
+    const c = CASES.find((x) => x.id === 'library')!
+    const items = compareModels(m, c.build()).items.filter((i) => i.kind === 'mandatory')
+    expect(items.map((i) => i.refKey).sort()).toEqual(['entity:Loan', 'entity:Publisher'])
+    expect(items.find((i) => i.refKey === 'entity:Publisher')!.message).toContain('Pname must always have a value')
+    expect(items.find((i) => i.refKey === 'entity:Loan')!.message).toContain('return_date can stay empty')
+    expect(compareModels(m, c.build()).score).toBe(100) // not scored, like attributes
+    for (const item of items) expect(applyAnswer(m, c, item)).toBe(true)
+    expect(compareModels(m, c.build()).items.filter((i) => i.kind === 'mandatory')).toEqual([])
+  })
 })

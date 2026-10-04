@@ -17,7 +17,7 @@ import {
 } from './metamodel'
 
 export type CompareStatus = 'matched' | 'missing' | 'extra' | 'different'
-export type CompareKind = 'entity' | 'attribute' | 'identifier' | 'relationship' | 'inheritance'
+export type CompareKind = 'entity' | 'attribute' | 'mandatory' | 'identifier' | 'relationship' | 'inheritance'
 
 export interface CompareItem {
   kind: CompareKind
@@ -121,6 +121,27 @@ export function missingAttributes(s: Entity, r: Entity): Attribute[] {
 export function sameAttribute(s: Entity, r: Entity, refAttr: Attribute): Attribute | undefined {
   const want = normAttr(refAttr.name, r.name)
   return s.attributes.find((a) => normAttr(a.name, s.name) === want) ?? s.attributes.find((a) => sameAttrName(a.name, s.name, refAttr.name, r.name))
+}
+
+/**
+ * Mandatory (M) that differs from the reference, for attributes the student has. A reference
+ * attribute is “must” when it is mandatory; “may be empty” only when the case says why it is
+ * optional (its comment, e.g. return_date “NULL while the book is out”) — elsewhere the reference
+ * just did not decide, and the student's M is accepted.
+ */
+export function mandatoryDiffs(s: Entity, r: Entity): { must: Attribute[]; mayBeEmpty: Attribute[] } {
+  const pi = ownPi(r)
+  const sPi = ownPi(s)
+  const must: Attribute[] = []
+  const mayBeEmpty: Attribute[] = []
+  for (const ra of r.attributes) {
+    if (pi.has(ra.id)) continue
+    const sa = sameAttribute(s, r, ra)
+    if (!sa || sPi.has(sa.id)) continue
+    if (ra.mandatory && !sa.mandatory) must.push(sa)
+    else if (!ra.mandatory && ra.comment && sa.mandatory) mayBeEmpty.push(sa)
+  }
+  return { must, mayBeEmpty }
 }
 
 function dice(a: Set<string>, b: Set<string>): number {
@@ -357,6 +378,24 @@ export function compareModels(student: Model, ref: Model, opts: CompareOptions =
           message: `${s.name}: ${missingAttrs.length} attribute${missingAttrs.length > 1 ? 's' : ''} from the text not found.`,
           answer: `${r.name} has ${missingAttrs.map((a) => a.name).join(', ')}.`,
         })
+      const m = mandatoryDiffs(s, r)
+      if (m.must.length || m.mayBeEmpty.length)
+        items.push({
+          kind: 'mandatory',
+          status: 'different',
+          refKey: key,
+          refEntities: [r.name],
+          target: { kind: 'entity', id: s.id },
+          message:
+            `${s.name}: ` +
+            [
+              m.must.length && `${m.must.map((a) => a.name).join(', ')} must always have a value — tick M (NOT NULL in SQL).`,
+              m.mayBeEmpty.length && `${m.mayBeEmpty.map((a) => a.name).join(', ')} can stay empty — untick M.`,
+            ]
+              .filter(Boolean)
+              .join(' '),
+          answer: `${r.name}: mandatory ${r.attributes.filter((a) => a.mandatory && !ownPi(r).has(a.id)).map((a) => a.name).join(', ') || '—'}; optional ${r.attributes.filter((a) => !a.mandatory).map((a) => a.name).join(', ') || '—'}.`,
+        })
     }
     for (const s of student.entities)
       if (!back.has(s.id) && !bridgeEntities.has(s.id))
@@ -492,7 +531,7 @@ export function compareModels(student: Model, ref: Model, opts: CompareOptions =
   let total = 0
   for (const i of items) {
     counts[i.status]++
-    if (i.kind === 'attribute' || i.kind === 'identifier' || i.status === 'extra') continue
+    if (i.kind === 'attribute' || i.kind === 'mandatory' || i.kind === 'identifier' || i.status === 'extra') continue
     total++
     if (i.status === 'matched') got++
   }

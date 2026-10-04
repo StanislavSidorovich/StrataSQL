@@ -215,6 +215,7 @@ Owner's requests (2026-10-04, later):
 Fairer Check (2026-10-04, from the owner's own Library build at level 3 — 89 %, 3 false “missing”):
 - [x] An **intermediate entity for a plain many-to-many** (Book_Author between Book and Author, two many-to-one links) counts as that many-to-many ✱ — same join table in the PDM; it is no longer listed as extra, its minimums are still compared, “do it for me” fixes the cards on its two links and keeps the entity; the hint’s answer names the two links and the card at the entity’s end
 - [x] Attributes match **short forms**: `pub_year` ~ `Publication_year`, `card_no` ~ `Card_number`, `name` ~ `Pname` (entity initial); an attribute chosen as the **primary identifier** still counts (ISBN as PI is the ISBN). A different word (`Name` for `title`) is still reported; 335 tests
+- [x] **Mandatory (M) compared** (owner's request): an attribute mandatory in the reference but not ticked → “must always have a value — tick M (NOT NULL)”; ticked where the case explains why it is optional (a comment like “NULL while the book is out”) → “can stay empty” ✱. Elsewhere the reference did not decide, so the student's M is accepted (course cases leave many attributes unmarked). Not scored, like attributes; a coach step after the entity's attributes; “do it for me” sets the flags; 336 tests
 
 Backlog from the review (by value):
 3. **Sandbox: predict first** — “Will the database accept this row?” before each scenario step; the balance of the screen (grid squeezed in 320 px, right half empty)
@@ -283,6 +284,7 @@ The owner's guidance: the course's "discussed in class" points are not critical 
 8. (2026-10-03) Own starter case **Library** comes first; cases are ordered by difficulty Library → Ride Hailing → TV Shows → Timetables (Ride Hailing lowered to ★★). In Library the primary identifier of Book is an added `book_id`, the ISBN an alternate identifier — to show the PI/AI choice; Loan has its own id because the pair repeats.
 
 9. (2026-10-03) Inheritance generation = both keeps **only the key** in child tables ✱. PowerDesigner's default “Inherit all attributes” also copies the parent's columns into each child (found by the cross-check with the owner's `TV Show.pdm`); it is a checkbox (`Inheritance.inheritAll`), on for imported PD models, off in the reference cases (no duplicated data).
+- ✱ Check (2026-10-04): M is compared one-way plus explained exceptions — “must” when the reference is mandatory, “may be empty” only for attributes whose case comment says why they are NULL.
 - ✱ Check (2026-10-04): a plain many-to-many drawn as an intermediate entity (no data, two many-to-one links) is accepted as equal — the course allows both; the case text still teaches the plain relationship when the pair has no data.
 - ✱ Walkthrough questions (2026-10-04): ask where the FK goes before every relationship, the identifier only when there is a choice, and “what does this phrase become” once plus for two-reading phrases; 1:1 accepts either side, an alternate identifier counts as a right answer to “which attribute tells one X apart”. Level 1 hides the model (with a Peek) — recall first, then compare.
 

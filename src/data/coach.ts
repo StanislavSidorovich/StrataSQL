@@ -3,7 +3,7 @@
 // those comes first (entities before their links, the starter case's attributes before identifiers).
 // `applyAnswer` (“do it for me”) copies that one element of the reference into the student model.
 
-import { compareModels, missingAttributes, sameAttribute, type CompareItem, type CompareResult } from '../core/compare'
+import { compareModels, mandatoryDiffs, missingAttributes, sameAttribute, type CompareItem, type CompareResult } from '../core/compare'
 import { type Attribute, type Cardinality, type Entity, type Id, type Model, primaryIdentifier } from '../core/metamodel'
 import {
   addAttribute,
@@ -22,6 +22,7 @@ import {
   setForeignKeySide,
   swapRelationshipSides,
   uniqueName,
+  updateAttribute,
   updateInheritance,
   updateRelationship,
 } from '../core/ops'
@@ -66,7 +67,7 @@ export interface CoachState {
 
 export const coachKey = (item: CoachItem) => `${item.kind}|${item.refKey ?? item.message}`
 
-const KIND_ORDER: Record<CoachItem['kind'], number> = { entity: 0, attribute: 1, identifier: 2, relationship: 3, inheritance: 3, keys: 4 }
+const KIND_ORDER: Record<CoachItem['kind'], number> = { entity: 0, attribute: 1, mandatory: 1, identifier: 2, relationship: 3, inheritance: 3, keys: 4 }
 
 const orderCache = new Map<string, Map<string, number>>()
 /** Walkthrough step key → index, per case. */
@@ -80,7 +81,7 @@ function itemRank(item: CoachItem, rank: Map<string, number>): number {
   const key = item.refKey ?? ''
   const entity = key.startsWith('entity:') ? key.slice('entity:'.length) : ''
   const r =
-    item.kind === 'attribute'
+    item.kind === 'attribute' || item.kind === 'mandatory'
       ? rank.get(`attributes:${entity}`) ?? rank.get(key)
       : item.kind === 'identifier'
         ? rank.get(`identifier:${entity}`) ?? rank.get(key)
@@ -122,6 +123,7 @@ function spansFor(c: TrainerCase, item: CoachItem): number[] {
     case 'entity':
       return about((t) => t === key || t.startsWith(`attribute:${entity}.`))
     case 'attribute':
+    case 'mandatory':
       return about((t, i) => t.startsWith(`attribute:${entity}.`) && c.spans[i].step !== 'identifier')
     case 'identifier': {
       const own = about((t, i) => (t === key || t.startsWith(`attribute:${entity}.`)) && c.spans[i].step === 'identifier')
@@ -256,6 +258,16 @@ export function applyAnswer(m: Model, c: TrainerCase, item: CoachItem): boolean 
     const s = r && sEntity(r.id)
     if (!r || !s) return false
     for (const a of missingAttributes(s, r)) copyAttribute(m, ref, s.id, a)
+    return true
+  }
+
+  if (item.kind === 'mandatory') {
+    const r = rEntity(rest)
+    const s = r && sEntity(r.id)
+    if (!r || !s) return false
+    const { must, mayBeEmpty } = mandatoryDiffs(s, r)
+    for (const a of must) updateAttribute(m, s.id, a.id, { mandatory: true })
+    for (const a of mayBeEmpty) updateAttribute(m, s.id, a.id, { mandatory: false })
     return true
   }
 
