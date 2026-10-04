@@ -3,6 +3,7 @@
 import { useEffect, useLayoutEffect, useState } from 'react'
 import { create } from 'zustand'
 import { CASES } from '../../data/cases'
+import { AuthorLinks, GITHUB_URL, LINKEDIN_URL } from '../AuthorLinks'
 
 const WELCOMED_KEY = 'stratasql.welcomed'
 
@@ -217,6 +218,7 @@ function Welcome(props: { onPractise: () => void; onWatch: () => void }) {
         <p className="welcome-disclaimer">
           An unofficial student project, not affiliated with or endorsed by NOVA IMS. Where it differs from the course, the course and your professor are right.
         </p>
+        <AuthorLinks />
       </div>
     </div>
   )
@@ -303,8 +305,12 @@ function About() {
             Quaera
           </a>
           . Source:{' '}
-          <a href="https://github.com/StanislavSidorovich/StrataSQL" target="_blank" rel="noopener">
+          <a href={GITHUB_URL} target="_blank" rel="noopener">
             GitHub
+          </a>
+          , author on{' '}
+          <a href={LINKEDIN_URL} target="_blank" rel="noopener">
+            LinkedIn
           </a>
           . Code under Apache-2.0, learning content under CC BY-NC-SA 4.0.
         </p>

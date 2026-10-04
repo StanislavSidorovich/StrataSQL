@@ -2,6 +2,7 @@ import { DATA_TYPES, TYPES_WITH_LENGTH, TYPES_WITH_PRECISION, type DataType, typ
 import { addDomain, removeDomain, renameModel, updateDomain } from '../../core/ops'
 import { useEditor } from '../store'
 import { Field, IconButton, NumberInput, Section, Select, SizeInput, TextArea, TextInput } from './fields'
+import { AuthorLinks } from '../AuthorLinks'
 
 export function ModelPanel({ model }: { model: Model }) {
   const apply = useEditor((s) => s.apply)
@@ -88,6 +89,7 @@ export function ModelPanel({ model }: { model: Model }) {
           </li>
         </ul>
       </Section>
+      <AuthorLinks className="px-4 py-3" />
     </div>
   )
 }

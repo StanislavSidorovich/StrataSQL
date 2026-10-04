@@ -1,4 +1,5 @@
-// Text size and colours (toolbar "Aa"). Text size zooms the panels, not the diagram (the diagram has its own zoom).
+// Text size and colours (toolbar "Aa"). Text size zooms the panels; the diagram's text grows with it too
+// (font size, not zoom — React Flow measures the nodes again), unless the student turns that off.
 // Colours are kept per theme, so a pale canvas chosen in light mode does not end up behind light text in dark mode.
 // Input fields keep their own white (or dark) background.
 
@@ -8,6 +9,7 @@ const STORAGE_KEY = 'stratasql.look'
 
 export const TEXT_SIZES = [
   { zoom: 1, label: 'Normal' },
+  { zoom: 1.1, label: 'Slightly larger' },
   { zoom: 1.15, label: 'Large' },
   { zoom: 1.3, label: 'Larger' },
   { zoom: 1.5, label: 'Largest' },
@@ -15,7 +17,10 @@ export const TEXT_SIZES = [
 
 type Theme = 'light' | 'dark'
 interface Look {
-  text: number
+  /** Text size as a factor (1, 1.1 … 1.5). */
+  size: number
+  /** The diagram's text follows the text size. */
+  diagram: boolean
   canvas: Partial<Record<Theme, string>>
   panels: Partial<Record<Theme, string>>
 }
@@ -34,17 +39,20 @@ const SWATCHES: Record<'canvas' | 'panels', Record<Theme, string[]>> = {
 
 function readLook(): Look {
   try {
-    const v = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}') as Partial<Look>
-    return { text: Number(v.text) || 0, canvas: v.canvas ?? {}, panels: v.panels ?? {} }
+    const v = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}') as Partial<Look> & { text?: number }
+    // Before 1.1 was added the size was stored as an index into [1, 1.15, 1.3, 1.5].
+    const size = Number(v.size) || [1, 1.15, 1.3, 1.5][Number(v.text) || 0] || 1
+    return { size, diagram: v.diagram !== false, canvas: v.canvas ?? {}, panels: v.panels ?? {} }
   } catch {
-    return { text: 0, canvas: {}, panels: {} }
+    return { size: 1, diagram: true, canvas: {}, panels: {} }
   }
 }
 
 /** Applies the stored look to the page; call once near the root. */
 function applyLook(look: Look, theme: Theme) {
   const root = document.documentElement.style
-  root.setProperty('--ui-zoom', String(TEXT_SIZES[look.text]?.zoom ?? 1))
+  root.setProperty('--ui-zoom', String(look.size))
+  root.setProperty('--diagram-zoom', String(look.diagram ? look.size : 1))
   const set = (name: string, value: string | undefined) => (value ? root.setProperty(name, value) : root.removeProperty(name))
   set('--canvas-bg', look.canvas[theme])
   set('--code-bg', look.canvas[theme])
@@ -120,26 +128,29 @@ export function AppearanceButton({ dark }: { dark: boolean }) {
           <div className="look-row">
             <div className="look-label">Text size</div>
             <div className="segmented">
-              {TEXT_SIZES.map((t, i) => (
+              {TEXT_SIZES.map((t) => (
                 <button
                   key={t.label}
                   type="button"
-                  className={look.text === i ? 'on' : ''}
+                  className={look.size === t.zoom ? 'on' : ''}
                   title={`${t.label} (${Math.round(t.zoom * 100)} %)`}
                   aria-label={`Text size: ${t.label}`}
                   style={{ fontSize: `${12 * t.zoom}px` }}
-                  onClick={() => setLook((l) => ({ ...l, text: i }))}
+                  onClick={() => setLook((l) => ({ ...l, size: t.zoom }))}
                 >
                   A
                 </button>
               ))}
             </div>
-            <div className="look-hint">The diagram has its own zoom (+ / − or the mouse wheel).</div>
+            <label className="look-hint flex items-center gap-1">
+              <input type="checkbox" checked={look.diagram} onChange={(e) => setLook((l) => ({ ...l, diagram: e.target.checked }))} />
+              Diagram text too (entities and tables get bigger; the diagram also has its own zoom: + / − or the mouse wheel)
+            </label>
           </div>
           {colorRow('canvas', 'Canvas')}
           {colorRow('panels', 'Panels (top bar, side columns)')}
           <div className="look-hint">Colours are kept separately for the light and dark theme.</div>
-          <button type="button" className="btn btn-small self-start" onClick={() => setLook({ text: 0, canvas: {}, panels: {} })}>
+          <button type="button" className="btn btn-small self-start" onClick={() => setLook({ size: 1, diagram: true, canvas: {}, panels: {} })}>
             Reset to default
           </button>
         </div>

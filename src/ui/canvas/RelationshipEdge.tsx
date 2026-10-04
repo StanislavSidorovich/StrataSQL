@@ -48,7 +48,7 @@ export function RelationshipEdge({ id, source, target, data, selected }: EdgePro
         <EndMarker at={from} dir={dirA} card={rel.cardinalityA} dependent={rel.dependentSide === 'A'} stroke={stroke} />
         <EndMarker at={to} dir={dirB} card={rel.cardinalityB} dependent={rel.dependentSide === 'B'} stroke={stroke} />
       </g>
-      <g className="pointer-events-none select-none" fontSize={11} fill="var(--edge-label)">
+      <g className="pointer-events-none select-none" style={{ fontSize: 'calc(11px * var(--diagram-zoom, 1))' }} fill="var(--edge-label)">
         <EndLabel at={from} dir={dirA} text={formatCardinality(rel.cardinalityA)} role={rel.roleA} />
         <EndLabel at={to} dir={dirB} text={formatCardinality(rel.cardinalityB)} role={rel.roleB} />
         {rel.name && (
@@ -122,7 +122,7 @@ function ReflexiveEdge({ id, rect, rel, stroke }: { id: string; rect: Rect; rel:
         <EndMarker at={start} dir={{ x: 0, y: -1 }} card={rel.cardinalityA} dependent={false} stroke={stroke} />
         <EndMarker at={end} dir={{ x: 1, y: 0 }} card={rel.cardinalityB} dependent={false} stroke={stroke} />
       </g>
-      <g className="pointer-events-none select-none" fontSize={11} fill="var(--edge-label)">
+      <g className="pointer-events-none select-none" style={{ fontSize: 'calc(11px * var(--diagram-zoom, 1))' }} fill="var(--edge-label)">
         <text x={start.x - 26} y={start.y - 22} fontWeight={600}>{formatCardinality(rel.cardinalityA)}</text>
         <text x={end.x + 22} y={end.y + 18} fontWeight={600}>{formatCardinality(rel.cardinalityB)}</text>
         {rel.roleA && <text x={start.x - 26} y={start.y - 36} fontStyle="italic" fill="var(--edge-name)">{rel.roleA}</text>}
