@@ -225,6 +225,10 @@ function describeInheritance(i: Inheritance, name: (id: Id) => string): string {
 
 const sameCard = (a: Cardinality, b: Cardinality) => a.min === b.min && a.max === b.max
 
+const article = (w: string) => (/^[aeiou]/i.test(w) ? 'an' : 'a')
+const minimumsDiffer = (a: string, b: string) =>
+  `the minimums differ (optional vs mandatory): ask whether ${article(b)} ${b} can exist without ${article(a)} ${a}, and ${article(a)} ${a} without ${article(b)} ${b}.`
+
 /** The card drawn at `id`'s end of a relationship. */
 export const cardAt = (s: Relationship, id: Id) => (s.entityA === id ? s.cardinalityA : s.cardinalityB)
 
@@ -284,7 +288,7 @@ function relDiffs(r: Relationship, s: Relationship, ctx: Ctx): string[] {
       maxDiff
         ? `the kind of link differs — you have ${relationshipKind({ ...s, cardinalityA: o.cardA, cardinalityB: o.cardB }).replace(/-/g, ' ')}, ` +
             `the text implies ${relationshipKind(r).replace(/-/g, ' ')}. Read again how many ${b} one ${a} has, and how many ${a} one ${b} has.`
-        : `the minimums differ (optional vs mandatory): ask whether a ${b} can exist without a ${a}, and a ${a} without a ${b}.`,
+        : minimumsDiffer(a, b),
     )
   }
   if (o.dep !== r.dependentSide) {
@@ -411,8 +415,11 @@ export function compareModels(student: Model, ref: Model, opts: CompareOptions =
               refEntities: names,
               target,
               bridge,
-              message: `${label}: the minimums differ (optional vs mandatory): ask whether a ${b} can exist without a ${a}, and a ${a} without a ${b}.`,
-              answer,
+              message: `${label}: ${minimumsDiffer(a, b)}`,
+              // Where to set it: the cards at the intermediate entity's ends of its two links.
+              answer:
+                `At ${ctx.sName(bridge.entity)}'s end of ${rel(bridge.toB).name}: ${formatCardinality(r.cardinalityA)} (${a}s per ${b}); ` +
+                `of ${rel(bridge.toA).name}: ${formatCardinality(r.cardinalityB)} (${b}s per ${a}). Plain link in the reference: ${answer}.`,
             },
       )
       continue

@@ -213,7 +213,7 @@ Owner's requests (2026-10-04, later):
 - [x] Checked in the dev build (Playwright 1366×820): hint + focus + clear, 130 % text with colours, dark theme, Sandbox; 332 tests
 
 Fairer Check (2026-10-04, from the owner's own Library build at level 3 — 89 %, 3 false “missing”):
-- [x] An **intermediate entity for a plain many-to-many** (Book_Author between Book and Author, two many-to-one links) counts as that many-to-many ✱ — same join table in the PDM; it is no longer listed as extra, its minimums are still compared, “do it for me” fixes the cards on its two links and keeps the entity
+- [x] An **intermediate entity for a plain many-to-many** (Book_Author between Book and Author, two many-to-one links) counts as that many-to-many ✱ — same join table in the PDM; it is no longer listed as extra, its minimums are still compared, “do it for me” fixes the cards on its two links and keeps the entity; the hint’s answer names the two links and the card at the entity’s end
 - [x] Attributes match **short forms**: `pub_year` ~ `Publication_year`, `card_no` ~ `Card_number`, `name` ~ `Pname` (entity initial); an attribute chosen as the **primary identifier** still counts (ISBN as PI is the ISBN). A different word (`Name` for `title`) is still reported; 335 tests
 
 Backlog from the review (by value):

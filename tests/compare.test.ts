@@ -228,6 +228,8 @@ describe('seeded models — Library (a student build)', () => {
     const item = compareModels(m, c.build()).items.find((i) => i.refKey === 'relationship:writes')!
     expect(item.status).toBe('different')
     expect(item.message).toContain('optional vs mandatory')
+    expect(item.message).toContain('an Author')
+    expect(item.answer).toContain("At Book_Author's end of Books_Entity: 1,n (Authors per Book)")
     expect(applyAnswer(m, c, item)).toBe(true)
     expect(compareModels(m, c.build()).items.find((i) => i.refKey === 'relationship:writes')!.status).toBe('matched')
     expect(findEntityByName(m, 'Book_Author')).toBeDefined()
