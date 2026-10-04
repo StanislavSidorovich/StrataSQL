@@ -4,7 +4,7 @@ Browser-based data modeling: **Conceptual Data Model → Physical Data Model →
 
 - Spec: [SPEC.md](SPEC.md) · Progress: [ROADMAP.md](ROADMAP.md) · Reference cases: [cases/](cases/)
 - **Open it: https://model.quaera.app** — runs in the browser, no install, no VPN. Works offline after the first visit; Chrome/Edge (also on macOS) offer **Install app** in the address bar, Safari on macOS has *File → Add to Dock*.
-- Status: stages 1–5 done (CDM editor, PDM + SQL Server DDL, SQL sandbox, linter + help cards, trainer, guided start: tour, step-by-step walkthroughs, build with hints, PowerDesigner `.cdm` import); 8 cases and 5 open exercises.
+- Status: stages 1–5 done (CDM editor, PDM + SQL Server DDL, SQL sandbox, linter + help cards, trainer, guided start: tour, step-by-step walkthroughs, build with hints, PowerDesigner `.cdm` import and export); 8 cases and 5 open exercises.
 - **Unofficial student project**, not affiliated with or endorsed by NOVA IMS. Where it differs from the course, the course and the professor are right; the decisions marked ✱ in `cases/` are the author's own.
 - Part of **[Quaera](https://quaera.app)**: StrataSQL is where you design the database, Quaera is where you query and analyse one.
 

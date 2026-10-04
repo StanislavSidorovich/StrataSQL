@@ -2,6 +2,7 @@
 // Chrome and Edge); after that, “Save” writes to the same file until another model is loaded.
 // Browsers without the API download the file instead (to the downloads folder, or wherever the browser asks).
 
+import { exportPowerDesigner } from '../core/export/powerdesigner'
 import { FILE_EXTENSION, serializeModel } from '../core/serialize'
 import { fileBaseName } from './pdm/SqlView'
 import { useEditor } from './store'
@@ -68,4 +69,17 @@ export async function saveModelAs(): Promise<string | null> {
   await write(file)
   if (!useEditor.getState().trainerBackup) current = { file, doc }
   return `Saved to ${file.name}. Ctrl+S now saves to this file.`
+}
+
+/** Export for PowerDesigner: a .cdm (XML) download. Returns a message for the user, with what PD cannot hold. */
+export function exportCdm(): string {
+  const { model } = useEditor.getState()
+  const { xml, warnings } = exportPowerDesigner(model)
+  const name = `${fileBaseName(model.name)}.cdm`
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(new Blob([xml], { type: 'application/xml' }))
+  a.download = name
+  a.click()
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000)
+  return `Exported ${name} — open it in PowerDesigner (File → Open).` + (warnings.length ? `\n${warnings.join('\n')}` : '')
 }

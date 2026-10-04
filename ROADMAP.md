@@ -16,7 +16,7 @@ Stages follow SPEC §12. A stage is done only when its acceptance criteria pass.
 
 ## Next steps (by priority, 2026-10-04)
 
-1. **Export to PowerDesigner `.cdm`** — so a model built here can be opened in PowerDesigner and handed in. Write PD 16 XML (entities, data items, identifiers, relationships, inheritances, domains, diagram symbols with positions) using the owner's class files as the template; test = round trip through our `.cdm` import + the owner opens it in PD. Until then the path is: SQL tab → save the script → PD *File → Reverse Engineer → Database* (script file, SQL Server) → *Tools → Generate Conceptual Data Model*. About one sprint
+1. ✅ **Export to PowerDesigner `.cdm`** (2026-10-04) — **File → Export for PowerDesigner**; still to do: the owner opens an exported file in PowerDesigner 16 and generates the PDM from it (only our own import has read these files so far)
 2. **My task (own text)** — see “Owner's ideas for later” below. About one sprint
 3. **Readable diagrams at 1366 px** (backlog 5)
 4. **Tablet / 1280 px + toolbar on one row** (backlog 6, incl. the long model name)
@@ -241,6 +241,13 @@ Sandbox prediction, picker progress, name suggestions (2026-10-04):
 - [x] Checked in the dev build (Playwright 1366×820): Football scenario with right / wrong guesses and the score line, grid jumps to MATCH with the rejected columns, picker with seeded progress (Library done, Hotel 1/4, Continue button), Library level 3 suggestions (`Mem…` → Member); 345 tests
 
 Built with: Claude Opus 5.5 (Claude Code), effort low.
+
+PowerDesigner export (2026-10-04):
+- [x] `src/core/export/powerdesigner.ts` — model → PD 16 XML `.cdm`, the reverse of the importer: entities, data items, identifiers (primary + alternate), domains, relationships (cardinalities, dependency, the 1:1 FK side as `DominantRole`), inheritances (exclusive / complete / generation / inherit all), diagram symbols at our positions (1/100 mm, y up, lines from border to border). Option blocks and display preferences are left out, so PD uses its defaults
+- [x] Data items are **shared** as in PD (Title in two entities = one data item) ✱; PD needs one data item per code, so the same code with a different type gets `2` appended, the way PD does (`PARTICIPANT_ID2` in the course file) — with a warning that names the entity
+- [x] Our **roles** are FK prefixes, PD roles are verb phrases, so they go into the relationship comment with a warning ✱; alternate keys over table columns (Timetables, Football) and the discriminator are not part of a PD CDM → warning
+- [x] Tests: every case and both class files survive export → our import with the same SQL Server DDL (when there are no warnings), unique object ids, all refs resolve, layout kept; 359 tests. Checked in the dev build: File → Export for PowerDesigner gives `Library.cdm`
+- Licence: the file format is written from scratch for interoperability, no SAP code or files are shipped; the trademark note is in README and About
 
 Owner's ideas for later (2026-10-04):
 - **Own task text** (“My task”): paste a text or load a `.txt` / `.md`; it shows in the left column like an open exercise (Model check counts, self-review checklist, name suggestions from it), saved in the browser. No reference, so no score — but a useful check without one: **the student tags phrases themselves** (select text → entity / attribute / relationship / identifier), and the pane lists tagged phrases with nothing in the model yet, and model elements no phrase mentions. Later, with stage 6 (AI review), the text + model can go to a model for comments. About one sprint

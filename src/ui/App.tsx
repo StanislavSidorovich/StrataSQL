@@ -18,7 +18,7 @@ import { PdmPanel } from './pdm/PdmPanel'
 import { fileBaseName, SqlView } from './pdm/SqlView'
 import { SandboxView } from './sandbox/SandboxView'
 import { AppearanceButton } from './Appearance'
-import { saveModel, saveModelAs } from './fileSave'
+import { exportCdm, saveModel, saveModelAs } from './fileSave'
 import { SideDock } from './SideDock'
 import { useEditor, type View } from './store'
 import { CASES } from '../data/cases'
@@ -211,6 +211,7 @@ function Editor() {
               { label: 'Save', hint: 'Ctrl+S', onSelect: () => save(false) },
               { label: 'Save as…', hint: 'Ctrl+Shift+S', onSelect: () => save(true) },
               'separator',
+              { label: 'Export for PowerDesigner', hint: '.cdm', onSelect: () => setNotice(exportCdm()) },
               ...(['png', 'svg'] as const).map((format) => ({
                 label: `Export diagram as ${format.toUpperCase()}`,
                 disabled: view !== 'cdm' && view !== 'pdm',
