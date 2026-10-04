@@ -229,6 +229,7 @@ const SHORTCUTS: [string, string][] = [
   ['Esc', 'Clear the selection, close a dialog'],
   ['Ctrl+Z / Ctrl+Y', 'Undo / redo'],
   ['Ctrl+S', 'Save the model as a file'],
+  ['Ctrl+Shift+S', 'Save as: choose the folder and the name'],
   ['Mouse wheel / drag the background', 'Zoom / pan'],
   ['Ctrl+Enter (Sandbox console)', 'Run the SQL'],
 ]

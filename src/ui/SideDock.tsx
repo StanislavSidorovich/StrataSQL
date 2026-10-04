@@ -1,5 +1,6 @@
 // A side column that can be hidden and resized: drag its inner edge, double-click the edge to reset.
 // The width is remembered per side; a change of `revealKey` opens a hidden column again.
+// The body is zoomed by the text size (Appearance.tsx); dividing by the zoom keeps the width on screen.
 
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 
@@ -64,7 +65,7 @@ export function SideDock(props: { side: 'left' | 'right'; name: string; defaultW
     <div className={`dock dock-${side} ${open ? '' : 'is-collapsed'}`}>
       {side === 'right' && gutter}
       {open && (
-        <div className="dock-body" style={{ width }}>
+        <div className="dock-body" style={{ width: `calc(${width}px / var(--ui-zoom, 1))` }}>
           {children}
         </div>
       )}

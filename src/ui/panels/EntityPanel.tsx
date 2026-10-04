@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   DATA_TYPES,
   TYPES_WITH_LENGTH,
@@ -21,12 +21,17 @@ import {
   setPrimaryIdentifier,
   toggleIdentifierAttribute,
   updateAttribute,
+  uniqueName,
   updateEntity,
 } from '../../core/ops'
 import { ElementIssues } from '../lint/IssuesPanel'
 import { EntityResult } from '../pdm/PhysicalResult'
 import { useEditor } from '../store'
-import { Check, Field, HelpButton, IconButton, NumberInput, Section, Select, SizeInput, TextArea, TextInput } from './fields'
+import { Check, Field, HelpButton, IconButton, NameInput, NumberInput, Section, Select, SizeInput, TextArea, TextInput } from './fields'
+
+/** Names the editor gives a new element; the name field shows them as a grey hint. */
+const DEFAULT_ENTITY = /^Entity(_\d+)?$/
+const DEFAULT_ATTRIBUTE = /^attribute(_\d+)?$/
 
 export function EntityPanel({ entity, model }: { entity: Entity; model: Model }) {
   const apply = useEditor((s) => s.apply)
@@ -41,6 +46,8 @@ export function EntityPanel({ entity, model }: { entity: Entity; model: Model })
   // Just drawn: no attributes and no links yet. The linter gives one next-step hint; the empty table is not worth a warning.
   const empty = entity.attributes.length === 0 && relationships.length === 0 && !asChild && !asParent
 
+  // A just-added attribute takes the focus, so its name can be typed right away.
+  const [newAttr, setNewAttr] = useState<string | null>(null)
   const nameBox = useRef<HTMLDivElement>(null)
   const focusName = useEditor((s) => s.focusName)
   useEffect(() => {
@@ -57,7 +64,12 @@ export function EntityPanel({ entity, model }: { entity: Entity; model: Model })
       <Section title="Entity" help="entity">
         <Field label="Name" help="names-and-codes">
           <div ref={nameBox} className="contents">
-          <TextInput value={entity.name} onChange={(v) => apply((m) => updateEntity(m, id, { name: v }), { coalesce: `en:${id}` })} />
+          <NameInput
+            value={entity.name}
+            isDefault={(n) => DEFAULT_ENTITY.test(n)}
+            fallback={uniqueName('Entity', model.entities.filter((e) => e.id !== id).map((e) => e.name))}
+            onChange={(v) => apply((m) => updateEntity(m, id, { name: v }), { coalesce: `en:${id}` })}
+          />
           </div>
         </Field>
         <Field label="Code" hint="Table name in the PDM" help="names-and-codes">
@@ -72,7 +84,12 @@ export function EntityPanel({ entity, model }: { entity: Entity; model: Model })
         title={`Attributes (${entity.attributes.length})`}
         help="attribute"
         actions={
-          <button type="button" className="btn btn-small" onClick={() => apply((m) => void addAttribute(m, id))}>
+          <button type="button" className="btn btn-small" onClick={() => {
+              let aid = ''
+              apply((m) => void (aid = addAttribute(m, id).id))
+              setNewAttr(aid)
+            }}
+          >
             + Attribute
           </button>
         }
@@ -102,6 +119,7 @@ export function EntityPanel({ entity, model }: { entity: Entity; model: Model })
             inPi={pi?.attributeIds.includes(a.id) ?? false}
             first={idx === 0}
             last={idx === entity.attributes.length - 1}
+            autoFocus={a.id === newAttr}
           />
         ))}
         {entity.attributes.length === 0 && (
@@ -230,6 +248,7 @@ function AttributeRow({
   inPi,
   first,
   last,
+  autoFocus,
 }: {
   entityId: string
   attr: Attribute
@@ -237,6 +256,7 @@ function AttributeRow({
   inPi: boolean
   first: boolean
   last: boolean
+  autoFocus: boolean
 }) {
   const apply = useEditor((s) => s.apply)
   const aid = attr.id
@@ -254,9 +274,12 @@ function AttributeRow({
         title="Part of the primary identifier"
         onChange={(v) => apply((m) => setAttributeInPrimary(m, entityId, aid, v))}
       />
-      <TextInput
+      <NameInput
         ariaLabel="Attribute name"
         value={attr.name}
+        isDefault={(n) => DEFAULT_ATTRIBUTE.test(n)}
+        fallback={uniqueName('attribute', model.entities.find((e) => e.id === entityId)!.attributes.filter((x) => x.id !== aid).map((x) => x.name))}
+        autoFocus={autoFocus}
         onChange={(v) => apply((m) => updateAttribute(m, entityId, aid, { name: v }), { coalesce: `an:${aid}` })}
       />
       <Select

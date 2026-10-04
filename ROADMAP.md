@@ -12,7 +12,7 @@ Stages follow SPEC §12. A stage is done only when its acceptance criteria pass.
 | 5. Guided start | ✅ acceptance met (2026-10-03, v0.5.0) — 5a–5c, 5d (.cdm) done; 5e polish and `.pdm` reverse carried over | A first-time user learns the screen in a tour, watches a case built step by step, and builds one alone with “next hint” |
 | 6. AI review | ⏭ optional | Optional, behind a user-provided API key |
 
-**Where we are (2026-10-04, v0.6.0 + UX review):** 8 cases + 5 exercises, PowerDesigner cross-check, live at model.quaera.app. The UX review fixed the first-minute rough edges (gentle hint for a new entity, name focus, wrapping phrases, zoom, minimap, phone note). Then the two top backlog items: the walkthrough now asks before some steps (predict → see), and level 1 hides the model until the text is tagged. Next from the backlog in “UX review” below: sandbox prediction, visible progress on the picker. LinkedIn post after the professor answers about the 3 course cases.
+**Where we are (2026-10-04, v0.6.0 + UX review):** 8 cases + 5 exercises, PowerDesigner cross-check, live at model.quaera.app. The UX review fixed the first-minute rough edges (gentle hint for a new entity, name focus, wrapping phrases, zoom, minimap, phone note). Then the two top backlog items: the walkthrough now asks before some steps (predict → see), and level 1 hides the model until the text is tagged. Then the owner's requests: default names as grey hints, text size, canvas/panel colours, Save as. Next from the backlog in “UX review” below: sandbox prediction, visible progress on the picker. LinkedIn post after the professor answers about the 3 course cases.
 
 **Earlier (2026-10-03, v0.5.0):** guided start is in: a welcome card and a tour, the four cases watched built step by step (Library starter first), built alone with a Next hint that walks the same order, and PowerDesigner `.cdm` import. Next: 5e UI polish, then optional AI review (stage 6).
 
@@ -203,6 +203,14 @@ Done after the review (2026-10-04):
 - [x] Checked in the dev build (Playwright 1366×820): Library question at step 1, wrong answer → ✗ with the reason, FK question with both entities highlighted, answers kept after a reload, Hotel level 1 veiled → Peek → Hide; 332 tests
 
 Built with: Claude Opus 5.5 (Claude Code), effort low.
+
+Owner's requests (2026-10-04, later):
+- [x] **Default names are a grey hint**: a new attribute's name (`attribute`, `attribute_2`) and a new entity's (`Entity_2`) show as a placeholder — click and type from the start, nothing to delete; clearing the field gives the default back. “+ Attribute” puts the cursor in the new name field
+- [x] **Text size** (toolbar **Aa**): Normal / Large 115 % / Larger 130 % / Largest 150 %. It zooms the toolbar, side columns, Model check, help drawer, dialogs, SQL and Sandbox; diagrams keep their own zoom; side columns keep their width on screen; the help drawer starts below the toolbar even when it wraps
+- [x] **Colours** (same Aa panel): canvas and panels (top bar + both side columns, one colour ✱ — separate colours per column add choice without use), 6 presets each + any colour from the picker; kept per theme (light/dark), input fields stay white; Reset
+- [x] **File → Save as…** (Ctrl+Shift+S): choose folder and name (Chrome/Edge, File System Access API); afterwards Save / Ctrl+S writes to that file until another model is loaded (not during a trainer task). Firefox/Safari: a download, with a note how to make the browser ask for the folder
+- [x] Fixed on the way: the Sandbox's right column had no width (an empty model let it take the whole screen); it is now a resizable side column like the others
+- [x] Checked in the dev build (Playwright 1366×820): hint + focus + clear, 130 % text with colours, dark theme, Sandbox; 332 tests
 
 Backlog from the review (by value):
 3. **Sandbox: predict first** — “Will the database accept this row?” before each scenario step; the balance of the screen (grid squeezed in 320 px, right half empty)

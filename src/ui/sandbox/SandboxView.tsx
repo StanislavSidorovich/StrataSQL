@@ -11,6 +11,7 @@ import { SourceLink } from '../pdm/PdmPanel'
 import { Section } from '../panels/fields'
 import { usePdm, useModel } from '../store'
 import { ensureSchema, execute, openScenario, query, resetData, runStep, useSandbox, type Executed } from './sandboxStore'
+import { SideDock } from '../SideDock'
 
 export function SandboxView() {
   const pdm = usePdm()
@@ -45,10 +46,12 @@ export function SandboxView() {
           </>
         )}
       </main>
-      <aside className="panel" aria-label="Sandbox">
-        <LastResult />
-        <Scenarios pdm={pdm} />
-      </aside>
+      <SideDock side="right" name="scenarios" defaultWidth={390}>
+        <aside className="panel" aria-label="Sandbox">
+          <LastResult />
+          <Scenarios pdm={pdm} />
+        </aside>
+      </SideDock>
     </div>
   )
 }

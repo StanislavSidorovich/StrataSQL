@@ -59,6 +59,45 @@ export function TextInput({
   )
 }
 
+/**
+ * A name field where a default name (`attribute`, `Entity_2`) is only a grey hint: click and type,
+ * there is nothing to delete first. Clearing the field gives the element its default name back.
+ */
+export function NameInput({
+  value,
+  isDefault,
+  fallback,
+  onChange,
+  ariaLabel,
+  autoFocus,
+}: {
+  value: string
+  isDefault: (name: string) => boolean
+  /** The name to keep when the field is cleared. */
+  fallback: string
+  onChange: (v: string) => void
+  ariaLabel?: string
+  autoFocus?: boolean
+}) {
+  // While the user is typing, show exactly what they typed (even if it looks like a default name).
+  const [typing, setTyping] = useState(false)
+  const hint = !typing && isDefault(value)
+  return (
+    <input
+      className="input"
+      value={hint ? '' : value}
+      placeholder={hint ? value : undefined}
+      aria-label={ariaLabel}
+      autoFocus={autoFocus}
+      onChange={(e) => {
+        setTyping(true)
+        onChange(e.target.value.trim() === '' ? fallback : e.target.value)
+      }}
+      onBlur={() => setTyping(false)}
+    />
+  )
+}
+
 export function TextArea({ value, onChange, placeholder }: { value: string | undefined; onChange: (v: string) => void; placeholder?: string }) {
   return (
     <textarea className="input min-h-14 resize-y" value={value ?? ''} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} />

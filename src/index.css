@@ -249,6 +249,10 @@ body {
   padding: 3px 6px;
   font: inherit;
 }
+.input::placeholder {
+  color: var(--muted);
+  opacity: 0.75;
+}
 .input:focus {
   outline: 2px solid var(--accent-soft);
   border-color: var(--accent);
@@ -906,7 +910,8 @@ body {
 }
 .help-drawer {
   position: fixed;
-  top: 49px;
+  /* the drawer is zoomed by the text size, the toolbar height is measured on screen */
+  top: calc(var(--toolbar-h, 49px) / var(--ui-zoom, 1));
   right: 0;
   bottom: 0;
   width: min(460px, 100vw);
@@ -1875,4 +1880,76 @@ body {
 .canvas-veil h2 {
   margin: 0;
   font-size: 16px;
+}
+
+/* ------------------------------------------------------------ text size and colours (toolbar "Aa") */
+
+:root {
+  --ui-zoom: 1;
+}
+/* Text size zooms the panels; the diagrams keep their own zoom (the tour card is placed by script, so it is left alone). */
+.toolbar,
+.dock-body,
+.issues-dock,
+.help-drawer,
+.modal,
+.sql-view,
+.sandbox-main,
+.notice-toast,
+.error-toast,
+.empty-state,
+.canvas-veil > div {
+  zoom: var(--ui-zoom);
+}
+.look-panel {
+  min-width: 300px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.look-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.look-label {
+  font-weight: 600;
+}
+.look-hint {
+  font-size: 11px;
+  color: var(--muted);
+}
+.look-panel .segmented button {
+  min-width: 40px;
+  line-height: 20px;
+}
+.look-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.look-swatch {
+  position: relative;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  border: 1px solid var(--input-border);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+.look-swatch.on {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.look-custom span {
+  font-size: 12px;
+  color: var(--muted);
+}
+.look-custom input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
 }

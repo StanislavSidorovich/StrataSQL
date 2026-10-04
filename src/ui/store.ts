@@ -51,6 +51,8 @@ interface EditorState {
   walkthrough: { spotlight: Id[] } | null
   /** A just-created entity whose name field should take the focus (type the name right away). */
   focusName: Id | null
+  /** Goes up on every load (New, Open, example): a file chosen with “Save as” belongs to one document. */
+  doc: number
 
   /** Runs an edit operation on a draft; on ModelError the model is untouched and the message is shown. */
   apply: (edit: (m: Model) => void, opts?: ApplyOptions) => boolean
@@ -74,6 +76,7 @@ export const useEditor = create<EditorState>()((set, get) => ({
   future: [],
   selection: null,
   focusName: null,
+  doc: 0,
   linkKind: 'relationship',
   view: 'cdm',
   tableSelection: null,
@@ -143,6 +146,7 @@ export const useEditor = create<EditorState>()((set, get) => ({
     const { model: current, past } = get()
     set({
       model,
+      doc: get().doc + 1,
       past: [...past, current].slice(-HISTORY_LIMIT),
       future: [],
       selection: null,

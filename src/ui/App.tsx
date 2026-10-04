@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { emptyModel } from '../core/metamodel'
 import { addEntity, removeEntity, removeInheritance, removeRelationship } from '../core/ops'
 import { importPowerDesigner } from '../core/import/powerdesigner'
-import { FILE_EXTENSION, parseModel, serializeModel } from '../core/serialize'
+import { FILE_EXTENSION, parseModel } from '../core/serialize'
 import { applyUpdate, useUpdateReady } from '../pwa/register'
 import { Canvas } from './canvas/Canvas'
 import { exportDiagram } from './exportImage'
@@ -17,6 +17,8 @@ import { PdmCanvas } from './pdm/PdmCanvas'
 import { PdmPanel } from './pdm/PdmPanel'
 import { fileBaseName, SqlView } from './pdm/SqlView'
 import { SandboxView } from './sandbox/SandboxView'
+import { AppearanceButton } from './Appearance'
+import { saveModel, saveModelAs } from './fileSave'
 import { SideDock } from './SideDock'
 import { useEditor, type View } from './store'
 import { CASES } from '../data/cases'
@@ -55,16 +57,6 @@ function useTheme(): [boolean, () => void] {
   return [dark, () => setDark((d) => !d)]
 }
 
-function downloadModel() {
-  const { model } = useEditor.getState()
-  const blob = new Blob([serializeModel(model)], { type: 'application/json' })
-  const a = document.createElement('a')
-  a.href = URL.createObjectURL(blob)
-  a.download = `${fileBaseName(model.name)}${FILE_EXTENSION}`
-  a.click()
-  setTimeout(() => URL.revokeObjectURL(a.href), 1000)
-}
-
 function deleteSelection() {
   const { selection, apply } = useEditor.getState()
   if (!selection) return
@@ -94,6 +86,15 @@ function Editor() {
   const trainerKey = useTrainer((s) => `${s.pickerOpen}|${s.session?.caseId}|${s.session?.level}|${s.session?.walk === undefined}`)
   const { undo, redo, load, apply, select, setLinkKind, setView, showError } = useEditor.getState()
   const fileInput = useRef<HTMLInputElement>(null)
+  // The toolbar's height (it wraps at large text sizes or on narrow screens): the help drawer starts below it.
+  const toolbar = useRef<HTMLElement>(null)
+  useEffect(() => {
+    const el = toolbar.current
+    if (!el) return
+    const ro = new ResizeObserver(() => document.documentElement.style.setProperty('--toolbar-h', `${el.getBoundingClientRect().height}px`))
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
   const flow = useReactFlow()
 
   const fit = () => setTimeout(() => flow.fitView({ padding: 0.15, maxZoom: 1, duration: 300 }), 50)
@@ -133,6 +134,9 @@ function Editor() {
     return () => clearTimeout(t)
   }, [notice])
 
+  const save = (as: boolean) =>
+    (as ? saveModelAs() : saveModel()).then((msg) => msg && setNotice(msg)).catch((err: Error) => showError(`Could not save: ${err.message}`))
+
   const openFile = async (file: File) => {
     try {
       const text = await file.text()
@@ -158,7 +162,7 @@ function Editor() {
       const mod = e.ctrlKey || e.metaKey
       if (mod && e.key.toLowerCase() === 's') {
         e.preventDefault()
-        downloadModel()
+        save(e.shiftKey)
       } else if (typing) {
         return
       } else if (mod && e.key.toLowerCase() === 'z' && !e.shiftKey) {
@@ -193,7 +197,7 @@ function Editor() {
 
   return (
     <div className="flex h-full flex-col">
-      <header className="toolbar">
+      <header className="toolbar" ref={toolbar}>
         <div className="brand">
           Strata<span>SQL</span>
         </div>
@@ -204,7 +208,8 @@ function Editor() {
             items={[
               { label: 'New model', onSelect: () => leaveTrainer() && load(emptyModel()) },
               { label: 'Open…', hint: `${FILE_EXTENSION}, .cdm`, onSelect: () => fileInput.current?.click() },
-              { label: 'Save', hint: 'Ctrl+S', onSelect: downloadModel },
+              { label: 'Save', hint: 'Ctrl+S', onSelect: () => save(false) },
+              { label: 'Save as…', hint: 'Ctrl+Shift+S', onSelect: () => save(true) },
               'separator',
               ...(['png', 'svg'] as const).map((format) => ({
                 label: `Export diagram as ${format.toUpperCase()}`,
@@ -313,6 +318,7 @@ function Editor() {
               { label: 'Quaera: SQL & analytics trainer ↗', hint: 'quaera.app', onSelect: () => window.open('https://quaera.app', '_blank', 'noopener') },
             ]}
           />
+          <AppearanceButton dark={dark} />
           <button type="button" className="btn" onClick={toggleTheme} title="Toggle light/dark theme">
             {dark ? '☀' : '☾'}
           </button>
