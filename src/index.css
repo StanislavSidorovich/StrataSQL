@@ -1826,3 +1826,53 @@ body {
   color: var(--accent);
   border-color: var(--accent);
 }
+
+/* Walkthrough: predict first, then the step is revealed */
+.walk-ask {
+  border: 2px solid var(--walk-new);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin: 4px 0 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 14px;
+}
+.walk-ask-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.walk-step .trainer-why {
+  position: static;
+  box-shadow: none;
+  margin-bottom: 8px;
+}
+
+/* Trainer level 1: the finished model stays hidden until every phrase is tagged */
+.canvas-veil {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--canvas-bg, var(--panel-bg));
+  backdrop-filter: blur(6px);
+}
+.canvas-veil > div {
+  max-width: 360px;
+  text-align: center;
+  padding: 20px 24px;
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  background: var(--panel-bg);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+}
+.canvas-veil h2 {
+  margin: 0;
+  font-size: 16px;
+}

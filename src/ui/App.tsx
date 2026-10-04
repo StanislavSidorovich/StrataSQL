@@ -23,7 +23,7 @@ import { CASES } from '../data/cases'
 import { Menu } from './onboarding/Menu'
 import { Onboarding, useOnboarding } from './onboarding/Tour'
 import { TrainerPane } from './trainer/TrainerPane'
-import { confirmDiscardTask, leaveTrainer, useTrainer } from './trainer/trainerStore'
+import { confirmDiscardTask, isVeiled, leaveTrainer, useTrainer } from './trainer/trainerStore'
 
 /** The trainer cases, easiest first: their reference models are the examples. */
 const EXAMPLES = CASES.map((c) => ({ id: c.id, label: `${c.title} ${'★'.repeat(c.difficulty)}`, build: c.build }))
@@ -89,6 +89,7 @@ function Editor() {
   const trainerOn = useTrainer((s) => s.session !== null || s.pickerOpen)
   const pickerOnly = useTrainer((s) => s.session === null && s.pickerOpen)
   const walkOn = useEditor((s) => s.walkthrough !== null)
+  const veiled = useTrainer((s) => isVeiled(s.session))
   // Opening another case, level or the picker shows a hidden trainer column again.
   const trainerKey = useTrainer((s) => `${s.pickerOpen}|${s.session?.caseId}|${s.session?.level}|${s.session?.walk === undefined}`)
   const { undo, redo, load, apply, select, setLinkKind, setView, showError } = useEditor.getState()
@@ -344,7 +345,7 @@ function Editor() {
               <h2>{pickerOnly ? 'Pick a case on the left' : 'Start a conceptual model'}</h2>
               <p>
                 {walkOn
-                  ? 'Press “Start” on the left: the model appears here step by step.'
+                  ? 'The model appears here step by step — follow the steps on the left.'
                   : pickerOnly
                     ? 'Start with ▶ Watch it built, then try the levels 0 → 3. Your own model comes back when you close the trainer.'
                     : `Double-click the canvas or press “+ Entity”.${trainerOn ? ' Read the text on the left and model it here.' : ' Or start here:'}`}
@@ -360,6 +361,17 @@ function Editor() {
               </div>
               )}
               {!trainerOn && <p className="muted text-xs">Finished models of all {EXAMPLES.length} cases are in the Examples menu.</p>}
+            </div>
+          )}
+          {veiled && (
+            <div className="canvas-veil" role="region" aria-label="Model hidden">
+              <div>
+                <h2>The model is hidden for now</h2>
+                <p>Tag every phrase from memory first — then the finished model appears here, with each phrase’s element.</p>
+                <button type="button" className="btn btn-small" onClick={() => useTrainer.getState().setPeek(true)}>
+                  Peek at the model
+                </button>
+              </div>
             </div>
           )}
           {error && (

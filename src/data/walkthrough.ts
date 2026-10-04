@@ -4,15 +4,33 @@
 // generated from the model, and each step lists the tables it creates or changes.
 
 import { foreignKeyHolder, generatePdm, relationshipKind } from '../core/cdm2pdm'
-import { formatCardinality, formatDataType, type Cardinality, type Entity, type Id, type Model } from '../core/metamodel'
+import { formatCardinality, formatDataType, type Cardinality, type Entity, type Id, type Model, type Relationship } from '../core/metamodel'
 import { columnFlags, type Pdm, type PdmTable } from '../core/pdm'
-import type { TagSpan, TrainerCase } from './cases'
+import { TAGS, type TagSpan, type TrainerCase } from './cases'
 
 export type WalkStepKind = 'intro' | 'entity' | 'attributes' | 'identifier' | 'relationship' | 'inheritance' | 'keys' | 'rules' | 'done'
 
 export interface WalkFocus {
   kind: 'entity' | 'relationship' | 'inheritance'
   id: Id
+}
+
+/**
+ * A prediction asked *before* a step is shown (“entity or attribute?”, “which table gets the foreign
+ * key?”): the canvas still shows the previous step until the student answers or skips.
+ */
+export interface WalkQuestion {
+  /** With **bold** / `code` markup. */
+  prompt: string
+  options: string[]
+  /** Indices of the options that count as right. */
+  right: number[]
+  /** One sentence shown after the answer: why the right option is right. */
+  why: string
+  /** The phrase of the text the question is about (highlighted while asking). */
+  span?: number
+  /** Elements already on the canvas that the question is about (highlighted while asking). */
+  focus: Id[]
 }
 
 export interface WalkStep {
@@ -30,6 +48,8 @@ export interface WalkStep {
   focus: WalkFocus[]
   /** Help card for the concept of the step. */
   help?: string
+  /** Asked before the step is revealed (only some steps have one). */
+  question?: WalkQuestion
   model: Model
 }
 
@@ -121,14 +141,21 @@ export function walkthroughSteps(c: TrainerCase, ref: Model = c.build()): WalkSt
   const shown: Shown = { entities: new Set(), attrs: new Set(), idents: new Set(), rels: new Set(), inhs: new Set(), keys: false }
   const steps: WalkStep[] = []
   const push = (
-    step: Omit<WalkStep, 'model' | 'spans' | 'tables' | 'text'> & { text: (string | undefined | false)[]; tables?: (pdm: Pdm) => PdmTable[] },
+    step: Omit<WalkStep, 'model' | 'spans' | 'tables' | 'text' | 'question'> & {
+      text: (string | undefined | false)[]
+      tables?: (pdm: Pdm) => PdmTable[]
+      question?: WalkQuestion | ((spans: number[]) => WalkQuestion | undefined)
+    },
   ) => {
     const model = snapshot(ref, shown)
     const pdm = generatePdm(model)
     const text = step.text.filter((t): t is string => !!t)
     const n = note(step.key)
     if (n) text.push(n)
-    steps.push({ ...step, text, spans: spansOf.get(step.key) ?? [], tables: (step.tables?.(pdm) ?? []).map(tableLine), model })
+    const spans = spansOf.get(step.key) ?? []
+    const { question: ask, ...rest } = step
+    const question = typeof ask === 'function' ? ask(spans) : ask
+    steps.push({ ...rest, text, spans, tables: (step.tables?.(pdm) ?? []).map(tableLine), model, ...(question ? { question } : {}) })
   }
 
   const dependentOn = (e: Entity) =>
@@ -173,6 +200,57 @@ export function walkthroughSteps(c: TrainerCase, ref: Model = c.build()): WalkSt
     return list.length ? `Not in the text, added to complete the design: ${list.join(', ')}.` : undefined
   }
 
+  /**
+   * “The text says … — what does it become?”: once at the first entity, then only where the phrase
+   * could be read two ways (it accepts another tag) — asking “is *books* an entity?” every time is noise.
+   */
+  let tagAsked = false
+  const tagQuestion = (spans: number[]): WalkQuestion | undefined => {
+    const own = spans.filter((k) => c.spans[k].tag === 'entity' || c.spans[k].tag === 'attribute')
+    const i = own.find((k) => c.spans[k].accept?.length) ?? (tagAsked ? undefined : own[0])
+    if (i === undefined) return undefined
+    tagAsked = true
+    const s = c.spans[i]
+    const right = TAGS.flatMap((t, k) => (t.id === s.tag || s.accept?.includes(t.id) ? [k] : []))
+    return {
+      prompt: `The text says **“${s.phrase}”**. What does it become in the model?`,
+      options: TAGS.map((t) => t.label),
+      right,
+      why:
+        right.length > 1
+          ? `${right.map((k) => TAGS[k].label).join(' or ')}: both readings count — the model draws it as ${s.tag === 'entity' ? 'an entity' : `a${s.tag === 'attribute' ? 'n' : ''} ${s.tag}`}.`
+          : s.tag === 'entity'
+            ? 'Many instances, each with facts of its own: a thing the database remembers.'
+            : 'One fact about a thing, not a thing with facts of its own.',
+      span: i,
+      focus: [],
+    }
+  }
+
+  /**
+   * “Which attribute tells one Book apart?” — for a one-attribute identifier of an independent
+   * entity, and only when there is a choice: the text names it, or there is an alternate one too.
+   */
+  const identifierQuestion = (e: Entity): WalkQuestion | undefined => {
+    const pi = e.identifiers.find((i) => i.isPrimary)
+    if (!pi || pi.attributeIds.length !== 1 || dependentOn(e).length || parentOf(e) || e.attributes.length < 2) return undefined
+    if (!isMentioned(e, pi.attributeIds[0]) && !e.identifiers.some((i) => !i.isPrimary && i.attributeIds.length === 1)) return undefined
+    const names = e.attributes.map((a) => `\`${a.name}\``)
+    const nameOf = (id: Id) => names[e.attributes.findIndex((a) => a.id === id)]
+    const single = e.identifiers.filter((i) => i.attributeIds.length === 1).map((i) => i.attributeIds[0])
+    const alts = e.identifiers.filter((i) => !i.isPrimary && i.attributeIds.length === 1).map((i) => nameOf(i.attributeIds[0]))
+    const piName = nameOf(pi.attributeIds[0])
+    return {
+      prompt: `Which attribute tells one **${e.name}** apart from all others?`,
+      options: names,
+      right: e.attributes.flatMap((a, k) => (single.includes(a.id) ? [k] : [])),
+      why: alts.length
+        ? `${[piName, ...alts].join(' and ')} are all unique: ${piName} is the primary identifier, ${alts.join(', ')} an alternate one.`
+        : `Only ${piName} is unique; the other facts can repeat between two instances.`,
+      focus: [e.id],
+    }
+  }
+
   const introduceEntity = (e: Entity) => {
     const focus: WalkFocus[] = [{ kind: 'entity', id: e.id }]
     const pi = e.identifiers.find((i) => i.isPrimary)
@@ -182,7 +260,7 @@ export function walkthroughSteps(c: TrainerCase, ref: Model = c.build()): WalkSt
     const entityConcept = once('entity', 'An **entity** is a thing the database remembers, drawn as a box. Each entity becomes a table.')
     shown.entities.add(e.id)
     if (fine) {
-      push({ kind: 'entity', key: `entity:${e.name}`, title: `Entity ${e.name}`, text: [...entityConcept, about], focus, help: 'entity' })
+      push({ kind: 'entity', key: `entity:${e.name}`, title: `Entity ${e.name}`, text: [...entityConcept, about], focus, help: 'entity', question: tagQuestion })
       const facts = e.attributes.filter((a) => !piAttrs.has(a.id)).map((a) => a.id)
       if (facts.length) {
         facts.forEach((id) => shown.attrs.add(id))
@@ -205,6 +283,7 @@ export function walkthroughSteps(c: TrainerCase, ref: Model = c.build()): WalkSt
           text: identifierText(e),
           focus,
           help: e.identifiers.some((i) => !i.isPrimary) ? 'alternate-identifier' : 'identifier',
+          question: identifierQuestion(e),
           tables: (pdm) => [tableOfEntity(pdm, e.id)].filter((t): t is PdmTable => !!t),
         })
       }
@@ -226,8 +305,45 @@ export function walkthroughSteps(c: TrainerCase, ref: Model = c.build()): WalkSt
         ],
         focus,
         help: dependentOn(e).length ? 'dependent-entity' : parentOf(e) ? 'inheritance' : 'entity',
+        question: tagQuestion,
         tables: (pdm) => [tableOfEntity(pdm, e.id)].filter((t): t is PdmTable => !!t),
       })
+    }
+  }
+
+  const refPdm = generatePdm(ref)
+  const tableName = (id: Id) => tableOfEntity(refPdm, id)?.name ?? name(id).toUpperCase()
+
+  /** “Which table gets the foreign key?” — before each relationship between two different entities. */
+  const foreignKeyQuestion = (r: Relationship): WalkQuestion | undefined => {
+    if (r.entityA === r.entityB) return undefined
+    const a = name(r.entityA)
+    const b = name(r.entityB)
+    const kind = relationshipKind(r)
+    const holder = foreignKeyHolder(r)
+    const many = holder === 'A' ? a : b
+    const one = holder === 'A' ? b : a
+    // The two tables in name order, not A/B: B is usually the “many” side, so the answer would always be the second.
+    const tables = [r.entityA, r.entityB].map(tableName)
+    const swap = tables[0].localeCompare(tables[1]) > 0
+    if (swap) tables.reverse()
+    const holderIndex = (holder === 'A') !== swap ? 0 : 1
+    const right = kind === 'many-to-many' ? [2] : kind === 'one-to-one' && !r.dependentSide ? [0, 1] : [holderIndex]
+    const why =
+      kind === 'many-to-many'
+        ? `Both sides are “many”: neither ${a} nor ${b} can hold a list of keys, so a join table holds one row per pair.`
+        : r.dependentSide
+          ? `${many} depends on ${one}: it stores ${one}’s key, and that key is part of its own primary key.`
+          : kind === 'one-to-one'
+            ? `One-to-one: either side can hold it (as a UNIQUE column); this model puts it into ${many}.`
+            : `The “many” side holds it: each ${many} stores the one ${one} it belongs to — a ${one} could not store a list of ${many}s.`
+    return {
+      prompt: `Each **${b}** has ${cardPhrase(r.cardinalityA)} ${a}; each **${a}** has ${cardPhrase(r.cardinalityB)} ${b}. Which table gets the foreign key?`,
+      options: [...tables, 'A new join table'],
+      right,
+      why,
+      span: spansOf.get(`relationship:${r.name}`)?.[0],
+      focus: [r.entityA, r.entityB],
     }
   }
 
@@ -272,6 +388,7 @@ export function walkthroughSteps(c: TrainerCase, ref: Model = c.build()): WalkSt
         text,
         focus: [{ kind: 'relationship', id: r.id }],
         help,
+        question: foreignKeyQuestion(r),
         tables: (pdm) =>
           pdm.tables.filter(
             (t) => (t.source.kind === 'relationship' && t.source.id === r.id) || t.foreignKeys.some((fk) => fk.source.kind === 'relationship' && fk.source.id === r.id),
@@ -314,6 +431,7 @@ export function walkthroughSteps(c: TrainerCase, ref: Model = c.build()): WalkSt
     text: [
       'We build the model from the text, the way you would on paper: first the **things** it talks about (entities), then their **facts** (attributes), how each one is **told apart** (identifier), and how they are **linked** (relationships).',
       'Each step marks its words in the text, adds the new element to the canvas (highlighted) and shows the tables it produces. The panel on the right shows the selected element.',
+      'Before some steps it is **your turn**: predict first (an entity or an attribute? which table gets the foreign key?), then see the step.',
     ],
     focus: [],
   })

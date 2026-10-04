@@ -2,7 +2,7 @@
 // intermediate model is consistent, and every phrase of the text is explained by some step.
 
 import { describe, expect, it } from 'vitest'
-import { generatePdm } from '../src/core/cdm2pdm'
+import { foreignKeyHolder, generatePdm, relationshipKind } from '../src/core/cdm2pdm'
 import { integrityProblems } from '../src/core/serialize'
 import { CASES } from '../src/data/cases'
 import { walkthroughSteps } from '../src/data/walkthrough'
@@ -41,6 +41,40 @@ describe.each(CASES.map((c) => [c.id, c] as const))('%s', (_, c) => {
     }
   })
 
+  it('asks predictions that can be answered, before some steps', () => {
+    const asked = steps.filter((s) => s.question)
+    expect(asked.length).toBeGreaterThan(0)
+    expect(asked.length).toBeLessThan(steps.length)
+    for (const s of asked) {
+      const q = s.question!
+      expect(q.options.length, s.key).toBeGreaterThanOrEqual(2)
+      expect(new Set(q.options).size, s.key).toBe(q.options.length)
+      expect(q.right.length, s.key).toBeGreaterThan(0)
+      expect(q.right.length, s.key).toBeLessThan(q.options.length)
+      for (const k of q.right) expect(q.options[k], s.key).toBeDefined()
+      if (q.span !== undefined) expect(c.spans[q.span]).toBeDefined()
+      expect(q.why).not.toBe('')
+      // The question is about what is already on the canvas before the step.
+      const before = steps[steps.indexOf(s) - 1].model
+      for (const id of q.focus) expect(before.entities.some((e) => e.id === id), s.key).toBe(true)
+    }
+  })
+
+  it('asks where the foreign key goes and accepts the side the PDM uses', () => {
+    const pdm = generatePdm(ref)
+    for (const s of steps.filter((x) => x.kind === 'relationship' && x.question)) {
+      const r = ref.relationships.find((x) => x.id === s.focus[0].id)!
+      const q = s.question!
+      if (relationshipKind(r) === 'many-to-many') {
+        expect(q.right, s.key).toEqual([2])
+        continue
+      }
+      const holder = foreignKeyHolder(r) === 'A' ? r.entityA : r.entityB
+      const table = pdm.tables.find((t) => t.source.kind === 'entity' && t.source.id === holder)!
+      expect(q.right.map((k) => q.options[k]), s.key).toContain(table.name)
+    }
+  })
+
   it('has a title, words and an element for every building step', () => {
     for (const s of steps) {
       expect(s.title).not.toBe('')
@@ -58,6 +92,18 @@ describe('library (starter case)', () => {
     expect(c.id).toBe('library')
     expect(c.walk.fine).toBe(true)
     expect(steps.map((s) => s.key).slice(0, 5)).toEqual(['intro', 'entity:Book', 'attributes:Book', 'identifier:Book', 'entity:Publisher'])
+  })
+
+  it('asks the first question at once, not after a row of Next clicks', () => {
+    expect(steps.findIndex((s) => s.question)).toBe(1)
+    const fk = steps.find((s) => s.key === 'relationship:publishes')!.question!
+    expect(fk.options).toEqual(['BOOK', 'PUBLISHER', 'A new join table'])
+    expect(fk.right).toEqual([0])
+    // isbn is unique too: both identifiers count.
+    const id = steps.find((s) => s.key === 'identifier:Book')!.question!
+    expect(id.right.map((k) => id.options[k])).toEqual(['`book_id`', '`isbn`'])
+    // “Is *publishers* an entity?” is not asked again after the first entity.
+    expect(steps.find((s) => s.key === 'entity:Publisher')!.question).toBeUndefined()
   })
 
   it('shows the tables each decision produces', () => {

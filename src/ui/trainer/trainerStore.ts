@@ -8,11 +8,12 @@ import { caseById, type Tag, type TrainerCase } from '../../data/cases'
 import { exerciseById } from '../../data/exercises'
 import { emptyModel } from '../../core/metamodel'
 import { levelStartModel, recordScore, type Level, type Progress } from '../../data/trainer'
-import { walkthroughSteps, type WalkStep } from '../../data/walkthrough'
+import { walkthroughSteps, type WalkQuestion, type WalkStep } from '../../data/walkthrough'
 import { lintFor, loadStoredModel, TRAINER_MODEL_KEY, useEditor } from '../store'
 
 const SESSION_KEY = 'stratasql.trainer.session'
 const PROGRESS_KEY = 'stratasql.trainer.progress'
+const ASK_KEY = 'stratasql.walk.ask'
 
 export interface Check {
   result: CompareResult
@@ -34,6 +35,10 @@ interface Session {
   hintSteps: Record<string, number>
   /** Walkthrough (“watch it built”): the current step; the task level is then 0. */
   walk?: number
+  /** Walkthrough: step → the option the student picked before the step was shown (-1 = skipped). */
+  answers?: Record<number, number>
+  /** Level 1: the finished model is shown although not every phrase is tagged yet. */
+  peek?: boolean
   /** Open exercise (`caseId` is then an exercise id, level 3): the checklist items ticked. */
   exercise?: number[]
 }
@@ -44,6 +49,8 @@ interface TrainerState {
   session: Session | null
   check: Check | null
   progress: Progress
+  /** Walkthrough: ask the step's question before showing it (off = just watch). */
+  askFirst: boolean
 
   openPicker: (open: boolean) => void
   start: (caseId: string, level: Level) => void
@@ -52,6 +59,10 @@ interface TrainerState {
   toggleChecklist: (item: number) => void
   /** Starts (or moves) the walkthrough of a case at a step. */
   walkTo: (caseId: string, step: number) => void
+  /** Answers (or skips, with null) the question of the current walkthrough step, which reveals it. */
+  answerWalk: (option: number | null) => void
+  setAskFirst: (on: boolean) => void
+  setPeek: (peek: boolean) => void
   exit: () => void
   tag: (span: number, tag: Tag) => void
   resetTags: () => void
@@ -83,6 +94,7 @@ export const useTrainer = create<TrainerState>()((set, get) => ({
   session: null,
   check: null,
   progress: readJson<Progress>(PROGRESS_KEY, {}),
+  askFirst: readJson<boolean>(ASK_KEY, true),
 
   openPicker: (pickerOpen) => set({ pickerOpen }),
 
@@ -136,23 +148,49 @@ export const useTrainer = create<TrainerState>()((set, get) => ({
     const c = caseById(caseId)
     if (!c) return
     const steps = walkSteps(c)
-    const s = steps[Math.max(0, Math.min(step, steps.length - 1))]
+    const at = Math.max(0, Math.min(step, steps.length - 1))
+    const s = steps[at]
+    const prev = get().session
+    const answers = prev?.caseId === caseId && prev.walk !== undefined ? (prev.answers ?? {}) : {}
+    // A step with an open question still shows the model before it; the answer reveals the step.
+    const asking = isAsking(s.question, get().askFirst, answers[at])
     const editor = useEditor.getState()
     const first = s.focus[0]
     useEditor.setState({
-      model: s.model,
+      model: asking ? steps[at - 1].model : s.model,
       trainerBackup: editor.trainerBackup ?? editor.model,
       past: [],
       future: [],
-      selection: first ? { kind: first.kind, id: first.id } : null,
+      selection: first && !asking ? { kind: first.kind, id: first.id } : null,
       tableSelection: null,
       focusedIssue: null,
       // Watching the tables grow in the Physical view is allowed; the other views show no canvas.
       view: editor.view === 'pdm' ? 'pdm' : 'cdm',
       error: null,
-      walkthrough: { spotlight: s.focus.map((f) => f.id) },
+      walkthrough: { spotlight: asking ? s.question!.focus : s.focus.map((f) => f.id) },
     })
-    set({ session: { caseId, level: 0, tags: {}, openSpan: null, hintSteps: {}, walk: steps.indexOf(s) }, check: null, pickerOpen: false })
+    set({ session: { caseId, level: 0, tags: {}, openSpan: null, hintSteps: {}, walk: at, answers }, check: null, pickerOpen: false })
+  },
+
+  answerWalk(option) {
+    const s = get().session
+    if (!s || s.walk === undefined) return
+    set({ session: { ...s, answers: { ...s.answers, [s.walk]: option ?? -1 } } })
+    get().walkTo(s.caseId, s.walk)
+  },
+
+  setAskFirst(askFirst) {
+    set({ askFirst })
+    writeJson(ASK_KEY, askFirst)
+    const s = get().session
+    if (s?.walk !== undefined) get().walkTo(s.caseId, s.walk)
+  },
+
+  setPeek(peek) {
+    const s = get().session
+    if (!s) return
+    set({ session: { ...s, peek } })
+    if (!peek) useEditor.setState({ selection: null })
   },
 
   exit() {
@@ -174,7 +212,9 @@ export const useTrainer = create<TrainerState>()((set, get) => ({
 
   resetTags() {
     const s = get().session
-    if (s) set({ session: { ...s, tags: {}, openSpan: null } })
+    if (!s) return
+    set({ session: { ...s, tags: {}, openSpan: null, peek: false } })
+    useEditor.setState({ selection: null })
   },
 
   showSpan(openSpan) {
@@ -233,6 +273,18 @@ export function leaveTrainer(): boolean {
   return true
 }
 
+/** The step's question is open: it has one, questions are on, and it has not been answered yet. */
+export function isAsking(question: WalkQuestion | undefined, askFirst: boolean, answer: number | undefined): boolean {
+  return !!question && askFirst && answer === undefined
+}
+
+/** Level 1 hides the finished model until every phrase is tagged (recall, not look-up), unless peeking. */
+export function isVeiled(s: Session | null): boolean {
+  if (!s || s.level !== 1 || s.walk !== undefined || s.exercise || s.peek) return false
+  const c = caseById(s.caseId)
+  return !!c && Object.keys(s.tags).length < c.spans.length
+}
+
 const stepCache = new Map<string, WalkStep[]>()
 /** The walkthrough steps of a case, generated once per page. */
 export function walkSteps(c: TrainerCase): WalkStep[] {
@@ -270,7 +322,11 @@ useTrainer.subscribe((state, prev) => {
 export function restoreTrainer() {
   const session = readJson<Session | null>(SESSION_KEY, null)
   if (!session || !(session.exercise ? exerciseById(session.caseId) : caseById(session.caseId))) return
-  if (session.walk !== undefined) return useTrainer.getState().walkTo(session.caseId, session.walk)
+  if (session.walk !== undefined) {
+    // Set first, so walkTo keeps the answers given before the reload.
+    useTrainer.setState({ session })
+    return useTrainer.getState().walkTo(session.caseId, session.walk)
+  }
   const model = loadStoredModel(TRAINER_MODEL_KEY) ?? (session.exercise ? emptyModel() : levelStartModel(caseById(session.caseId)!, session.level))
   const editor = useEditor.getState()
   useEditor.setState({ model, trainerBackup: editor.model, past: [], future: [] })

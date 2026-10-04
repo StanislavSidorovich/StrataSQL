@@ -9,7 +9,7 @@ import { EXERCISES, exerciseById, type Exercise } from '../../data/exercises'
 import { progressKey, type Level } from '../../data/trainer'
 import { richText } from '../help/HelpDrawer'
 import { lintFor, useEditor, type Selection } from '../store'
-import { confirmDiscardTask, isRightTag, tagScore, useTrainer } from './trainerStore'
+import { confirmDiscardTask, isRightTag, isVeiled, tagScore, useTrainer } from './trainerStore'
 import { WalkthroughPane } from './Walkthrough'
 
 const TAG_LABEL: Record<Tag, string> = Object.fromEntries(TAGS.map((t) => [t.id, t.label])) as Record<Tag, string>
@@ -297,10 +297,16 @@ function TagLegend() {
 
 // ---------------------------------------------------------------- level 1
 
+/** While the model is hidden, the panel would give the answers away (an entity lists its links). */
+function selectUnveiled(key: string | undefined) {
+  if (!isVeiled(useTrainer.getState().session)) selectRefKey(key)
+}
+
 function Tagging({ c }: { c: TrainerCase }) {
   const tags = useTrainer((s) => s.session?.tags ?? {})
   const open = useTrainer((s) => s.session?.openSpan ?? null)
-  const { tag, showSpan, resetTags } = useTrainer.getState()
+  const peek = useTrainer((s) => !!s.session?.peek)
+  const { tag, showSpan, resetTags, setPeek } = useTrainer.getState()
   const score = tagScore(c, tags)
   const pending = open !== null && tags[open] === undefined
   return (
@@ -308,11 +314,18 @@ function Tagging({ c }: { c: TrainerCase }) {
       <div className="trainer-score">
         {score.answered} / {score.total} tagged · <b>{score.right} right</b>
         {score.answered === score.total && <span className="ml-2">— {score.percent}%</span>}
-        {score.answered > 0 && (
-          <button type="button" className="btn btn-small ml-auto" onClick={resetTags}>
-            Start over
-          </button>
-        )}
+        <span className="ml-auto flex gap-1">
+          {peek && score.answered < score.total && (
+            <button type="button" className="btn btn-small" onClick={() => setPeek(false)} title="Hide the finished model until every phrase is tagged">
+              Hide the model
+            </button>
+          )}
+          {score.answered > 0 && (
+            <button type="button" className="btn btn-small" onClick={resetTags}>
+              Start over
+            </button>
+          )}
+        </span>
       </div>
       <div className="trainer-spec">
         {c.spec.map((_, p) => (
@@ -327,7 +340,7 @@ function Tagging({ c }: { c: TrainerCase }) {
                   className={`spec-span is-${state} ${chosen !== undefined ? `tag-${c.spans[part.index].tag}` : ''} ${open === part.index ? 'is-open' : ''}`}
                   onClick={() => {
                     showSpan(part.index)
-                    if (chosen !== undefined) selectRefKey(part.span.target)
+                    if (chosen !== undefined) selectUnveiled(part.span.target)
                   }}
                 >
                   {part.text}
@@ -351,7 +364,7 @@ function Tagging({ c }: { c: TrainerCase }) {
                 title={t.hint}
                 onClick={() => {
                   tag(open, t.id)
-                  selectRefKey(c.spans[open].target)
+                  selectUnveiled(c.spans[open].target)
                 }}
               >
                 {t.label}

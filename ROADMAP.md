@@ -12,7 +12,7 @@ Stages follow SPEC §12. A stage is done only when its acceptance criteria pass.
 | 5. Guided start | ✅ acceptance met (2026-10-03, v0.5.0) — 5a–5c, 5d (.cdm) done; 5e polish and `.pdm` reverse carried over | A first-time user learns the screen in a tour, watches a case built step by step, and builds one alone with “next hint” |
 | 6. AI review | ⏭ optional | Optional, behind a user-provided API key |
 
-**Where we are (2026-10-04, v0.6.0 + UX review):** 8 cases + 5 exercises, PowerDesigner cross-check, live at model.quaera.app. The UX review fixed the first-minute rough edges (gentle hint for a new entity, name focus, wrapping phrases, zoom, minimap, phone note); its backlog is in “UX review” below — next: active walkthrough (predict → reveal) and hiding the answer in level 1. LinkedIn post after the professor answers about the 3 course cases.
+**Where we are (2026-10-04, v0.6.0 + UX review):** 8 cases + 5 exercises, PowerDesigner cross-check, live at model.quaera.app. The UX review fixed the first-minute rough edges (gentle hint for a new entity, name focus, wrapping phrases, zoom, minimap, phone note). Then the two top backlog items: the walkthrough now asks before some steps (predict → see), and level 1 hides the model until the text is tagged. Next from the backlog in “UX review” below: sandbox prediction, visible progress on the picker. LinkedIn post after the professor answers about the 3 course cases.
 
 **Earlier (2026-10-03, v0.5.0):** guided start is in: a welcome card and a tour, the four cases watched built step by step (Library starter first), built alone with a Next hint that walks the same order, and PowerDesigner `.cdm` import. Next: 5e UI polish, then optional AI review (stage 6).
 
@@ -197,9 +197,14 @@ Fixed in this pass:
 - [x] Welcome: course-neutral wording; on a **phone** a note that modelling needs a computer
 - [x] Example comments no longer show repository paths (`cases/library.md`)
 
+Done after the review (2026-10-04):
+- [x] **Active walkthrough** (backlog 1): before some steps it is “Your turn” — the canvas still shows the previous step, the student picks an answer (buttons or keys 1–5) or “Just show me”, then the step appears with ✓ / ✗ and one sentence why. Questions come from the model in `walkthrough.ts` (`WalkStep.question`), three kinds ✱: **which table gets the foreign key** before every relationship between two entities (tables in name order, so the answer is not always the second; 1:1 accepts both sides; M:N = join table), **which attribute tells one X apart** when there is a real choice (the text names the identifier, or there is an alternate one — both count), and **what a phrase becomes** once at the first entity, then only for phrases with two accepted readings (asking “is *books* an entity?” every time is noise). Library: 8 questions in 20 steps, the first at step 1. Answers survive a reload; the done step shows “Your predictions: X of Y right”; a checkbox “Ask me before some steps” turns it off (remembered). Tests: every question answerable, the FK answer is the PDM's FK table.
+- [x] **Level 1 hides the answer** (backlog 2): a veil over the canvas (all views) until every phrase is tagged, with **Peek at the model** / **Hide the model**; while hidden, tagging does not select the element (the Properties panel would list its links and give other answers away)
+- [x] Checked in the dev build (Playwright 1366×820): Library question at step 1, wrong answer → ✗ with the reason, FK question with both entities highlighted, answers kept after a reload, Hotel level 1 veiled → Peek → Hide; 332 tests
+
+Built with: Claude Opus 5.5 (Claude Code), effort low.
+
 Backlog from the review (by value):
-1. **Active walkthrough**: before some steps ask “entity or attribute?” / “which side gets the FK?” and reveal after the answer (prediction → feedback; now 20 passive Next clicks before the first own action)
-2. **Level 1 hides the answer**: the tagging level shows the finished model next to the text, so tagging becomes look-up; veil the canvas until all phrases are tagged (or a “peek” button)
 3. **Sandbox: predict first** — “Will the database accept this row?” before each scenario step; the balance of the screen (grid squeezed in 320 px, right half empty)
 4. **Visible progress**: ✓ / best % per level on the picker cards, “next recommended step” button; a finish line (“Library done → Hotel”)
 5. **Readable diagrams at 1366 px**: tighter example layouts (columns 380 px apart → ~260), or collapse the properties column by default during a walkthrough
@@ -266,6 +271,7 @@ The owner's guidance: the course's "discussed in class" points are not critical 
 8. (2026-10-03) Own starter case **Library** comes first; cases are ordered by difficulty Library → Ride Hailing → TV Shows → Timetables (Ride Hailing lowered to ★★). In Library the primary identifier of Book is an added `book_id`, the ISBN an alternate identifier — to show the PI/AI choice; Loan has its own id because the pair repeats.
 
 9. (2026-10-03) Inheritance generation = both keeps **only the key** in child tables ✱. PowerDesigner's default “Inherit all attributes” also copies the parent's columns into each child (found by the cross-check with the owner's `TV Show.pdm`); it is a checkbox (`Inheritance.inheritAll`), on for imported PD models, off in the reference cases (no duplicated data).
+- ✱ Walkthrough questions (2026-10-04): ask where the FK goes before every relationship, the identifier only when there is a choice, and “what does this phrase become” once plus for two-reading phrases; 1:1 accepts either side, an alternate identifier counts as a right answer to “which attribute tells one X apart”. Level 1 hides the model (with a Peek) — recall first, then compare.
 
 Still open:
 - SPEC §13: PD-style `0,n` labels shown by default (toggle later); associations not supported; UI in English first.
