@@ -123,6 +123,9 @@ function spansFor(c: TrainerCase, item: CoachItem): number[] {
     case 'entity':
       return about((t) => t === key || t.startsWith(`attribute:${entity}.`))
     case 'attribute':
+      // Only the missing ones: the words of the attributes the student already has are no hint.
+      if (item.refAttrs) return about((t) => item.refAttrs!.some((a) => t === `attribute:${entity}.${a}`))
+      return about((t, i) => t.startsWith(`attribute:${entity}.`) && c.spans[i].step !== 'identifier')
     case 'mandatory':
       return about((t, i) => t.startsWith(`attribute:${entity}.`) && c.spans[i].step !== 'identifier')
     case 'identifier': {
@@ -151,7 +154,7 @@ function coaching(c: TrainerCase, item: CoachItem, student: Model): Coaching {
         : `Add an entity: the text talks about a thing your model does not have yet.${near.length ? ` It is linked to ${near.join(' and ')}.` : ''}`,
     })
   } else rungs.push({ label: 'What', text: item.message })
-  const caseHints = item.kind === 'keys' ? [] : hintsFor(c, item.refKey, item.refEntities)
+  const caseHints = item.kind === 'keys' || item.kind === 'attribute' ? [] : hintsFor(c, item.refKey, item.refEntities)
   if (spans.length || caseHints.length)
     rungs.push({
       label: 'Where',

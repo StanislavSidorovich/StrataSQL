@@ -10,6 +10,7 @@ import {
   addInheritanceChild,
   addRelationship,
   ancestorsOf,
+  duplicateEntity,
   linkInheritance,
   moveAttribute,
   removeAttribute,
@@ -255,5 +256,24 @@ describe('relationship ends', () => {
     updateRelationship(m, r.id, { entityB: a.id })
     expect(r.dependentSide).toBeNull()
     expect(() => updateRelationship(m, r.id, { entityA: 'missing' })).toThrow(ModelError)
+  })
+})
+
+describe('duplicate an entity', () => {
+  it('copies attributes and identifiers with new ids, not the links', () => {
+    const m = emptyModel()
+    const a = addEntity(m, { name: 'Doctor', position: { x: 100, y: 50 } })
+    const b = addEntity(m, { name: 'Ward' })
+    const id = addAttribute(m, a.id, { name: 'doctor_no', primary: true })
+    addAttribute(m, a.id, { name: 'name', mandatory: true })
+    addRelationship(m, a.id, b.id)
+    const c = duplicateEntity(m, a.id)
+    expect(c.name).toBe('Doctor_2')
+    expect(c.position).toEqual({ x: 140, y: 90 })
+    expect(c.attributes.map((x) => [x.name, x.mandatory])).toEqual([['doctor_no', true], ['name', true]])
+    expect(c.attributes.some((x) => a.attributes.some((y) => y.id === x.id))).toBe(false)
+    expect(primaryIdentifier(c)!.attributeIds).toEqual([c.attributes[0].id])
+    expect(primaryIdentifier(a)!.attributeIds).toEqual([id.id])
+    expect(m.relationships).toHaveLength(1)
   })
 })

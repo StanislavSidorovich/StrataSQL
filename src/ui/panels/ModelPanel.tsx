@@ -79,7 +79,7 @@ export function ModelPanel({ model }: { model: Model }) {
           <li>Double-click the canvas to add an entity.</li>
           <li>Drag from the ● handle of an entity onto another one to link them. The toolbar chooses relationship or inheritance (child → parent).</li>
           <li>Click an entity, line or inheritance symbol to edit it here.</li>
-          <li>Ctrl+Z / Ctrl+Y undo and redo · Delete removes the selection · Ctrl+S saves a file.</li>
+          <li>Ctrl+Z / Ctrl+Y undo and redo · Ctrl+D duplicates an entity · Delete removes the selection · Ctrl+S saves a file.</li>
           <li>
             Every <b>?</b> opens a help card with a mini-model;{' '}
             <button type="button" className="link" onClick={() => useEditor.getState().openHelp()}>

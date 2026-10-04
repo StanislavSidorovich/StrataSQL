@@ -647,8 +647,10 @@ function ResultItem({ c, item }: { c: TrainerCase; item: CompareItem }) {
   const step = useTrainer((s) => s.session?.hintSteps[key] ?? 0)
   const { nextHint } = useTrainer.getState()
   const canHint = item.status === 'missing' || item.status === 'different'
-  const caseHints = hintsFor(c, item.refKey, item.refEntities)
-  const phrases = phrasesFor(c, item.refKey)
+  // A missing attribute is hinted by the text's words for that attribute, not by the entity's hints.
+  const attrKeys = item.refAttrs?.map((a) => `attribute:${item.refEntities[0]}.${a}`)
+  const caseHints = attrKeys ? [] : hintsFor(c, item.refKey, item.refEntities)
+  const phrases = attrKeys ? attrKeys.flatMap((k) => phrasesFor(c, k).slice(0, 1)) : phrasesFor(c, item.refKey)
   const ladder: string[] = []
   if (item.refEntities.length) ladder.push(`Look around: ${item.refEntities.join(', ')}.`)
   if (caseHints.length || phrases.length)

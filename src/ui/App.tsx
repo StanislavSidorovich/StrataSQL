@@ -21,7 +21,7 @@ import { SandboxView } from './sandbox/SandboxView'
 import { AppearanceButton } from './Appearance'
 import { exportCdm, saveModel, saveModelAs } from './fileSave'
 import { SideDock } from './SideDock'
-import { useEditor, type View } from './store'
+import { duplicateSelectedEntity, useEditor, type View } from './store'
 import { CASES } from '../data/cases'
 import { Menu } from './onboarding/Menu'
 import { Onboarding, useOnboarding } from './onboarding/Tour'
@@ -213,6 +213,11 @@ function Editor() {
       } else if (mod && (e.key.toLowerCase() === 'y' || (e.key.toLowerCase() === 'z' && e.shiftKey))) {
         e.preventDefault()
         redo()
+      } else if (mod && e.key.toLowerCase() === 'd' && useEditor.getState().view === 'cdm') {
+        const sel = useEditor.getState().selection
+        if (sel?.kind !== 'entity') return
+        e.preventDefault()
+        duplicateSelectedEntity(sel.id)
       } else if (e.key === '?') {
         useOnboarding.getState().showShortcuts(true)
       } else if ((e.key === 'Delete' || e.key === 'Backspace') && useEditor.getState().view === 'cdm') {

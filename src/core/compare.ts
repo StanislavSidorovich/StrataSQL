@@ -26,6 +26,8 @@ export interface CompareItem {
   refKey?: string
   /** Names of the reference entities the item is about (for “something is missing around …”). */
   refEntities: string[]
+  /** Missing attributes: their reference names (the text's phrases for them make the hint). */
+  refAttrs?: string[]
   /** Element of the student model to select. */
   target?: { kind: 'entity' | 'relationship' | 'inheritance'; id: Id }
   message: string
@@ -70,24 +72,53 @@ const singular = (w: string) => (w.length > 3 && w.endsWith('s') && !w.endsWith(
 /** `TV Shows` → `tvshow`, `car_shift` → `carshift`. */
 export const normName = (s: string) => singular(words(s).join(''))
 
+/** Usual short forms of a word: `no` / `nr` / `num` → `number`, `qty` → `quantity`. */
+const ABBR: Record<string, string> = { no: 'number', nr: 'number', num: 'number', qty: 'quantity', desc: 'description', addr: 'address', tel: 'phone' }
+
+/**
+ * One word reduced to its stem, so that the forms of a word meet: `booked` / `booking` → `book`,
+ * `cancelled` / `cancellation` → `cancel`. Both sides are stemmed the same way.
+ */
+function stem(w: string): string {
+  w = singular(ABBR[w] ?? w)
+  const cut = w.match(/^(.{4,}?)(?:ation|ing|ed)$/)
+  if (cut) w = cut[1]
+  return w.length > 3 && /([b-df-hj-np-tv-z])$/.test(w) ? w.slice(0, -1) : w
+}
+
+/** A date written as `…_on` / `…_at`: `booked_on` ~ `booking_date`. */
+const DATE_WORDS = new Set(['on', 'at'])
+/** Words that only say “how many”: `guest_number` ~ `guests` (the number of guests). */
+const COUNT_WORDS = new Set(['number', 'count', 'quantity'])
+
 /** Words of an attribute name without the entity prefix: Episode.episode_title → [`title`]. */
 function attrWords(name: string, entityName: string): string[] {
-  const w = words(name)
-  const stem = normName(entityName)
-  if (w.length > 1 && (singular(w[0]) === stem || stem.endsWith(singular(w[0])))) w.shift()
-  return w.map(singular)
+  const w = words(name).map(stem)
+  if (w.length > 1 && DATE_WORDS.has(w[w.length - 1])) w[w.length - 1] = 'date'
+  const ent = normName(entityName)
+  if (w.length > 1 && (w[0] === stem(ent) || ent.endsWith(w[0]))) w.shift()
+  return w
 }
 
 /** Attribute name without the entity prefix: Episode.episode_title → `title`. */
 function normAttr(name: string, entityName: string): string {
-  return singular(attrWords(name, entityName).join(''))
+  return attrWords(name, entityName).join('')
 }
 
 const shortFor = (x: string, y: string) => x === y || (Math.min(x.length, y.length) >= 3 && (x.startsWith(y) || y.startsWith(x)))
 
+/** The same words once one side drops a word the other one leaves implied (`date`, `number`). */
+function sameUpTo(a: string[], b: string[], implied: Set<string>): boolean {
+  const [long, short] = a.length > b.length ? [a, b] : [b, a]
+  if (long.length !== short.length + 1 || short.length === 0) return false
+  const rest = long.filter((w) => !implied.has(w))
+  return rest.length === short.length && rest.every((w, k) => shortFor(w, short[k]))
+}
+
 /**
  * Same attribute up to the entity prefix and usual short forms: `pub_year` ~ `Publication_year`,
- * `card_no` ~ `Card_number`, `name` ~ `Pname` (the entity's initial glued on).
+ * `card_no` ~ `Card_number`, `name` ~ `Pname` (the entity's initial glued on), `booked_on` ~ `Date`
+ * of Booking, `cancelled_on` ~ `Cancellation`, `guests` ~ `guest_number`.
  */
 function sameAttrName(sName: string, sEntity: string, rName: string, rEntity: string): boolean {
   const a = normAttr(sName, sEntity)
@@ -96,6 +127,7 @@ function sameAttrName(sName: string, sEntity: string, rName: string, rEntity: st
   const wa = attrWords(sName, sEntity)
   const wb = attrWords(rName, rEntity)
   if (wa.length === wb.length && wa.every((w, k) => shortFor(w, wb[k]))) return true
+  if (sameUpTo(wa, wb, new Set(['date'])) || sameUpTo(wa, wb, COUNT_WORDS)) return true
   return a === normName(sEntity)[0] + b || b === normName(rEntity)[0] + a
 }
 
@@ -374,6 +406,7 @@ export function compareModels(student: Model, ref: Model, opts: CompareOptions =
           status: 'missing',
           refKey: key,
           refEntities: [r.name],
+          refAttrs: missingAttrs.map((a) => a.name),
           target: { kind: 'entity', id: s.id },
           message: `${s.name}: ${missingAttrs.length} attribute${missingAttrs.length > 1 ? 's' : ''} from the text not found.`,
           answer: `${r.name} has ${missingAttrs.map((a) => a.name).join(', ')}.`,

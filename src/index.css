@@ -274,6 +274,8 @@ body {
 }
 .panel-footer {
   padding: 12px 14px;
+  display: flex;
+  gap: 8px;
 }
 .field {
   display: flex;

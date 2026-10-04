@@ -131,6 +131,24 @@ export function addEntity(m: Model, input: NewEntity = {}): Entity {
   return entity
 }
 
+/**
+ * A copy of an entity with its attributes, identifiers and keys (new ids), placed next to it and
+ * named `Name_2`. Relationships are not copied: the copy is a starting point for a similar entity.
+ */
+export function duplicateEntity(m: Model, id: Id, offset: Point = { x: 40, y: 40 }): Entity {
+  const src = getEntity(m, id)
+  const copy = addEntity(m, { name: src.name, comment: src.comment, position: { x: src.position.x + offset.x, y: src.position.y + offset.y } })
+  const ids = new Map<Id, Id>()
+  copy.attributes = src.attributes.map((a) => {
+    const nid = newId('att')
+    ids.set(a.id, nid)
+    return { ...a, id: nid }
+  })
+  copy.identifiers = src.identifiers.map((i) => ({ ...i, id: newId('idf'), attributeIds: i.attributeIds.map((a) => ids.get(a)!) }))
+  if (src.physicalKeys?.length) copy.physicalKeys = src.physicalKeys.map((k) => ({ ...k, id: newId('pk'), columns: [...k.columns] }))
+  return copy
+}
+
 export function updateEntity(
   m: Model,
   id: Id,

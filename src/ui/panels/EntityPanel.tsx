@@ -26,7 +26,7 @@ import {
 } from '../../core/ops'
 import { ElementIssues } from '../lint/IssuesPanel'
 import { EntityResult } from '../pdm/PhysicalResult'
-import { useEditor } from '../store'
+import { duplicateSelectedEntity, useEditor } from '../store'
 import { Check, Field, HelpButton, IconButton, NameInput, NumberInput, Section, Select, SizeInput, TextArea, TextInput } from './fields'
 
 /** Names the editor gives a new element; the name field shows them as a grey hint. */
@@ -234,6 +234,9 @@ export function EntityPanel({ entity, model }: { entity: Entity; model: Model })
       {!empty && <EntityResult entityId={id} />}
 
       <div className="panel-footer">
+        <button type="button" className="btn" onClick={() => duplicateSelectedEntity(id)} title="Copy this entity with its attributes and identifiers, without its links (Ctrl+D)">
+          Duplicate
+        </button>
         <button type="button" className="btn btn-danger" onClick={() => apply((m) => removeEntity(m, id))}>
           Delete entity
         </button>

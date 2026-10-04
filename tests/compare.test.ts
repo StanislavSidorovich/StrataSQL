@@ -19,6 +19,7 @@ import {
 } from '../src/core/ops'
 import { applyAnswer } from '../src/data/coach'
 import { CASES } from '../src/data/cases'
+import { buildHotel } from '../src/data/examples/hotel'
 import { buildLibrary } from '../src/data/examples/library'
 import { buildRideHailing } from '../src/data/examples/ride-hailing'
 import { buildTimetables } from '../src/data/examples/timetables'
@@ -253,5 +254,27 @@ describe('seeded models — Library (a student build)', () => {
     expect(compareModels(m, c.build()).score).toBe(100) // not scored, like attributes
     for (const item of items) expect(applyAnswer(m, c, item)).toBe(true)
     expect(compareModels(m, c.build()).items.filter((i) => i.kind === 'mandatory')).toEqual([])
+  })
+})
+
+describe('attribute names — a student build of Hotel', () => {
+  it('accepts short forms, word forms, dates written as _on and “number of …”', () => {
+    const ref = buildHotel()
+    const m = buildHotel()
+    const rename = (e: string, from: string, to: string) => (ent(m, e).attributes.find((a) => a.name === from)!.name = to)
+    rename('Guest', 'passport_no', 'Passport_number')
+    rename('Booking', 'booked_on', 'Date')
+    rename('Booking', 'cancelled_on', 'Cancellation')
+    rename('Booked Room', 'guests', 'guest_number')
+    const missing = compareModels(m, ref).items.filter((i) => i.kind === 'attribute' && i.status === 'missing')
+    expect(missing).toEqual([])
+  })
+
+  it('still reports an attribute that is really missing', () => {
+    const ref = buildHotel()
+    const m = buildHotel()
+    ent(m, 'Room Type').attributes.find((a) => a.name === 'nightly_price')!.name = 'Price_category'
+    const items = compareModels(m, ref).items.filter((i) => i.kind === 'attribute' && i.status === 'missing')
+    expect(items.map((i) => i.refAttrs)).toEqual([['nightly_price']])
   })
 })

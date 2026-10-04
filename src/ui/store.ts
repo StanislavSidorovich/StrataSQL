@@ -3,7 +3,7 @@ import { create } from 'zustand'
 import { generatePdm } from '../core/cdm2pdm'
 import { lintModel, type LintIssue } from '../core/lint'
 import { emptyModel, type Id, type Model } from '../core/metamodel'
-import { ModelError } from '../core/ops'
+import { duplicateEntity, ModelError } from '../core/ops'
 import type { Pdm } from '../core/pdm'
 import { ModelFormatError, parseModel, serializeModel } from '../core/serialize'
 
@@ -253,4 +253,12 @@ const NO_ISSUES: LintIssue[] = []
 /** Is the element new in the current walkthrough step? */
 export function useSpotlight(id: Id | undefined): boolean {
   return useEditor((s) => !!id && !!s.walkthrough?.spotlight.includes(id))
+}
+
+/** Copies an entity (attributes and identifiers, no links), selects the copy and focuses its name. */
+export function duplicateSelectedEntity(id: Id): void {
+  const { apply } = useEditor.getState()
+  let created: Id | null = null
+  if (!apply((m) => void (created = duplicateEntity(m, id).id)) || !created) return
+  useEditor.setState({ selection: { kind: 'entity', id: created }, focusName: created })
 }
