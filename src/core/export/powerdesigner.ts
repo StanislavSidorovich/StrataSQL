@@ -144,13 +144,23 @@ export function exportPowerDesigner(model: Model, opts: { guid?: () => string; n
   const inhSymIds = new Map(model.inheritances.map((i) => [i.id, id()]))
   const linkIds = new Map(model.inheritances.flatMap((i) => i.childIds.map((c) => [`${i.id}:${c}`, id()] as const)))
 
-  // Diagram: our y grows downwards, PD's upwards.
+  // Diagram: our y grows downwards, PD's upwards. PD lays its print pages out around (0, 0), and its
+  // own files are centred there: a diagram starting at (0, 0) would straddle the page delimiters.
   const rects = new Map<string, Rect>()
   for (const e of model.entities) {
     const { w, h } = entitySize(e)
     const x1 = Math.round(e.position.x * UNITS)
     const y2 = -Math.round(e.position.y * UNITS)
     rects.set(e.id, { x1, y1: y2 - h, x2: x1 + w, y2 })
+  }
+  const inhAt = (p: Point): Point => ({ x: Math.round(p.x * UNITS), y: -Math.round(p.y * UNITS) })
+  const all = [...rects.values()].flatMap((r) => [{ x: r.x1, y: r.y1 }, { x: r.x2, y: r.y2 }]).concat(model.inheritances.map((i) => inhAt(i.position)))
+  const mid = all.length ? center(boundsOf(all)) : { x: 0, y: 0 }
+  for (const r of rects.values()) {
+    r.x1 -= mid.x
+    r.x2 -= mid.x
+    r.y1 -= mid.y
+    r.y2 -= mid.y
   }
   const symbols: string[] = []
   for (const e of model.entities) {
@@ -172,8 +182,9 @@ export function exportPowerDesigner(model: Model, opts: { guid?: () => string; n
     )
   }
   for (const inh of model.inheritances) {
-    const x1 = Math.round(inh.position.x * UNITS)
-    const y2 = -Math.round(inh.position.y * UNITS)
+    const at = inhAt(inh.position)
+    const x1 = at.x - mid.x
+    const y2 = at.y - mid.y
     const sym: Rect = { x1, y1: y2 - 1000, x2: x1 + 1600, y2 }
     const symId = inhSymIds.get(inh.id)!
     symbols.push(

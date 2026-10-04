@@ -9,7 +9,7 @@ import { useEditor } from './store'
 
 interface WritableFile {
   name: string
-  createWritable: () => Promise<{ write: (data: string) => Promise<void>; close: () => Promise<void> }>
+  createWritable: () => Promise<{ write: (data: string | Blob) => Promise<void>; close: () => Promise<void> }>
 }
 type SavePicker = (opts: object) => Promise<WritableFile>
 
@@ -71,15 +71,47 @@ export async function saveModelAs(): Promise<string | null> {
   return `Saved to ${file.name}. Ctrl+S now saves to this file.`
 }
 
-/** Export for PowerDesigner: a .cdm (XML) download. Returns a message for the user, with what PD cannot hold. */
-export function exportCdm(): string {
+/** File kinds for exports: what the save dialog shows and filters on. */
+export const FILE_KINDS = {
+  cdm: { description: 'PowerDesigner conceptual model', accept: { 'application/xml': ['.cdm'] } },
+  sql: { description: 'SQL script', accept: { 'text/plain': ['.sql'] } },
+  png: { description: 'PNG image', accept: { 'image/png': ['.png'] } },
+  svg: { description: 'SVG image', accept: { 'image/svg+xml': ['.svg'] } },
+} as const
+
+/**
+ * Saves an exported file where the user chooses (Chrome, Edge), else as a download. The dialog opens
+ * first and the content is made after it: a slow `make` (an image) would otherwise lose the click
+ * the browser requires for the dialog. Returns the file name, or null when the user cancelled.
+ */
+export async function saveExport(name: string, kind: keyof typeof FILE_KINDS, make: () => Blob | Promise<Blob>): Promise<string | null> {
+  const show = picker()
+  if (!show) {
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(await make())
+    a.download = name
+    a.click()
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000)
+    return name
+  }
+  let file: WritableFile
+  try {
+    file = await show({ suggestedName: name, types: [FILE_KINDS[kind]] })
+  } catch (e) {
+    if ((e as Error).name === 'AbortError') return null
+    throw e
+  }
+  const out = await file.createWritable()
+  await out.write(await make())
+  await out.close()
+  return file.name
+}
+
+/** Export for PowerDesigner: a .cdm (XML). Returns a message for the user, with what PD cannot hold. */
+export async function exportCdm(): Promise<string | null> {
   const { model } = useEditor.getState()
   const { xml, warnings } = exportPowerDesigner(model)
-  const name = `${fileBaseName(model.name)}.cdm`
-  const a = document.createElement('a')
-  a.href = URL.createObjectURL(new Blob([xml], { type: 'application/xml' }))
-  a.download = name
-  a.click()
-  setTimeout(() => URL.revokeObjectURL(a.href), 1000)
+  const name = await saveExport(`${fileBaseName(model.name)}.cdm`, 'cdm', () => new Blob([xml], { type: 'application/xml' }))
+  if (!name) return null
   return `Exported ${name} — open it in PowerDesigner (File → Open).` + (warnings.length ? `\n${warnings.join('\n')}` : '')
 }

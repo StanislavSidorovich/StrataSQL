@@ -4,6 +4,7 @@ import { useMemo, useState, type ReactNode } from 'react'
 import { generateSqlServer } from '../../core/ddl/sqlserver'
 import { Check } from '../panels/fields'
 import { useEditor, usePdm } from '../store'
+import { saveExport } from '../fileSave'
 
 const KEYWORDS =
   /\b(CREATE|TABLE|ALTER|ADD|CONSTRAINT|PRIMARY|KEY|FOREIGN|REFERENCES|UNIQUE|CHECK|NOT|NULL|GO|DROP|IF|EXISTS|IS|IN|OBJECT_ID)\b/
@@ -59,13 +60,7 @@ export function SqlView() {
     setCopied(true)
     setTimeout(() => setCopied(false), 1500)
   }
-  const download = () => {
-    const a = document.createElement('a')
-    a.href = URL.createObjectURL(new Blob([sql], { type: 'text/plain' }))
-    a.download = `${fileBaseName(name)}.sql`
-    a.click()
-    setTimeout(() => URL.revokeObjectURL(a.href), 1000)
-  }
+  const download = () => void saveExport(`${fileBaseName(name)}.sql`, 'sql', () => new Blob([sql], { type: 'text/plain' }))
 
   return (
     <div className="sql-view">

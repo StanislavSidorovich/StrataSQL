@@ -260,7 +260,11 @@ function Editor() {
               { label: 'Save', icon: <Save size={ICON} />, hint: 'Ctrl+S', onSelect: () => save(false) },
               { label: 'Save as…', icon: <SaveAll size={ICON} />, hint: 'Ctrl+Shift+S', onSelect: () => save(true) },
               'separator',
-              { label: 'Export for PowerDesigner', icon: <FileDown size={ICON} />, hint: '.cdm', onSelect: () => setNotice(exportCdm()) },
+              { label: 'Export for PowerDesigner', icon: <FileDown size={ICON} />, hint: '.cdm', onSelect: () =>
+                  void exportCdm()
+                    .then((msg) => msg && setNotice(msg))
+                    .catch((err: Error) => showError(`Export failed: ${err.message}`)),
+              },
               ...(['png', 'svg'] as const).map((format) => ({
                 label: `Export diagram as ${format.toUpperCase()}`,
                 icon: <ImageIcon size={ICON} />,

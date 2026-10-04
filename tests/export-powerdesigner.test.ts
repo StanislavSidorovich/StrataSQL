@@ -67,3 +67,14 @@ describe('PowerDesigner .cdm export', () => {
     if (withAk) expect(exportPowerDesigner(withAk).warnings.join(' ')).toMatch(/alternate keys/)
   })
 })
+
+it('centres the diagram on (0, 0), where PowerDesigner lays out its pages', () => {
+  for (const c of CASES) {
+    const { xml } = exportPowerDesigner(c.build())
+    const rects = [...xml.matchAll(/<o:EntitySymbol Id="[^"]+">[\s\S]*?<a:Rect>\(\((-?\d+),(-?\d+)\), \((-?\d+),(-?\d+)\)\)/g)].map((m) => m.slice(1, 5).map(Number))
+    const xs = rects.flatMap((r) => [r[0], r[2]])
+    const ys = rects.flatMap((r) => [r[1], r[3]])
+    expect(Math.abs(Math.min(...xs) + Math.max(...xs))).toBeLessThan(1500)
+    expect(Math.abs(Math.min(...ys) + Math.max(...ys))).toBeLessThan(1500)
+  }
+})
