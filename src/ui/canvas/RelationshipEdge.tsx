@@ -40,6 +40,9 @@ export function RelationshipEdge({ id, source, target, data, selected }: EdgePro
   const mid = scale(add(from, to), 0.5)
   const dirA = unit(sub(to, from))
   const dirB = scale(dirA, -1)
+  // A parallel line (same pair of entities) keeps its labels on its outer side, away from its neighbour.
+  const outer = Math.sign(data?.offset ?? 0)
+  const nameAt = outer ? add(mid, scale(perp(dirA), outer * 8)) : { x: mid.x, y: mid.y - 6 }
 
   return (
     <>
@@ -49,10 +52,10 @@ export function RelationshipEdge({ id, source, target, data, selected }: EdgePro
         <EndMarker at={to} dir={dirB} card={rel.cardinalityB} dependent={rel.dependentSide === 'B'} stroke={stroke} />
       </g>
       <g className="pointer-events-none select-none" style={{ fontSize: 'calc(11px * var(--diagram-zoom, 1))' }} fill="var(--edge-label)">
-        <EndLabel at={from} dir={dirA} text={formatCardinality(rel.cardinalityA)} role={rel.roleA} />
-        <EndLabel at={to} dir={dirB} text={formatCardinality(rel.cardinalityB)} role={rel.roleB} />
+        <EndLabel at={from} dir={dirA} text={formatCardinality(rel.cardinalityA)} role={rel.roleA} outer={outer} />
+        <EndLabel at={to} dir={dirB} text={formatCardinality(rel.cardinalityB)} role={rel.roleB} outer={-outer} />
         {rel.name && (
-          <text x={mid.x} y={mid.y - 6} textAnchor="middle" fontStyle="italic" fill="var(--edge-name)">
+          <text x={nameAt.x} y={outer ? nameAt.y + 4 : nameAt.y} textAnchor={outer ? anchorAway(scale(perp(dirA), outer)) : 'middle'} fontStyle="italic" fill="var(--edge-name)">
             {rel.name}
           </text>
         )}
@@ -90,8 +93,36 @@ export function EndMarker({ at, dir, card, dependent, stroke }: { at: Vec; dir: 
   )
 }
 
-export function EndLabel({ at, dir, text, role }: { at: Vec; dir: Vec; text: string; role?: string }) {
+/** Text anchor that keeps a label on the side `away` points to (a vertical line: left or right of it). */
+function anchorAway(away: Vec): 'start' | 'middle' | 'end' {
+  return away.x > 0.3 ? 'start' : away.x < -0.3 ? 'end' : 'middle'
+}
+
+/**
+ * Cardinality (and role) near one end. `outer` (+1 / −1 along the end's normal) is set for parallel
+ * lines: both labels go to that side, stacked along the line, so they don't cross the neighbour.
+ */
+export function EndLabel({ at, dir, text, role, outer = 0 }: { at: Vec; dir: Vec; text: string; role?: string; outer?: number }) {
   const n = perp(dir)
+  if (outer) {
+    const away = scale(n, outer)
+    const anchor = anchorAway(away)
+    const shift = anchor === 'middle' ? 12 : 6
+    const pos = add(add(at, scale(dir, 28)), scale(away, shift))
+    const rolePos = add(add(at, scale(dir, 44)), scale(away, shift))
+    return (
+      <>
+        <text x={pos.x} y={pos.y + 4} textAnchor={anchor} fontWeight={600}>
+          {text}
+        </text>
+        {role && (
+          <text x={rolePos.x} y={rolePos.y + 4} textAnchor={anchor} fontStyle="italic" fill="var(--edge-name)">
+            {role}
+          </text>
+        )}
+      </>
+    )
+  }
   // Put the label on the side of the line that points "up/left" so it reads consistently.
   const side = n.y > 0 || (n.y === 0 && n.x > 0) ? -1 : 1
   const pos = add(add(at, scale(dir, 30)), scale(n, side * 12))

@@ -30,7 +30,7 @@ Stages follow SPEC §12. A stage is done only when its acceptance criteria pass.
 8. **`.pdm` reverse import** (tables → entities; `pdm-reader.ts` is the first half)
 9. ✅ **5e leftovers**: lucide icons, “Saved” indicator, shortcut sheet on `?` (v0.8.0)
 10. **Stage 6 AI review** (optional, own API key)
-11. Smaller, found on the way: parallel relationships (Football home / away) draw their labels on top of each other; Timetables still fits at ~58 % at 1366 px (12 entities, its columns are already tight); the walkthrough does not refit when the window is resized
+11. Smaller, found on the way: ✅ parallel relationships (Football home / away) drew their labels on top of each other — fixed: each parallel line keeps its cardinality, role and name on its outer side; Timetables still fits at ~58 % at 1366 px (12 entities, its columns are already tight); the walkthrough does not refit when the window is resized
 
 **Earlier (2026-10-03, v0.5.0):** guided start is in: a welcome card and a tour, the four cases watched built step by step (Library starter first), built alone with a Next hint that walks the same order, and PowerDesigner `.cdm` import. Next: 5e UI polish, then optional AI review (stage 6).
 
@@ -268,6 +268,7 @@ Pre-LinkedIn polish (2026-10-04, v0.8.0) — backlog 5–8 and the 5e leftovers:
 - [x] **Walkthrough repeats** (backlog 8): a generated paragraph that only repeats a phrase's *why* is left out (`repeats()`: ≥ 60 % of its content words already in the phrase boxes ✱), except readings with the model's data (cardinalities, attribute lists, key columns); a phrase whose *why* the authored note says again shows as “phrase → tag” only (`WalkStep.quiet`). Library: 6 repeated paragraphs gone, e.g. “Primary identifier <pi>: `card_no`.” after “The text names the identifier: `card_no` → primary identifier”
 - [x] **5e leftovers**: lucide icons (ISC) in the toolbar and the menus; **✓ Saved** next to the model name after every autosave (tooltip: saved in this browser at hh:mm, File → Save keeps a file); `?` opens the shortcut sheet (listed in it and in the Help menu)
 - [x] Open Graph: tags and `og-image.png` (1200×630) checked on the live site; the LinkedIn Post Inspector itself needs the owner's login
+- [x] Follow-up: labels of parallel relationships (Football home / away) no longer overlap — cardinality, role and name go to the line's outer side, anchored away from it (`EndLabel outer`)
 - [x] Tests: `repeats()` and “no step repeats a phrase's why” for all 8 cases; 374 tests. Checked in the dev build (Playwright 1366×820, 1280, 1024, 768): all 8 final walkthrough steps (no overlaps), Exit reopens Properties, `?`, select-to-reveal at 1024, no console errors
 
 Built with: Claude Opus 5.5 (Claude Code), effort low.
@@ -350,3 +351,4 @@ The owner's guidance: the course's "discussed in class" points are not critical 
 
 Still open:
 - SPEC §13: PD-style `0,n` labels shown by default (toggle later); associations not supported; UI in English first.
+- Notations (asked 2026-10-04): IE stays the only one (the course uses it). Worth adding later only as a **display toggle**, never a second editor: Chen (most textbooks, e.g. Elmasri & Navathe, draw it — diamonds, relationship attributes) and UML class notation (`0..*`, used in software courses). Barker, IDEF1X, Merise add little for students. Value: reading textbook diagrams and other courses; cost ~1 sprint for Chen (layout of diamonds), less for UML multiplicities.
