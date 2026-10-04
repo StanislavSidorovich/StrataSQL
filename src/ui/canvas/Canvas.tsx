@@ -19,6 +19,7 @@ import { EntityNode, type EntityNodeType } from './EntityNode'
 import { InheritanceEdge, type InheritanceEdgeType } from './InheritanceEdge'
 import { InheritanceNode, type InheritanceNodeType } from './InheritanceNode'
 import { RelationshipEdge, type RelationshipEdgeType } from './RelationshipEdge'
+import { KeepOnScreen } from './KeepOnScreen'
 
 // `table` / `fk` too: see PdmCanvas (shared React Flow store across views).
 const nodeTypes = { entity: EntityNode, inheritance: InheritanceNode, table: TableNode }
@@ -198,6 +199,7 @@ export function Canvas({ dark }: { dark: boolean }) {
         minZoom={0.2}
       >
         <Background gap={20} />
+        <KeepOnScreen />
         <Controls showInteractive={false} />
         {nodes.length >= MINIMAP_FROM && <MiniMap pannable zoomable className="!bg-[var(--panel-bg)]" />}
       </ReactFlow>

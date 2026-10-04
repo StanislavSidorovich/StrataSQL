@@ -26,6 +26,7 @@ import { InheritanceNode } from '../canvas/InheritanceNode'
 import { InheritanceEdge } from '../canvas/InheritanceEdge'
 import { nodeRect, RelationshipEdge } from '../canvas/RelationshipEdge'
 import { useEditor, usePdm } from '../store'
+import { KeepOnScreen } from '../canvas/KeepOnScreen'
 
 type TableNodeType = Node<{ table: PdmTable }, 'table'>
 type FkEdgeType = Edge<{ fk: PdmForeignKey; offset: number; highlighted: boolean }, 'fk'>
@@ -135,6 +136,7 @@ export function PdmCanvas({ dark }: { dark: boolean }) {
         minZoom={0.15}
       >
         <Background gap={20} />
+        <KeepOnScreen />
         <Controls showInteractive={false} />
         {nodes.length >= MINIMAP_FROM && <MiniMap pannable zoomable className="!bg-[var(--panel-bg)]" />}
       </ReactFlow>
