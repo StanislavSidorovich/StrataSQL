@@ -619,7 +619,7 @@ body {
   }
 }
 @media (max-width: 899px) {
-  .btn-icon > span:not(.menu-caret) {
+  .btn-icon:not(.keep-label) > span:not(.menu-caret) {
     display: none;
   }
 }
@@ -1629,6 +1629,7 @@ body {
   left: 0;
   z-index: 60;
   min-width: 230px;
+  max-width: calc(100vw - 16px);
   padding: 4px;
   max-height: calc(100vh - 70px);
   overflow-y: auto;

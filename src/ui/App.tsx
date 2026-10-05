@@ -328,7 +328,7 @@ Cancel: open it as an ordinary model.`)) {
         <button
           type="button"
           data-tour="trainer"
-          className={`btn btn-icon ${trainerOn ? 'btn-primary' : 'btn-accent'}`}
+          className={`btn btn-icon keep-label ${trainerOn ? 'btn-primary' : 'btn-accent'}`}
           onClick={() => useTrainer.getState().openPicker(!useTrainer.getState().pickerOpen)}
           title="Practise on the course cases: watch it built, worked example, text tagging, complete the model, build it yourself with hints"
         >
@@ -337,7 +337,7 @@ Cancel: open it as an ordinary model.`)) {
         </button>
         {view === 'cdm' && (
         <div className="toolbar-group" data-tour="add">
-          <button type="button" className="btn btn-primary btn-icon" onClick={addEntityAtCenter} title="Add an entity (or double-click the canvas)">
+          <button type="button" className="btn btn-primary btn-icon keep-label" onClick={addEntityAtCenter} title="Add an entity (or double-click the canvas)">
             <Plus size={ICON} aria-hidden />
             <span>Entity</span>
           </button>

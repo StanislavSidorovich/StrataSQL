@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useKeepInView } from '../useKeepInView'
 
 export interface MenuItem {
   label: string
@@ -17,19 +18,21 @@ export interface MenuHeading {
 export function Menu(props: { label: ReactNode; title?: string; className?: string; items: (MenuItem | MenuHeading | 'separator')[]; align?: 'left' | 'right'; active?: boolean; tour?: string }) {
   const [open, setOpen] = useState(false)
   const root = useRef<HTMLDivElement>(null)
+  const list = useRef<HTMLDivElement>(null)
+  useKeepInView(list, open)
 
   useEffect(() => {
     if (!open) return
-    const onDown = (e: MouseEvent) => {
+    const onDown = (e: PointerEvent) => {
       if (!root.current?.contains(e.target as Node)) setOpen(false)
     }
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setOpen(false)
     }
-    document.addEventListener('mousedown', onDown)
+    document.addEventListener('pointerdown', onDown)
     document.addEventListener('keydown', onKey)
     return () => {
-      document.removeEventListener('mousedown', onDown)
+      document.removeEventListener('pointerdown', onDown)
       document.removeEventListener('keydown', onKey)
     }
   }, [open])
@@ -40,7 +43,7 @@ export function Menu(props: { label: ReactNode; title?: string; className?: stri
         {props.label} <span aria-hidden className="menu-caret">▾</span>
       </button>
       {open && (
-        <div role="menu" className={`menu-list ${props.align === 'right' ? 'menu-right' : ''}`}>
+        <div ref={list} role="menu" className={`menu-list ${props.align === 'right' ? 'menu-right' : ''}`}>
           {props.items.map((it, i) =>
             it === 'separator' ? (
               <div key={i} className="menu-sep" role="separator" />

@@ -4,6 +4,7 @@
 // Input fields keep their own white (or dark) background.
 
 import { useEffect, useRef, useState } from 'react'
+import { useKeepInView } from './useKeepInView'
 
 const STORAGE_KEY = 'stratasql.look'
 
@@ -64,6 +65,8 @@ export function AppearanceButton({ dark }: { dark: boolean }) {
   const [look, setLook] = useState(readLook)
   const [open, setOpen] = useState(false)
   const root = useRef<HTMLDivElement>(null)
+  const panel = useRef<HTMLDivElement>(null)
+  useKeepInView(panel, open)
 
   useEffect(() => {
     applyLook(look, theme)
@@ -76,14 +79,14 @@ export function AppearanceButton({ dark }: { dark: boolean }) {
 
   useEffect(() => {
     if (!open) return
-    const onDown = (e: MouseEvent) => {
+    const onDown = (e: PointerEvent) => {
       if (!root.current?.contains(e.target as Node)) setOpen(false)
     }
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false)
-    document.addEventListener('mousedown', onDown)
+    document.addEventListener('pointerdown', onDown)
     document.addEventListener('keydown', onKey)
     return () => {
-      document.removeEventListener('mousedown', onDown)
+      document.removeEventListener('pointerdown', onDown)
       document.removeEventListener('keydown', onKey)
     }
   }, [open])
@@ -124,7 +127,7 @@ export function AppearanceButton({ dark }: { dark: boolean }) {
         Aa
       </button>
       {open && (
-        <div role="dialog" aria-label="Text size and colours" className="menu-list menu-right look-panel">
+        <div ref={panel} role="dialog" aria-label="Text size and colours" className="menu-list menu-right look-panel">
           <div className="look-row">
             <div className="look-label">Text size</div>
             <div className="segmented">
