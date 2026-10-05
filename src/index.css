@@ -2235,3 +2235,31 @@ body {
   font-size: 0.8rem;
   line-height: 1.6;
 }
+
+/* ------------------------------------------------------------ tablets: keyboard and portrait */
+
+/* The app's height follows the visible area when an on-screen keyboard covers the page (viewport.ts). */
+.app-root {
+  height: var(--app-h, 100%);
+}
+/* Below 1200 px a docked column leaves the canvas at least half of the width. */
+@media (max-width: 1199px) {
+  .dock:not(.is-overlay) .dock-body {
+    max-width: 45vw;
+  }
+}
+/* Portrait tablet: the properties column lies over the canvas, on the right. */
+.dock.is-overlay {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+}
+.dock.is-overlay:not(.is-collapsed) {
+  box-shadow: -6px 0 18px rgb(0 0 0 / 0.18);
+  background: var(--panel-bg);
+}
+.dock.is-overlay .dock-body {
+  max-width: calc(92vw / var(--ui-zoom, 1));
+}

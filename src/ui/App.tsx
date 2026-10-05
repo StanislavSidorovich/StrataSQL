@@ -1,11 +1,11 @@
 import { ReactFlowProvider, useReactFlow } from '@xyflow/react'
-import { BookOpen, Check, FilePen, CircleHelp, FileDown, FilePlus, FolderOpen, GraduationCap, Image as ImageIcon, Info, Keyboard, Maximize2, Moon, Play, Plus, Redo2, Save, SaveAll, Sun, Trash2, Undo2 } from 'lucide-react'
+import { BookOpen, Check, FilePen, CircleHelp, Download, FileDown, FilePlus, FolderOpen, GraduationCap, Image as ImageIcon, Info, Keyboard, Maximize2, Moon, Play, Plus, Redo2, Save, SaveAll, Sun, Trash2, Undo2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { emptyModel } from '../core/metamodel'
 import { addEntity, removeEntity, removeInheritance, removeRelationship } from '../core/ops'
 import { importPowerDesigner } from '../core/import/powerdesigner'
 import { FILE_EXTENSION, parseModel, readSavedTask } from '../core/serialize'
-import { applyUpdate, useUpdateReady } from '../pwa/register'
+import { applyUpdate, installApp, useUpdateReady } from '../pwa/register'
 import { Canvas } from './canvas/Canvas'
 import { exportDiagram } from './exportImage'
 import { HelpDrawer } from './help/HelpDrawer'
@@ -21,6 +21,7 @@ import { SandboxView } from './sandbox/SandboxView'
 import { AppearanceButton } from './Appearance'
 import { exportCdm, saveModel, saveModelAs } from './fileSave'
 import { SideDock } from './SideDock'
+import { usePortrait } from './viewport'
 import { duplicateSelectedEntity, useEditor, type View } from './store'
 import { CASES } from '../data/cases'
 import { Menu } from './onboarding/Menu'
@@ -124,6 +125,7 @@ function Editor() {
   const walkOn = useEditor((s) => s.walkthrough !== null)
   const veiled = useTrainer((s) => isVeiled(s.session))
   const narrow = useNarrow()
+  const portrait = usePortrait()
   // Opening another case, level or the picker shows a hidden trainer column again.
   const trainerKey = useTrainer((s) => `${s.pickerOpen}|${s.session?.caseId}|${s.session?.level}|${s.session?.walk === undefined}`)
   const { undo, redo, load, apply, select, setLinkKind, setView, showError } = useEditor.getState()
@@ -256,7 +258,7 @@ Cancel: open it as an ordinary model.`)) {
   const inh = selection?.kind === 'inheritance' ? model.inheritances.find((i) => i.id === selection.id) : undefined
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="app-root flex flex-col">
       <header className="toolbar" ref={toolbar}>
         <div className="brand">
           Strata<span>SQL</span>
@@ -396,6 +398,7 @@ Cancel: open it as an ordinary model.`)) {
               { label: 'Tour of the screen', icon: <Info size={ICON} />, onSelect: startTour },
               { label: 'Watch a model being built…', icon: <Play size={ICON} />, onSelect: () => useTrainer.getState().openPicker(true) },
               { label: 'Keyboard shortcuts', icon: <Keyboard size={ICON} />, hint: '?', onSelect: () => useOnboarding.getState().showShortcuts(true) },
+              { label: 'Install as app (works offline)…', icon: <Download size={ICON} />, onSelect: () => void installApp().then((msg) => msg && setNotice(msg)) },
               { label: 'About StrataSQL', onSelect: () => useOnboarding.getState().showAbout(true) },
               'separator',
               { label: 'Quaera: SQL & analytics trainer ↗', hint: 'quaera.app', onSelect: () => window.open('https://quaera.app', '_blank', 'noopener') },
@@ -418,7 +421,7 @@ Cancel: open it as an ordinary model.`)) {
           )}
         </>
       ) : (
-      <div className="flex min-h-0 flex-1">
+      <div className="relative flex min-h-0 flex-1">
         {trainerOn && (
           <SideDock side="left" name="trainer" defaultWidth={380} revealKey={trainerKey}>
             <TrainerPane />
@@ -477,6 +480,7 @@ Cancel: open it as an ordinary model.`)) {
           name="properties"
           defaultWidth={390}
           autoHide={walkOn || narrow}
+          overlay={portrait && !walkOn}
           revealKey={narrow && !walkOn && selection ? `${selection.kind}:${selection.id}` : undefined}
         >
         <aside className="panel" aria-label="Properties" data-tour="panel">

@@ -1,6 +1,7 @@
 // A side column that can be hidden and resized: drag its inner edge, double-click the edge to reset.
 // The width is remembered per side; a change of `revealKey` opens a hidden column again, `autoHide`
-// starts it closed.
+// starts it closed. An `overlay` column (portrait tablet) lies over the canvas instead of squeezing it,
+// and closes again when `revealKey` empties (the selection is gone).
 // The body is zoomed by the text size (Appearance.tsx); dividing by the zoom keeps the width on screen.
 
 import { useEffect, useRef, useState, type ReactNode } from 'react'
@@ -14,8 +15,8 @@ const readWidth = (key: string) => {
   }
 }
 
-export function SideDock(props: { side: 'left' | 'right'; name: string; defaultWidth: number; revealKey?: string; autoHide?: boolean; children: ReactNode }) {
-  const { side, name, defaultWidth, revealKey, autoHide = false, children } = props
+export function SideDock(props: { side: 'left' | 'right'; name: string; defaultWidth: number; revealKey?: string; autoHide?: boolean; overlay?: boolean; children: ReactNode }) {
+  const { side, name, defaultWidth, revealKey, autoHide = false, overlay = false, children } = props
   const storageKey = `stratasql.dock.${side}`
   const [width, setWidth] = useState(() => readWidth(storageKey) ?? defaultWidth)
   const [open, setOpen] = useState(!autoHide)
@@ -28,7 +29,8 @@ export function SideDock(props: { side: 'left' | 'right'; name: string; defaultW
     if (revealKey === seen.current.revealKey) return
     seen.current.revealKey = revealKey
     if (revealKey) setOpen(true)
-  }, [revealKey])
+    else if (overlay) setOpen(false)
+  }, [revealKey, overlay])
   useEffect(() => {
     if (autoHide === seen.current.autoHide) return
     seen.current.autoHide = autoHide
@@ -42,7 +44,7 @@ export function SideDock(props: { side: 'left' | 'right'; name: string; defaultW
     }
   }, [storageKey, width])
 
-  const clamp = (w: number) => Math.max(260, Math.min(w, Math.max(320, window.innerWidth * 0.45)))
+  const clamp = (w: number) => Math.max(260, Math.min(w, Math.max(320, window.innerWidth * (overlay ? 0.92 : 0.45))))
   const onMove = (e: React.PointerEvent) => {
     if (!drag.current) return
     const dx = e.clientX - drag.current.x
@@ -75,7 +77,7 @@ export function SideDock(props: { side: 'left' | 'right'; name: string; defaultW
   )
 
   return (
-    <div className={`dock dock-${side} ${open ? '' : 'is-collapsed'}`}>
+    <div className={`dock dock-${side} ${open ? '' : 'is-collapsed'} ${overlay ? 'is-overlay' : ''}`}>
       {side === 'right' && gutter}
       {open && (
         <div className="dock-body" style={{ width: `calc(${width}px / var(--ui-zoom, 1))` }}>

@@ -167,6 +167,7 @@ function Welcome(props: { onPractise: () => void; onWatch: () => void }) {
   if (!open) return null
   // Phones only: a tablet (shorter side 500 px or more) can model with a finger or a pen.
   const narrow = Math.min(window.screen.width, window.screen.height) < 500
+  const touch = matchMedia('(pointer: coarse)').matches && !matchMedia('(display-mode: standalone)').matches
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="welcome-title" onKeyDown={(e) => e.key === 'Escape' && closeWelcome()}>
       <div className="modal welcome">
@@ -210,6 +211,11 @@ function Welcome(props: { onPractise: () => void; onWatch: () => void }) {
             <span>{CASES.length} cases from easy to hard: tag the text, build the model, check it</span>
           </button>
         </div>
+        {touch && !narrow && (
+          <p className="welcome-narrow">
+            On a tablet: <b>Help → Install as app</b> puts StrataSQL on the home screen, and it then works in class without Wi-Fi.
+          </p>
+        )}
         <div className="welcome-foot">
           <span>The tour, glossary and shortcuts stay in the Help menu.</span>
           <button type="button" className="btn btn-small" onClick={closeWelcome}>
