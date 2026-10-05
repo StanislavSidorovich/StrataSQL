@@ -13,6 +13,7 @@ import { lintFor, useEditor, type Selection } from '../store'
 import { confirmDiscardTask, exerciseFor, isRightTag, isVeiled, openPathStep, tagScore, taskSuggestions, useTrainer } from './trainerStore'
 import { MyTaskCoverage, MyTaskEntry, MyTaskText, openMyTaskDialog } from './MyTask'
 import { WalkthroughPane } from './Walkthrough'
+import { LessonList, LessonPane, sessionLesson } from './Lesson'
 
 const TAG_LABEL: Record<Tag, string> = Object.fromEntries(TAGS.map((t) => [t.id, t.label])) as Record<Tag, string>
 
@@ -55,6 +56,8 @@ export function TrainerPane() {
     const x = exerciseFor(session.caseId)
     if (x) return <ExercisePane x={x} ticked={session.exercise} />
   }
+  const lesson = sessionLesson(session.caseId)
+  if (lesson) return <LessonPane lesson={lesson} practice={session.level === 3} />
   const c = caseById(session.caseId)!
   if (session.walk !== undefined) return <WalkthroughPane c={c} step={session.walk} />
   return <TaskPane c={c} level={session.level} />
@@ -130,12 +133,14 @@ function CasePicker() {
   return (
     <aside className="trainer-pane" aria-label="Trainer">
       <div className="trainer-header">
-        <h2>Trainer</h2>
+        <h2>Learn and practise</h2>
         <button type="button" className="btn btn-small ml-auto" onClick={() => (session ? openPicker(false) : useTrainer.getState().exit())}>
           {session ? 'Back to task' : 'Close'}
         </button>
       </div>
       <div className="trainer-body">
+        <LessonList />
+        <h3 className="trainer-h3">Cases</h3>
         <p className="muted">
           <b>▶ Watch it built</b> step by step, then practise: worked example → tag the text → complete the model → build it yourself. The cases go from easy to hard. Your own model is kept aside and comes back when you close the trainer.
         </p>
@@ -481,7 +486,8 @@ function Tagging({ c }: { c: TrainerCase }) {
 
 const STATUS_LABEL = { missing: 'Missing', different: 'Different', extra: 'Not in the reference', matched: 'Matched' } as const
 
-function CheckPanel({ c, level }: { c: TrainerCase; level: Level }) {
+/** Check, coach and results of a level 2–3 task; `next` replaces the “Next: …” button (lessons). */
+export function CheckPanel({ c, level, next: nextButton }: { c: TrainerCase; level: Level; next?: ReactNode }) {
   const check = useTrainer((s) => s.check)
   const model = useEditor((s) => s.model)
   const { runCheck } = useTrainer.getState()
@@ -540,7 +546,7 @@ function CheckPanel({ c, level }: { c: TrainerCase; level: Level }) {
             </p>
           )}
           {check.result.score === 100 && check.lintErrors === 0 && <p className="trainer-done">✓ Everything the reference has is in your model.</p>}
-          {!stale && check.result.score >= DONE_AT && <NextStepButton />}
+          {!stale && check.result.score >= DONE_AT && (nextButton ?? <NextStepButton />)}
           {groups.map(([st, items]) =>
             items.length === 0 ? null : (
               <details key={st} className={`trainer-group status-${st}`} open={st !== 'matched'}>
@@ -592,7 +598,7 @@ function Coach({ c, state, step }: { c: TrainerCase; state: CoachState; step: nu
     if (!ok) return
     // Select what was added or fixed.
     const { model } = useEditor.getState()
-    const found = compareModels(model, referenceOf(c), { synonyms: c.synonyms }).items.find((i) => i.refKey === next.item.refKey && i.target)
+    const found = compareModels(model, referenceOf(c), { synonyms: c.synonyms, strict: c.strict }).items.find((i) => i.refKey === next.item.refKey && i.target)
     const target = found?.target ?? next.item.target
     editor.setView('cdm')
     if (target) editor.select(target)

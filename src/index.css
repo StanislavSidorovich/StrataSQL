@@ -2069,6 +2069,99 @@ body {
   border-color: var(--accent);
 }
 
+/* Learn: lessons in the trainer column */
+.lesson-quiz {
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.lesson-quiz .trainer-why {
+  position: static;
+  box-shadow: none;
+}
+.lesson-options {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.lesson-option {
+  text-align: left;
+  white-space: normal;
+  justify-content: flex-start;
+}
+.lesson-option:disabled {
+  opacity: 1;
+  cursor: default;
+}
+.lesson-option.is-right {
+  border-color: var(--ok);
+  background: var(--ok-soft);
+}
+.lesson-option.is-wrong {
+  border-color: var(--lint-error);
+  background: var(--lint-error-soft);
+}
+.lesson-gist {
+  margin: 0;
+  padding-left: 18px;
+  list-style: disc;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.lesson-example {
+  border-left: 3px solid var(--walk-new);
+  padding: 4px 10px;
+}
+.lesson-list {
+  border-color: var(--accent);
+}
+.lesson-items {
+  list-style: none;
+  margin: 2px 0 4px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.lesson-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  padding: 3px 4px;
+  border-radius: 5px;
+  background: none;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+}
+.lesson-item:hover {
+  background: var(--accent-soft);
+}
+.lesson-item.is-next {
+  font-weight: 600;
+}
+.lesson-no {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  border: 1px solid var(--panel-border);
+}
+.lesson-item.is-next .lesson-no {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 /* Walkthrough: predict first, then the step is revealed */
 .walk-ask {
   border: 2px solid var(--walk-new);

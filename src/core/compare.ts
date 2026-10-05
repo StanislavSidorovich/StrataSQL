@@ -59,6 +59,12 @@ export interface CompareOptions {
   synonyms?: Record<string, string[]>
   /** `links`: entities were given (level 2) — compare only relationships and inheritances. */
   scope?: 'all' | 'links'
+  /**
+   * Lessons: the primary identifier must be over the reference's attributes (not just any own
+   * identifier), and attributes, identifiers and alternate identifiers count in the score — the
+   * lesson is about them.
+   */
+  strict?: boolean
 }
 
 // ---------------------------------------------------------------- names
@@ -484,10 +490,27 @@ export function compareModels(student: Model, ref: Model, opts: CompareOptions =
           refEntities: [r.name],
           target: { kind: 'entity', id: s.id },
           message: rHas
-            ? `${s.name} needs its own identifier attribute: ${r.name} instances repeat for the same parents, or it is identified by its own number.`
+            ? isDependent(ref, r.id)
+              ? `${s.name} needs its own identifier attribute: ${r.name} instances repeat for the same parents, or it is identified by its own number.`
+              : `${s.name} has no primary identifier <pi> yet: which attribute tells one ${s.name} from all the others?`
             : `${s.name} should have no own identifier — it is identified only by the entities it depends on (one row per combination).`,
           answer: rHas ? `${r.name} has its own identifier: ${piNames(r).join(', ')}.` : `${r.name} has no own identifier; its key comes from its parents.`,
         })
+      else if (opts.strict && rHas && sHas) {
+        const want = piNames(r)
+        const mapped = r.attributes.filter((a) => ownPi(r).has(a.id)).map((a) => sameAttribute(s, r, a))
+        const own = ownPi(s)
+        if (mapped.some((a) => !a || !own.has(a.id)) || own.size !== mapped.length)
+          items.push({
+            kind: 'identifier',
+            status: 'different',
+            refKey: key,
+            refEntities: [r.name],
+            target: { kind: 'entity', id: s.id },
+            message: `${s.name}: the primary identifier is ${piNames(s).join(' + ')}, but the text identifies a ${s.name} by something else.`,
+            answer: `The primary identifier <pi> of ${r.name} is ${want.join(' + ')}.`,
+          })
+      }
       const missingAttrs = missingAttributes(s, r)
       if (missingAttrs.length)
         items.push({
@@ -689,11 +712,17 @@ export function compareModels(student: Model, ref: Model, opts: CompareOptions =
   }
   // Each different item replaces a matched one, so it is half a point.
   got += items.filter((i) => i.status === 'different' && (i.kind === 'relationship' || i.kind === 'inheritance')).length / 2
-  // A wrong identifier costs half of its entity.
-  got -= items.filter((i) => i.kind === 'identifier').length / 2
+  // A wrong identifier costs half of its entity; in a lesson, so does every attribute or key item.
+  const KEY_KINDS: CompareKind[] = opts.strict ? ['identifier', 'attribute', 'mandatory', 'alternate', 'duplicate'] : ['identifier']
+  got -= items.filter((i) => KEY_KINDS.includes(i.kind) && i.status !== 'matched' && i.status !== 'extra').length / 2
   const order: Record<CompareStatus, number> = { missing: 0, different: 1, extra: 2, matched: 3 }
   items.sort((a, b) => order[a.status] - order[b.status])
   return { items, entityMatch: match, counts, score: total ? Math.max(0, Math.round((100 * got) / total)) : 100 }
+}
+
+/** The entity is identified through another one (a dependent end of some relationship). */
+function isDependent(m: Model, id: Id): boolean {
+  return m.relationships.some((r) => r.dependentSide && (r.dependentSide === 'A' ? r.entityA : r.entityB) === id)
 }
 
 function piNames(e: Entity): string[] {

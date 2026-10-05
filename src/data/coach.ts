@@ -180,7 +180,7 @@ function neighboursInStudent(c: TrainerCase, refName: string, student: Model): s
   const ref = c.build()
   const r = ref.entities.find((e) => e.name === refName)
   if (!r) return []
-  const match = compareModels(student, ref, { synonyms: c.synonyms }).entityMatch
+  const match = compareModels(student, ref, { synonyms: c.synonyms, strict: c.strict }).entityMatch
   const ids = new Set<Id>()
   for (const x of ref.relationships) {
     if (x.entityA === r.id) ids.add(x.entityB)
@@ -199,7 +199,7 @@ export function referenceOf(c: TrainerCase): Model {
 /** What to do next in a level 2 or 3 task. */
 export function coach(c: TrainerCase, student: Model, level: Level): CoachState {
   const ref = referenceOf(c)
-  const result = compareModels(student, ref, { synonyms: c.synonyms, scope: level === 2 ? 'links' : 'all' })
+  const result = compareModels(student, ref, { synonyms: c.synonyms, strict: c.strict, scope: level === 2 ? 'links' : 'all' })
   const rank = stepRank(c)
   const todo: CoachItem[] = result.items.filter((i) => i.status === 'missing' || i.status === 'different')
   // Keys come last, once everything they are built from is in place.
@@ -247,7 +247,7 @@ function freeChild(m: Model, childId: Id, keep?: Id) {
  */
 export function applyAnswer(m: Model, c: TrainerCase, item: CoachItem): boolean {
   const ref = referenceOf(c)
-  const match = compareModels(m, ref, { synonyms: c.synonyms }).entityMatch
+  const match = compareModels(m, ref, { synonyms: c.synonyms, strict: c.strict }).entityMatch
   const rEntity = (name: string) => ref.entities.find((e) => e.name === name)
   const sEntity = (refId: Id): Entity | undefined => m.entities.find((e) => e.id === match.get(refId))
   const key = item.refKey ?? ''

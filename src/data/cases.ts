@@ -3,6 +3,7 @@
 
 import type { Model } from '../core/metamodel'
 import { MORE_CASES } from './cases-more'
+import { LESSON_CASES } from './lessons'
 import { buildLibrary } from './examples/library'
 import { buildRideHailing } from './examples/ride-hailing'
 import { buildTimetables } from './examples/timetables'
@@ -60,6 +61,12 @@ export interface TrainerCase {
   /** Reference key (`entity:Scene`, `relationship:has_scenes`…) → hints, mildest first. */
   hints: Record<string, string[]>
   walk: WalkPlan
+  /** Lesson practice: the model level 3 starts from (instead of an empty one). */
+  start?: () => Model
+  /** Lesson: the finished example shown on the canvas while the lesson is read (level 0). */
+  example?: () => Model
+  /** Lesson practice: the check is strict about identifiers and counts attributes (`CompareOptions.strict`). */
+  strict?: boolean
 }
 
 export const LEVELS = [
@@ -370,8 +377,9 @@ const ALL: TrainerCase[] = [
 const ORDER = ['library', 'hotel', 'ride-hailing', 'online-shop', 'tv-shows', 'hospital', 'timetables', 'football']
 export const CASES: TrainerCase[] = ORDER.map((id) => [...ALL, ...MORE_CASES].find((c) => c.id === id)!)
 
+/** A trainer case, or the practice task of a lesson (not listed in the picker). */
 export function caseById(id: string): TrainerCase | undefined {
-  return CASES.find((c) => c.id === id)
+  return CASES.find((c) => c.id === id) ?? LESSON_CASES.find((c) => c.id === id)
 }
 
 /** A paragraph cut into plain text and spans, in order. Throws if a phrase is not found (tested). */

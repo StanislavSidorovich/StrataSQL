@@ -9,9 +9,11 @@ export type Level = 0 | 1 | 2 | 3
  * Level 0–1: the reference model (read it / tag the text next to it).
  * Level 2: the reference entities with their attributes, without relationships and inheritances
  * (physical keys over migrated columns are dropped too — those columns do not exist yet).
- * Level 3: an empty model.
+ * Level 3: an empty model (a lesson practice: its own starting model).
  */
 export function levelStartModel(c: TrainerCase, level: Level): Model {
+  if (c.start && level === 3) return c.start()
+  if (c.example && level === 0) return c.example()
   if (level === 3) return { ...emptyModel(`${c.title} — my model`), comment: `Trainer: ${c.title}, level 3 (build it yourself).` }
   const m = c.build()
   if (level < 2) return m

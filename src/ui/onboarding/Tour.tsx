@@ -3,6 +3,7 @@
 import { useEffect, useLayoutEffect, useState } from 'react'
 import { create } from 'zustand'
 import { CASES } from '../../data/cases'
+import { LESSONS } from '../../data/lessons'
 import { AuthorLinks, GITHUB_URL, LINKEDIN_URL } from '../AuthorLinks'
 
 const WELCOMED_KEY = 'stratasql.welcomed'
@@ -161,7 +162,7 @@ function TourOverlay() {
   )
 }
 
-function Welcome(props: { onPractise: () => void; onWatch: () => void }) {
+function Welcome(props: OnboardingProps) {
   const open = useOnboarding((s) => s.welcome)
   const { startTour, closeWelcome } = useOnboarding.getState()
   if (!open) return null
@@ -187,6 +188,17 @@ function Welcome(props: { onPractise: () => void; onWatch: () => void }) {
           <button type="button" className="welcome-choice" onClick={startTour} autoFocus>
             <b>Show me around</b>
             <span>A 1-minute tour of the screen</span>
+          </button>
+          <button
+            type="button"
+            className="welcome-choice"
+            onClick={() => {
+              closeWelcome()
+              props.onLearn()
+            }}
+          >
+            <b>Learn the basics</b>
+            <span>{LESSONS.length} short lessons: read a little, then try it on the canvas</span>
           </button>
           <button
             type="button"
@@ -337,7 +349,13 @@ function About() {
   )
 }
 
-export function Onboarding(props: { onPractise: () => void; onWatch: () => void }) {
+interface OnboardingProps {
+  onLearn: () => void
+  onPractise: () => void
+  onWatch: () => void
+}
+
+export function Onboarding(props: OnboardingProps) {
   return (
     <>
       <Welcome {...props} />

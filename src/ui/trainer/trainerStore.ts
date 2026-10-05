@@ -40,7 +40,7 @@ interface Session {
   hintSteps: Record<string, number>
   /** Walkthrough (“watch it built”): the current step; the task level is then 0. */
   walk?: number
-  /** Walkthrough: step → the option the student picked before the step was shown (-1 = skipped). */
+  /** Walkthrough: step → the option the student picked before the step was shown; lesson: question → option (-1 = skipped). */
   answers?: Record<number, number>
   /** Level 1: the finished model is shown although not every phrase is tagged yet. */
   peek?: boolean
@@ -70,6 +70,8 @@ interface TrainerState {
   saveMyTask: (title: string, text: string) => void
   markPhrase: (mark: Mark) => void
   unmarkPhrase: (index: number) => void
+  /** Lesson: answers question `q` (0 = the guess, then the checks); null skips it. */
+  answerLesson: (q: number, option: number | null) => void
   /** Starts (or moves) the walkthrough of a case at a step. */
   walkTo: (caseId: string, step: number) => void
   /** Answers (or skips, with null) the question of the current walkthrough step, which reveals it. */
@@ -131,7 +133,16 @@ export const useTrainer = create<TrainerState>()((set, get) => ({
       error: null,
       walkthrough: null,
     })
-    set({ session: { caseId, level, tags: {}, openSpan: null, hintSteps: {} }, check: null, pickerOpen: false })
+    // A lesson keeps its quiz answers between reading and practice.
+    const prev = get().session
+    const answers = prev?.caseId === caseId && prev.walk === undefined ? prev.answers : undefined
+    set({ session: { caseId, level, tags: {}, openSpan: null, hintSteps: {}, ...(answers ? { answers } : {}) }, check: null, pickerOpen: false })
+  },
+
+  answerLesson(q, option) {
+    const s = get().session
+    if (!s || s.answers?.[q] !== undefined) return
+    set({ session: { ...s, answers: { ...s.answers, [q]: option ?? -1 } } })
   },
 
   startExercise(id) {
@@ -272,7 +283,7 @@ export const useTrainer = create<TrainerState>()((set, get) => ({
     if (!s) return
     const c = caseById(s.caseId)!
     const { model } = useEditor.getState()
-    const result = compareModels(model, c.build(), { synonyms: c.synonyms, scope: s.level === 2 ? 'links' : 'all' })
+    const result = compareModels(model, c.build(), { synonyms: c.synonyms, strict: c.strict, scope: s.level === 2 ? 'links' : 'all' })
     const issues = lintFor(model)
     set({
       check: {
@@ -299,6 +310,8 @@ export function taskHasWork(): boolean {
   const s = useTrainer.getState().session
   if (!s || s.walk !== undefined || s.level < 2) return false
   const { past, model } = useEditor.getState()
+  // A lesson practice starts with entities: only edits count (a small task, so a reload may lose them).
+  if (caseById(s.caseId)?.start) return past.length > 0
   return past.length > 0 || (s.level === 3 ? model.entities.length > 0 : model.relationships.length + model.inheritances.length > 0)
 }
 

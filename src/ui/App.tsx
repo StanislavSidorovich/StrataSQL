@@ -27,6 +27,8 @@ import { CASES } from '../data/cases'
 import { Menu } from './onboarding/Menu'
 import { Onboarding, useOnboarding } from './onboarding/Tour'
 import { NameSuggestionLists, TrainerPane } from './trainer/TrainerPane'
+import { nextLesson, openLesson } from './trainer/Lesson'
+import { LESSONS } from '../data/lessons'
 import { MyTaskDialog, openMyTask } from './trainer/MyTask'
 import { confirmDiscardTask, continueTask, isVeiled, leaveTrainer, savedTaskLabel, useTrainer } from './trainer/trainerStore'
 
@@ -152,6 +154,10 @@ function Editor() {
 
   const watchLibrary = () => {
     if (confirmDiscardTask()) useTrainer.getState().walkTo('library', 0)
+  }
+  const learn = () => {
+    openLesson((nextLesson(useTrainer.getState().progress) ?? LESSONS[0]).id)
+    fit()
   }
   const buildCase = (id: string) => {
     if (confirmDiscardTask()) useTrainer.getState().start(id, 3)
@@ -396,6 +402,7 @@ Cancel: open it as an ordinary model.`)) {
             items={[
               { label: 'Glossary of concepts', icon: <BookOpen size={ICON} />, onSelect: () => useEditor.getState().openHelp() },
               { label: 'Tour of the screen', icon: <Info size={ICON} />, onSelect: startTour },
+              { label: 'Lessons: the basics…', icon: <GraduationCap size={ICON} />, onSelect: () => useTrainer.getState().openPicker(true) },
               { label: 'Watch a model being built…', icon: <Play size={ICON} />, onSelect: () => useTrainer.getState().openPicker(true) },
               { label: 'Keyboard shortcuts', icon: <Keyboard size={ICON} />, hint: '?', onSelect: () => useOnboarding.getState().showShortcuts(true) },
               { label: 'Install as app (works offline)…', icon: <Download size={ICON} />, onSelect: () => void installApp().then((msg) => msg && setNotice(msg)) },
@@ -500,7 +507,7 @@ Cancel: open it as an ordinary model.`)) {
       )}
       <HelpDrawer />
       <MyTaskDialog />
-      <Onboarding onPractise={() => useTrainer.getState().openPicker(true)} onWatch={watchLibrary} />
+      <Onboarding onLearn={learn} onPractise={() => useTrainer.getState().openPicker(true)} onWatch={watchLibrary} />
     </div>
   )
 }
