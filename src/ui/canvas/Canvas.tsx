@@ -10,7 +10,7 @@ import {
   type Node,
   type NodeMouseHandler,
 } from '@xyflow/react'
-import { useCallback, useEffect, useMemo, type MouseEvent as ReactMouseEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import type { Model } from '../../core/metamodel'
 import { addEntity, addRelationship, linkInheritance, updateEntity, updateInheritance } from '../../core/ops'
 import { FkEdge, TableNode } from '../pdm/PdmCanvas'
@@ -164,10 +164,9 @@ export function Canvas({ dark }: { dark: boolean }) {
     [apply, select],
   )
 
-  const onDoubleClick = useCallback(
-    (event: ReactMouseEvent) => {
-      if (!(event.target as HTMLElement).classList.contains('react-flow__pane')) return
-      const pos = flow.screenToFlowPosition({ x: event.clientX, y: event.clientY })
+  const addEntityAt = useCallback(
+    (x: number, y: number) => {
+      const pos = flow.screenToFlowPosition({ x, y })
       let createdId = ''
       apply((m) => (createdId = addEntity(m, { position: { x: Math.round(pos.x), y: Math.round(pos.y) } }).id))
       select({ kind: 'entity', id: createdId })
@@ -175,9 +174,35 @@ export function Canvas({ dark }: { dark: boolean }) {
     },
     [apply, flow, select],
   )
+  // A finger or pen gets no dblclick (the pan/zoom gesture swallows it), so two quick taps on the empty canvas are counted here.
+  const tap = useRef<{ down?: { x: number; y: number; t: number }; last?: { x: number; y: number; t: number }; added?: number }>({})
+  const onPane = (target: EventTarget) => (target as HTMLElement).classList.contains('react-flow__pane')
+
+  const onDoubleClick = useCallback(
+    (event: ReactMouseEvent) => {
+      // Some browsers still send dblclick after a double tap: the tap already added the entity.
+      if (onPane(event.target) && event.timeStamp - (tap.current.added ?? -1e9) > 600) addEntityAt(event.clientX, event.clientY)
+    },
+    [addEntityAt],
+  )
+
+  const onPointerDown = (e: ReactPointerEvent) => {
+    tap.current.down = e.pointerType !== 'mouse' && e.isPrimary && onPane(e.target) ? { x: e.clientX, y: e.clientY, t: e.timeStamp } : undefined
+  }
+  const onPointerUp = (e: ReactPointerEvent) => {
+    const { down, last } = tap.current
+    tap.current.down = undefined
+    if (!down || !e.isPrimary || e.timeStamp - down.t > 300 || Math.hypot(e.clientX - down.x, e.clientY - down.y) > 10) return
+    const now = { x: e.clientX, y: e.clientY, t: e.timeStamp }
+    if (last && now.t - last.t < 400 && Math.hypot(now.x - last.x, now.y - last.y) < 30) {
+      tap.current.last = undefined
+      tap.current.added = now.t
+      addEntityAt(now.x, now.y)
+    } else tap.current.last = now
+  }
 
   return (
-    <div className="h-full w-full" onDoubleClick={onDoubleClick}>
+    <div className="h-full w-full" onDoubleClick={onDoubleClick} onPointerDown={onPointerDown} onPointerUp={onPointerUp}>
       <ReactFlow
         nodes={nodes}
         edges={edges}

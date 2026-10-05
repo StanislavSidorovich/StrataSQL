@@ -1,5 +1,5 @@
 import { ReactFlowProvider, useReactFlow } from '@xyflow/react'
-import { BookOpen, Check, FilePen, CircleHelp, FileDown, FilePlus, FolderOpen, GraduationCap, Image as ImageIcon, Info, Keyboard, Maximize2, Moon, Play, Plus, Redo2, Save, SaveAll, Sun, Undo2 } from 'lucide-react'
+import { BookOpen, Check, FilePen, CircleHelp, FileDown, FilePlus, FolderOpen, GraduationCap, Image as ImageIcon, Info, Keyboard, Maximize2, Moon, Play, Plus, Redo2, Save, SaveAll, Sun, Trash2, Undo2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { emptyModel } from '../core/metamodel'
 import { addEntity, removeEntity, removeInheritance, removeRelationship } from '../core/ops'
@@ -361,6 +361,11 @@ Cancel: open it as an ordinary model.`)) {
           <button type="button" className="btn btn-icon" onClick={redo} disabled={!canRedo} title="Redo (Ctrl+Y)" aria-label="Redo">
             <Redo2 size={ICON} aria-hidden />
           </button>
+          {view === 'cdm' && (
+            <button type="button" className="btn btn-icon" onClick={deleteSelection} disabled={!selection} title={selection ? `Delete the selected ${selection.kind} (Delete)` : 'Delete: select an entity or a line first'} aria-label="Delete the selection">
+              <Trash2 size={ICON} aria-hidden />
+            </button>
+          )}
           {(view === 'cdm' || view === 'pdm') && (
             <button type="button" className="btn btn-icon" onClick={() => flow.fitView({ padding: 0.15, maxZoom: 1, duration: 300 })} title="Fit the model on screen" aria-label="Fit">
               <Maximize2 size={ICON} aria-hidden />
@@ -433,7 +438,7 @@ Cancel: open it as an ordinary model.`)) {
                   ? 'The model appears here step by step — follow the steps on the left.'
                   : pickerOnly
                     ? 'Start with ▶ Watch it built, then try the levels 0 → 3. Your own model comes back when you close the trainer.'
-                    : `Double-click the canvas or press “+ Entity”.${trainerOn ? ' Read the text on the left and model it here.' : ' Or start here:'}`}
+                    : `Double-click (double-tap) the canvas or press “+ Entity”.${trainerOn ? ' Read the text on the left and model it here.' : ' Or start here:'}`}
               </p>
               {!trainerOn && (
               <div className="flex flex-wrap justify-center gap-2">

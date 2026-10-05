@@ -532,6 +532,22 @@ body {
 .entity-node.is-selected .link-handle {
   opacity: 1;
 }
+/* Finger or pen: a bigger ● that is always visible, with a wide invisible area to grab it. */
+@media (pointer: coarse) {
+  .react-flow__handle.link-handle {
+    width: 16px;
+    height: 16px;
+    top: 10px;
+    right: 4px;
+    opacity: 0.8;
+  }
+  .react-flow__handle.link-handle::after {
+    content: '';
+    position: absolute;
+    inset: -14px;
+    border-radius: 50%;
+  }
+}
 
 /* ------------------------------------------------------------ overlays */
 
