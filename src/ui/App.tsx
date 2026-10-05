@@ -452,7 +452,10 @@ Cancel: open it as an ordinary model.`)) {
               </p>
               {!trainerOn && (
               <div className="flex flex-wrap justify-center gap-2">
-                <button type="button" className="btn btn-primary" onClick={watchLibrary}>
+                <button type="button" className="btn btn-primary" onClick={learn}>
+                  📖 Learn the basics
+                </button>
+                <button type="button" className="btn" onClick={watchLibrary}>
                   ▶ Watch a model being built
                 </button>
                 <button type="button" className="btn" onClick={() => useTrainer.getState().openPicker(true)}>

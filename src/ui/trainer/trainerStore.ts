@@ -310,8 +310,13 @@ export function taskHasWork(): boolean {
   const s = useTrainer.getState().session
   if (!s || s.walk !== undefined || s.level < 2) return false
   const { past, model } = useEditor.getState()
-  // A lesson practice starts with entities: only edits count (a small task, so a reload may lose them).
-  if (caseById(s.caseId)?.start) return past.length > 0
+  // A lesson practice starts with entities, so after a reload (no undo history) its model is compared with the start.
+  const c = caseById(s.caseId)
+  if (c?.start) {
+    if (past.length > 0) return true
+    const { counts } = compareModels(model, levelStartModel(c, s.level), { strict: true })
+    return counts.missing + counts.extra + counts.different > 0
+  }
   return past.length > 0 || (s.level === 3 ? model.entities.length > 0 : model.relationships.length + model.inheritances.length > 0)
 }
 
