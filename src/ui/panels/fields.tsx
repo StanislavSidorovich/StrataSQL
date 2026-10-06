@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { parseSize } from '../../core/metamodel'
+import { hasLinks, splitLinks } from '../../core/links'
 import { useEditor } from '../store'
 
 /** `?` that opens a help card. */
@@ -103,9 +104,52 @@ export function NameInput({
   )
 }
 
+/**
+ * A comment field. Text with web addresses is shown with clickable links (opening in a new tab, so
+ * the model stays here); a click outside a link, or Enter, turns it back into the editable field.
+ */
 export function TextArea({ value, onChange, placeholder, rows }: { value: string | undefined; onChange: (v: string) => void; placeholder?: string; rows?: number }) {
+  const [editing, setEditing] = useState(false)
+  if (!editing && hasLinks(value)) {
+    return (
+      <div
+        className="input text-view"
+        role="button"
+        tabIndex={0}
+        title="Click to edit"
+        style={rows ? { minHeight: `calc(${rows} * 1.5em + 8px)` } : undefined}
+        onClick={(e) => {
+          if (!(e.target as HTMLElement).closest('a')) setEditing(true)
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && e.target === e.currentTarget) {
+            e.preventDefault()
+            setEditing(true)
+          }
+        }}
+      >
+        {splitLinks(value!).map((p, i) =>
+          'url' in p ? (
+            <a key={i} href={p.url} target="_blank" rel="noopener">
+              {p.text}
+            </a>
+          ) : (
+            p.text
+          ),
+        )}
+      </div>
+    )
+  }
   return (
-    <textarea className="input min-h-14 resize-y" rows={rows} value={value ?? ''} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} />
+    <textarea
+      className="input min-h-14 resize-y"
+      rows={rows}
+      value={value ?? ''}
+      placeholder={placeholder}
+      autoFocus={editing}
+      onChange={(e) => onChange(e.target.value)}
+      onBlur={() => setEditing(false)}
+    />
   )
 }
 

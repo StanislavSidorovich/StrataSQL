@@ -2369,3 +2369,17 @@ body {
 .dock.is-overlay .dock-body {
   max-width: calc(92vw / var(--ui-zoom, 1));
 }
+
+/* A comment with links, shown read-only until clicked (TextArea in fields.tsx). */
+.input.text-view {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.5;
+  cursor: text;
+  min-height: 3.5rem;
+}
+.input.text-view a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
