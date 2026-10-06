@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { lintModel, type LintIssue, type RuleId } from '../src/core/lint'
 import { CARD, emptyModel, type Model } from '../src/core/metamodel'
 import { addAttribute, addEntity, addInheritance, addRelationship, findEntityByName, removeRelationship, updateEntity } from '../src/core/ops'
-import { buildRideHailing } from '../src/data/examples/ride-hailing'
+import { buildScooterSharing } from '../src/data/examples/scooter-sharing'
 import { buildTimetables } from '../src/data/examples/timetables'
 import { buildTvShows } from '../src/data/examples/tv-shows'
 
@@ -23,7 +23,7 @@ describe('reference models', () => {
   it.each([
     ['TV Shows', buildTvShows],
     ['Timetables', buildTimetables],
-    ['Ride Hailing', buildRideHailing],
+    ['Scooter Sharing', buildScooterSharing],
   ])('%s has no issues at all', (_, build) => {
     const issues = lintModel(build())
     expect(issues.map((i) => `${i.rule}: ${i.message}`)).toEqual([])
@@ -135,7 +135,7 @@ describe('L04 cycle of relationships', () => {
 
   it('does not see a tree as a cycle', () => {
     expect(only(buildTimetables(), 'L04')).toEqual([])
-    expect(only(buildRideHailing(), 'L04')).toEqual([])
+    expect(only(buildScooterSharing(), 'L04')).toEqual([])
   })
 })
 
@@ -176,7 +176,7 @@ describe('L07 dependent entity without own identifier and a single parent', () =
     addRelationship(m, trip.id, stop.id, { dependentSide: 'B' })
     expect(only(m, 'L07')).toMatchObject([{ severity: 'error', targets: [{ kind: 'entity', id: stop.id }, { kind: 'relationship' }] }])
   })
-  it('accepts an own identifier, two parents, or a 1:1 dependent (Ride Hailing ratings)', () => {
+  it('accepts an own identifier, two parents, or a 1:1 dependent (Scooter Sharing ratings)', () => {
     const m = emptyModel()
     const trip = ent(m, 'Trip')
     const stop = addEntity(m, { name: 'TripStop' })

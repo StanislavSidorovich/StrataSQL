@@ -48,7 +48,7 @@ export const HELP_CARDS: HelpCard[] = [
       return m
     },
     seeAlso: ['attribute', 'identifier', 'names-and-codes'],
-    caseRefs: ['ride-hailing: Car, Driver, Rider', 'tv-shows: TVShow, Episode'],
+    caseRefs: ['scooter-sharing: Scooter, Rider, Rental', 'tv-shows: TVShow, Episode'],
   },
   {
     id: 'attribute',
@@ -109,7 +109,7 @@ export const HELP_CARDS: HelpCard[] = [
       return m
     },
     seeAlso: ['identifier', 'business-rule'],
-    caseRefs: ['ride-hailing: Car.plate, Driver.license_no', 'timetables: AK_ROOM_TIME'],
+    caseRefs: ['scooter-sharing: Scooter.serial_no', 'timetables: AK_ROOM_TIME'],
   },
   {
     id: 'domain',
@@ -131,7 +131,7 @@ export const HELP_CARDS: HelpCard[] = [
       return m
     },
     seeAlso: ['attribute'],
-    caseRefs: ['tv-shows: Email, Phone', 'ride-hailing: Coordinate'],
+    caseRefs: ['tv-shows: Email, Phone', 'scooter-sharing: Coordinate'],
   },
   {
     id: 'relationship',
@@ -151,7 +151,7 @@ export const HELP_CARDS: HelpCard[] = [
       return m
     },
     seeAlso: ['cardinality', 'one-to-one', 'many-to-many', 'foreign-key-attribute'],
-    caseRefs: ['ride-hailing: Rider — Trip'],
+    caseRefs: ['scooter-sharing: Rider — Rental'],
   },
   {
     id: 'cardinality',
@@ -172,7 +172,7 @@ export const HELP_CARDS: HelpCard[] = [
       return m
     },
     seeAlso: ['relationship', 'one-to-one'],
-    caseRefs: ['ride-hailing: CarShift 0,1 — 0,n Trip (nullable FK while “Requested”)'],
+    caseRefs: ['scooter-sharing: Promo Code 0,1 — 0,n Rental (nullable FK: most rentals use no code)'],
   },
   {
     id: 'one-to-one',
@@ -192,7 +192,7 @@ export const HELP_CARDS: HelpCard[] = [
       return m
     },
     seeAlso: ['cardinality', 'dependent-entity'],
-    caseRefs: ['ride-hailing: Trip 1,1 — 0,1 DriverRating (dependent 1:1)'],
+    caseRefs: ['scooter-sharing: Rental 1,1 — 0,1 Rental Rating (dependent 1:1)'],
   },
   {
     id: 'dependent-entity',
@@ -215,7 +215,7 @@ export const HELP_CARDS: HelpCard[] = [
       return m
     },
     seeAlso: ['intermediate-entity', 'identifier'],
-    caseRefs: ['tv-shows: Scene', 'ride-hailing: TripStop, DriverPosition'],
+    caseRefs: ['tv-shows: Scene', 'scooter-sharing: Rental Pause, Scooter Position'],
   },
   {
     id: 'intermediate-entity',
@@ -262,7 +262,7 @@ export const HELP_CARDS: HelpCard[] = [
       return m
     },
     seeAlso: ['intermediate-entity', 'history-temporal'],
-    caseRefs: ['tv-shows: TechnicianFunction', 'ride-hailing: CarShift (Driver × Car over time)'],
+    caseRefs: ['tv-shows: TechnicianFunction', 'scooter-sharing: Rental (Rider × Scooter over time)'],
   },
   {
     id: 'many-to-many',
@@ -416,7 +416,7 @@ export const HELP_CARDS: HelpCard[] = [
       return m
     },
     seeAlso: ['relationship', 'dependent-entity', 'intermediate-entity'],
-    caseRefs: ['ride-hailing: Trip gets rider_id from the relationship requests'],
+    caseRefs: ['scooter-sharing: Rental gets rider_id from the relationship rents'],
   },
   {
     id: 'circular-relationship',
@@ -463,7 +463,7 @@ export const HELP_CARDS: HelpCard[] = [
       return m
     },
     seeAlso: ['history-temporal'],
-    caseRefs: ['ride-hailing §6.4'],
+    caseRefs: ['scooter-sharing: average score of a scooter'],
   },
   {
     id: 'lookup-vs-check',
@@ -485,7 +485,7 @@ export const HELP_CARDS: HelpCard[] = [
       return m
     },
     seeAlso: ['inheritance-generation', 'business-rule'],
-    caseRefs: ['timetables: Shift', 'ride-hailing: trip status'],
+    caseRefs: ['timetables: Shift', 'scooter-sharing: rental status'],
   },
   {
     id: 'history-temporal',
@@ -508,7 +508,7 @@ export const HELP_CARDS: HelpCard[] = [
       return m
     },
     seeAlso: ['intermediate-with-id', 'dependent-entity', 'derived-data'],
-    caseRefs: ['ride-hailing: CarShift, DriverPosition', 'timetables: Period'],
+    caseRefs: ['scooter-sharing: Rental, Scooter Position', 'timetables: Period'],
   },
   {
     id: 'business-rule',
@@ -545,7 +545,7 @@ export const HELP_CARDS: HelpCard[] = [
     whenToUse: ['Always: singular nouns for entities, snake_case for attributes'],
     typicalMistake: 'Reserved words as names (`Order`, `User`) — allowed, but the SQL then needs brackets: `[ORDER]`.',
     seeAlso: ['entity', 'attribute'],
-    caseRefs: ['ride-hailing: Car Shift → CAR_SHIFT'],
+    caseRefs: ['scooter-sharing: Promo Code → PROMO_CODE'],
   },
 ]
 

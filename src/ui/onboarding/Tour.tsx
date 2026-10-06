@@ -317,8 +317,8 @@ function About() {
           course, the course and your professor are right.
         </p>
         <p>
-          The three course cases (Ride Hailing, Timetables, TV Shows) are adapted from the class material; their rights
-          stay with their authors. The other cases are the author's own.
+          Two cases (TV Shows, Timetables) are inspired by classic database-course exercises; the others are the
+          author's own.
         </p>
         <p>
           Made by Stanislav Sidorovich, part of{' '}

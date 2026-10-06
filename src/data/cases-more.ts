@@ -1,4 +1,5 @@
-// Own cases added in stage 5+ (2026-10-03): Hotel ★, Online Shop ★★, Hospital ★★, Football League ★★★.
+// Own cases added in stage 5+ (2026-10-03): Hotel ★, Online Shop ★★, Hospital ★★, Football League ★★★;
+// Scooter Sharing ★★ (2026-10-06).
 // Same format as cases.ts; the texts are written for StrataSQL (not taken from textbooks).
 
 import type { TrainerCase } from './cases'
@@ -6,6 +7,7 @@ import { buildFootball } from './examples/football'
 import { buildHospital } from './examples/hospital'
 import { buildHotel } from './examples/hotel'
 import { buildOnlineShop } from './examples/online-shop'
+import { buildScooterSharing } from './examples/scooter-sharing'
 
 export const MORE_CASES: TrainerCase[] = [
   {
@@ -314,6 +316,88 @@ export const MORE_CASES: TrainerCase[] = [
       notes: {
         'relationship:plays_away': 'Two lines between the same two boxes are fine — each says something different. Without roles both FKs would be called `team_id`; the roles make them `home_team_id` and `away_team_id`.',
         keys: 'The pairing rule uses columns that only exist in the table (they arrive with the links), so it is declared in the Physical view as a key over columns — like the room and time rules in Timetables.',
+      },
+    },
+  },
+  {
+    id: 'scooter-sharing',
+    title: 'Scooter Sharing',
+    source: 'Own case (StrataSQL)',
+    difficulty: 2,
+    concepts: ['intermediate entity over time (own id)', 'optional relationship (nullable FK)', 'dependent 1:1', 'dependent entity with order', 'history vs derived data'],
+    build: buildScooterSharing,
+    spec: [
+      'An e-scooter sharing company rents scooters to riders through a phone app. For each rider it keeps a name, a phone number and an email. For each scooter it keeps a serial number, printed on the frame and never shared by two scooters, the model and the top speed.',
+      'A rider can rent many scooters over time, and the same scooter is rented by many riders — the same rider may even take the same scooter again on another day.',
+      'A rental starts with a reservation. Its status goes from “Reserved” to “Active” when the scooter is unlocked, and to “Finished” when it is parked again. The app keeps when each stage happened, where the ride started and ended, and the final price.',
+      'During a ride the rider may pause it several times, for example to stop at a shop. Each pause has a start and an end, and the pauses of a rental are numbered in order.',
+      'A rental may use a promo code. Each code gives a discount percentage and is valid until a given date; many rentals can use the same code.',
+      'After the ride the rider may rate it once, with a score from 1 to 5 and a comment. The app shows each scooter’s average score, computed from those ratings.',
+      'To find nearby scooters, every scooter reports its position and battery level every few minutes, and the history of these reports is kept.',
+    ],
+    spans: [
+      { p: 0, phrase: 'scooters', tag: 'entity', target: 'entity:Scooter', why: 'A thing with its own data (serial number, model…) → entity Scooter.' },
+      { p: 0, phrase: 'riders', tag: 'entity', target: 'entity:Rider', why: 'People the app keeps data about → entity Rider.' },
+      { p: 0, phrase: 'name', tag: 'attribute', target: 'attribute:Rider.name', why: 'One value per rider → attribute.' },
+      { p: 0, phrase: 'phone number', tag: 'attribute', target: 'attribute:Rider.phone', why: 'One value per rider → attribute (domain Phone).' },
+      { p: 0, phrase: 'email', tag: 'attribute', target: 'attribute:Rider.email', why: 'One value per rider → attribute (domain Email).' },
+      { p: 0, phrase: 'serial number', tag: 'attribute', target: 'attribute:Scooter.serial_no', why: 'One value per scooter → attribute `serial_no`.' },
+      { p: 0, phrase: 'never shared by two scooters', tag: 'rule', accept: ['attribute'], target: 'attribute:Scooter.serial_no', step: 'identifier', why: 'A uniqueness rule → `serial_no` is an alternate identifier <ai>, i.e. UNIQUE in the table.' },
+      { p: 0, phrase: 'model', tag: 'attribute', target: 'attribute:Scooter.model', why: 'One value per scooter → attribute.' },
+      { p: 0, phrase: 'top speed', tag: 'attribute', target: 'attribute:Scooter.top_speed_kmh', why: 'A measure → attribute `top_speed_kmh` (the unit goes into the name).' },
+      { p: 1, phrase: 'rent many scooters over time', tag: 'entity', accept: ['relationship'], target: 'entity:Rental', why: 'Rider many — many Scooter, and each ride has its own data (times, price) → intermediate entity Rental.' },
+      { p: 1, phrase: 'take the same scooter again', tag: 'rule', accept: ['entity'], target: 'entity:Rental', why: 'The pair (rider, scooter) repeats → Rental needs its own id `rental_id`; PK (rider, scooter) would allow only one ride.' },
+      { p: 2, phrase: 'status', tag: 'attribute', target: 'attribute:Rental.status', why: 'Rental.status, with a timestamp per stage. The order of the statuses itself is a business rule.' },
+      { p: 2, phrase: 'when the scooter is unlocked', tag: 'attribute', accept: ['rule'], target: 'attribute:Rental.started_at', why: 'The moment of the change → `started_at` (empty while the rental is only reserved).' },
+      { p: 2, phrase: 'where the ride started and ended', tag: 'attribute', target: 'attribute:Rental.start_lat', why: 'One start and one end per rental → attributes `start_lat/lng`, `end_lat/lng` (domain Coordinate).' },
+      { p: 2, phrase: 'final price', tag: 'attribute', target: 'attribute:Rental.price', why: 'Stored, not computed: tariffs change later, the price paid must not.' },
+      { p: 3, phrase: 'pause it several times', tag: 'entity', accept: ['relationship'], target: 'entity:Rental Pause', why: 'Possibly several, each with a start and an end → entity Rental Pause, not pause1/pause2 columns.' },
+      { p: 3, phrase: 'numbered in order', tag: 'attribute', target: 'attribute:Rental Pause.pause_no', why: 'Pauses are identified by their rental **and** a number → dependent entity, PK = (rental_id, pause_no).' },
+      { p: 4, phrase: 'A rental may use', tag: 'relationship', target: 'relationship:discounts', why: '“May” → the Promo Code end is 0,1: the FK in RENTAL can stay NULL.' },
+      { p: 4, phrase: 'promo code', tag: 'entity', target: 'entity:Promo Code', why: 'Has its own facts (discount, expiry) and many rentals → entity, identified by the code itself.' },
+      { p: 4, phrase: 'discount percentage', tag: 'attribute', target: 'attribute:Promo Code.discount_pct', why: 'A fact about the code → attribute.' },
+      { p: 4, phrase: 'valid until a given date', tag: 'attribute', target: 'attribute:Promo Code.valid_until', why: 'A fact about the code → attribute `valid_until`.' },
+      { p: 4, phrase: 'many rentals can use the same code', tag: 'relationship', target: 'relationship:discounts', why: 'The Rental end is 0,n. One-to-many: the FK goes into RENTAL.' },
+      { p: 5, phrase: 'may rate it once', tag: 'entity', accept: ['relationship'], target: 'entity:Rental Rating', why: 'At most one rating per rental → Rental Rating, dependent 1:1 on Rental (PK = rental_id).' },
+      { p: 5, phrase: 'score from 1 to 5', tag: 'attribute', target: 'attribute:Rental Rating.score', why: 'A fact of the rating → attribute; “1 to 5” is a CHECK you still add.' },
+      { p: 5, phrase: 'average score', tag: 'rule', accept: ['attribute'], why: 'Derived data: computed with AVG over the ratings, never stored (linter L09).' },
+      { p: 6, phrase: 'reports its position', tag: 'entity', accept: ['attribute'], target: 'entity:Scooter Position', why: 'The position changes all the time → history entity Scooter Position (recorded_at, lat, lng).' },
+      { p: 6, phrase: 'battery level', tag: 'attribute', target: 'attribute:Scooter Position.battery_pct', why: 'Reported with each position → attribute of the report, not of Scooter.' },
+      { p: 6, phrase: 'history of these reports is kept', tag: 'relationship', accept: ['entity'], target: 'relationship:reports', why: 'Each report belongs to one scooter and is told apart by its time → dependent, PK = (scooter_id, recorded_at).' },
+    ],
+    lessons: [
+      '**Rental** instead of a plain Rider–Scooter link: the same rider can take the same scooter again → the pair repeats → own id.',
+      'Rental → Promo Code is **0,1**: most rentals use no code, so the FK is nullable.',
+      '**Rental Rating** is dependent 1:1: PK = rental_id → at most one rating per rental.',
+      'Store the history, compute the average: no `avg_score` column in Scooter.',
+      '**Rental Pause** is dependent with a number: “several times” → 0..n rows, not pause1/pause2 columns.',
+    ],
+    synonyms: {
+      Rental: ['Ride', 'Trip', 'Booking', 'Reservation'],
+      'Rental Pause': ['Pause', 'Stop', 'Break'],
+      'Rental Rating': ['Rating', 'Review', 'Feedback'],
+      'Promo Code': ['Promotion', 'Voucher', 'Coupon', 'Discount'],
+      'Scooter Position': ['Position', 'Location', 'Telemetry', 'ScooterLocation'],
+      Scooter: ['Vehicle'],
+      Rider: ['User', 'Customer'],
+    },
+    hints: {
+      'entity:Rental': ['Can the same rider take the same scooter twice?', 'Where do the start time and the price of one ride live?'],
+      'relationship:rents': ['Can the same rider take the same scooter twice?', 'Where do the start time and the price of one ride live?'],
+      'relationship:is_rented': ['Can the same rider take the same scooter twice?', 'Where do the start time and the price of one ride live?'],
+      'relationship:discounts': ['Does every rental have a promo code?'],
+      'entity:Rental Rating': ['How many ratings can one rental have?'],
+      'relationship:rated': ['How many ratings can one rental have?'],
+      'entity:Rental Pause': ['“Several times” — how many, and in which order?'],
+      'relationship:pauses': ['“Several times” — how many, and in which order?'],
+      'entity:Scooter Position': ['If the position were an attribute of Scooter, what would happen to the old values?'],
+      'relationship:reports': ['If the position were an attribute of Scooter, what would happen to the old values?'],
+    },
+    walk: {
+      order: ['Rider', 'Scooter', 'Rental', 'Promo Code', 'Rental Pause', 'Rental Rating', 'Scooter Position'],
+      notes: {
+        'entity:Rental': 'Rider ↔ Scooter is many-to-many, and each ride has data of its own (times, places, price). The pair becomes an entity — like Loan in Library.',
+        'entity:Scooter Position': 'An attribute holds one value. A position that is overwritten every few minutes loses the past; a dependent entity keeps every report.',
       },
     },
   },

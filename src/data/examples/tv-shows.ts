@@ -12,7 +12,7 @@ import {
 
 export function buildTvShows(): Model {
   const m = emptyModel('TV Shows')
-  m.comment = 'Course case (NOVA IMS DBMS, Class 03), adapted.'
+  m.comment = 'Inspired by a classic database-course exercise.'
 
   const email = addDomain(m, { name: 'Email', dataType: 'Variable characters', length: 100 })
   const phone = addDomain(m, { name: 'Phone', dataType: 'Variable characters', length: 20 })

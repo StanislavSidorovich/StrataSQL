@@ -22,7 +22,7 @@ import { CASES } from '../src/data/cases'
 import { MORE_CASES } from '../src/data/cases-more'
 import { buildHotel } from '../src/data/examples/hotel'
 import { buildLibrary } from '../src/data/examples/library'
-import { buildRideHailing } from '../src/data/examples/ride-hailing'
+import { buildScooterSharing } from '../src/data/examples/scooter-sharing'
 import { buildTimetables } from '../src/data/examples/timetables'
 import { buildTvShows } from '../src/data/examples/tv-shows'
 
@@ -40,7 +40,7 @@ describe('reference models compared with themselves', () => {
   it.each([
     ['TV Shows', buildTvShows],
     ['Timetables', buildTimetables],
-    ['Ride Hailing', buildRideHailing],
+    ['Scooter Sharing', buildScooterSharing],
   ])('%s: everything matched, score 100', (_, build) => {
     const s = summary(build(), build())
     expect(s.missing).toEqual([])
@@ -162,7 +162,7 @@ describe('seeded wrong models — TV Shows', () => {
   })
 })
 
-describe('seeded wrong models — Timetables and Ride Hailing', () => {
+describe('seeded wrong models — Timetables and Scooter Sharing', () => {
   it('Class with its own class_id is flagged; level-2 scope ignores entities', () => {
     const ref = buildTimetables()
     const m = buildTimetables()
@@ -175,18 +175,18 @@ describe('seeded wrong models — Timetables and Ride Hailing', () => {
     expect(links.score).toBe(100)
   })
 
-  it('a trip that must always have a shift (1,1 instead of 0,1)', () => {
-    const ref = buildRideHailing()
-    const m = buildRideHailing()
-    updateRelationship(m, rel(m, 'serves').id, { cardinalityA: CARD.oneOne })
+  it('a rental that must always have a promo code (1,1 instead of 0,1)', () => {
+    const ref = buildScooterSharing()
+    const m = buildScooterSharing()
+    updateRelationship(m, rel(m, 'discounts').id, { cardinalityA: CARD.oneOne })
     const s = summary(m, ref)
-    expect(s.different).toEqual(['relationship:serves'])
-    expect(s.res.items.find((i) => i.refKey === 'relationship:serves')!.message).toContain('optional vs mandatory')
+    expect(s.different).toEqual(['relationship:discounts'])
+    expect(s.res.items.find((i) => i.refKey === 'relationship:discounts')!.message).toContain('optional vs mandatory')
   })
 
   it('an empty model: everything missing, score 0', () => {
-    const ref = buildRideHailing()
-    const m = buildRideHailing()
+    const ref = buildScooterSharing()
+    const m = buildScooterSharing()
     for (const e of [...m.entities]) removeEntity(m, e.id)
     const s = summary(m, ref)
     expect(s.res.score).toBe(0)

@@ -12,6 +12,8 @@ Stages follow SPEC §12. A stage is done only when its acceptance criteria pass.
 | 5. Guided start | ✅ acceptance met (2026-10-03, v0.5.0) — 5a–5e done (5e finished in v0.8.0); `.pdm` reverse carried over | A first-time user learns the screen in a tour, watches a case built step by step, and builds one alone with “next hint” |
 | 6. AI review | ⏭ optional | Optional, behind a user-provided API key |
 
+**Cases made generic (2026-10-06, before the LinkedIn post):** TV Shows and Timetables no longer name the university, the professor or the slides (“inspired by a classic database-course exercise”); Ride Hailing is replaced by the own case **Scooter Sharing** ★★ (same ideas, 7 entities instead of 10: rental over time with own id, optional promo code, 1:1 rating, numbered pauses, position history) — in the trainer, walkthrough, Examples, sandbox scenario, help card references and tests.
+
 **v0.10.0 (2026-10-05, Learn):** six short lessons before the cases — read, then try (Next steps #15). Tag `v0.9.1` marks the state before them (tablet leftovers).
 
 **v0.9.0 (2026-10-05, owner's Hotel and tablet tests):** the trainer check got fairer and more specific (attribute names by word form / short form, `<ai>`, duplicate attributes, relationship messages in the student's names), Duplicate entity (Ctrl+D), My task in the Examples menu, the diagram stays put when the left column moves, exports ask where to save, the `.cdm` export opened in PowerDesigner 16 ✅, and a saved file can continue its trainer task; on a tablet: labelled + Entity, menus on screen, a Delete button, a bigger ● and double tap to add — see Next steps #1, #12 and #13. Then the tablet leftovers (#14: keyboard, portrait, install as app). Next: `.pdm` reverse import.
@@ -364,6 +366,8 @@ The owner's guidance: the course's "discussed in class" points are not critical 
 - ✱ Walkthrough repeats (2026-10-04): the phrase box wins — a generated paragraph that says the same (≥ 60 % of its content words) is dropped, but cardinality readings, attribute lists and key columns always stay; the authored note wins over a phrase's *why*. The Properties column is hidden during a walkthrough (the diagram needs the room more).
 
 - ✱ Lessons (2026-10-05): six lessons, the book's chapters 1–7 without “cycles and rules” (its practice needs keys over relationships, which the check does not compare yet); examples and practice texts are own small domains (gym, office, deliveries, school, invoices, fleet), not the course cases, so the cases stay fresh for the trainer; practice references have no `<M>` except where the starting model already has it (the lessons do not teach M); a lesson counts as passed at the trainer's 80 %.
+
+- ✱ Scooter Sharing (2026-10-06): an own case in place of Ride Hailing; Rental has its own id (the same rider can take the same scooter again), Promo Code is identified by the code itself, the average score is computed, not stored.
 
 Still open:
 - SPEC §13: PD-style `0,n` labels shown by default (toggle later); associations not supported; UI in English first.

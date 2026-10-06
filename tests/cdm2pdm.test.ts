@@ -116,7 +116,7 @@ describe('one-to-one', () => {
     expect(table(p, 'PERSON').alternateKeys[0].columns).toEqual(['passport_id'])
   })
 
-  it('skips the UNIQUE when the FK already is the whole PK (dependent 1:1, Ride Hailing ratings)', () => {
+  it('skips the UNIQUE when the FK already is the whole PK (dependent 1:1, Scooter Sharing ratings)', () => {
     const m = emptyModel()
     const trip = ent(m, 'Trip')
     const rating = addEntity(m, { name: 'Rating' })

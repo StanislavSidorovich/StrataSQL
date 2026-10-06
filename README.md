@@ -43,6 +43,6 @@ cases/      reference cases (markdown)
 
 Code: [Apache-2.0](LICENSE) · Learning content (cases, explanations, hints, help cards, exercises): [CC BY-NC-SA 4.0](LICENSE-CONTENT) — the same split as in [Quaera](https://github.com/StanislavSidorovich/Quaera).
 
-The three course cases (Ride Hailing, Timetables, TV Shows) and the PowerDesigner files in `tests/fixtures/` are adapted from NOVA IMS DBMS class material; their rights stay with their authors, and they are here for study only.
+Two cases (TV Shows, Timetables) are inspired by classic database-course exercises; the other cases are the author's own. The PowerDesigner files in `tests/fixtures/` are the author's own class models, used only to cross-check the generated PDM.
 
 PowerDesigner is a trademark of SAP SE and SQL Server of Microsoft; StrataSQL is not affiliated with either.

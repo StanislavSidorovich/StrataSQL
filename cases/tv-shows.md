@@ -2,13 +2,13 @@
 
 ## 1. Meta
 - id: `tv-shows`
-- source: NOVA IMS DBMS 2026/27, Class 03 (J. N. Neves), slides 3–7
+- source: inspired by a classic database-course exercise
 - difficulty: ★★☆
 - concepts: inheritance (incl. "same attributes, different relationships"), dependent entity, intermediate entity without own id vs with own id, circular relationships
 
-> The class PDF has no solution diagrams. The reference model below is reconstructed from the specification and the "Lessons learned" slide. Points that were only "discussed in class" are settled as **StrataSQL decisions** (marked ✱) — chosen to be the clearest for students; your teacher may accept alternatives.
+> The reference model below is built from the specification. Open points are settled as **StrataSQL decisions** (marked ✱) — chosen to be the clearest for students; your teacher may accept alternatives.
 
-## 2. Specification (verbatim)
+## 2. Specification
 
 - A TV show has a title, a genre, and a release year. A TV show has several episodes characterized by a title, a summary, and a duration (in minutes). Each episode is made of several scenes.
 - Each episode is composed of a set of scenes that can be indoors or outdoors. For indoor scenes, it is necessary to know the scenario and the studio where the scene will be recorded. For outdoor scenes it makes sense to know the location and type of landscape. Scenes are always identified by the episode they relate to and an order number (not sequential).
@@ -85,7 +85,7 @@
 
 ## 6. Key decisions & lessons
 
-1. **Inheritance without own attributes.** Actor, Technician and Director have identical attributes, but each takes part in *different relationships*. That alone justifies inheritance (lesson slide 7). Without it you'd either duplicate three identical tables or lose the ability to say "only actors can have roles".
+1. **Inheritance without own attributes.** Actor, Technician and Director have identical attributes, but each takes part in *different relationships*. That alone justifies inheritance. Without it you'd either duplicate three identical tables or lose the ability to say "only actors can have roles".
 2. **Intermediate entity without own id (`Role`).** "Just one role in each scene" → the pair (actor, scene) must be unique → PK = the two migrated keys only. The DB itself then prevents a second role for the same actor in the same scene.
 3. **Intermediate entity with own id (`TechnicianFunction`).** "Several functions in the same scene" → the pair (technician, scene) must repeat → add an own identifier (`function_no`) to the PK.
    *Alternative:* a lookup entity `Function` (Sound, Lighting…) and make TF depend on Technician + Scene + Function → PK of three, which also prevents the same function twice. StrataSQL uses the own-id version ✱ (it is the one the text describes); the lookup version is shown as an alternative in help.

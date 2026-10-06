@@ -170,7 +170,7 @@ tests/         core unit tests (one per CDM→PDM rule + per case)
 | Stage | Done when |
 |---|---|
 | 1. CDM editor | Can build the full TV Shows reference model (inheritance, dependent Scene, Role, TechnicianFunction) and save/reload it |
-| 2. PDM + SQL Server DDL | TV Shows, Timetables, Ride Hailing reference CDMs generate the expected PDMs in `cases/` (unit tests); DDL runs without errors on SQL Server |
+| 2. PDM + SQL Server DDL | TV Shows, Timetables, Ride Hailing (since 2026-10-06: Scooter Sharing) reference CDMs generate the expected PDMs in `cases/` (unit tests); DDL runs without errors on SQL Server |
 | 3. Linter + Help | L01–L10 implemented with tests; ≥ 15 help cards with mini-diagrams; `?` available on every property |
 | 4. Trainer | 3 cases × levels 0–3 playable; comparator gives correct matched/missing/extra on the 3 reference models and on seeded wrong models |
 | 5. Guided start | Welcome tour, step-by-step walkthrough of a starter case and the 3 course cases (with predict-then-see questions before some steps), build-with-hints mode, PowerDesigner `.cdm` import (see ROADMAP) |

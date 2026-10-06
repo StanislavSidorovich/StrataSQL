@@ -5,7 +5,6 @@ import type { Model } from '../core/metamodel'
 import { MORE_CASES } from './cases-more'
 import { LESSON_CASES } from './lessons'
 import { buildLibrary } from './examples/library'
-import { buildRideHailing } from './examples/ride-hailing'
 import { buildTimetables } from './examples/timetables'
 import { buildTvShows } from './examples/tv-shows'
 
@@ -158,7 +157,7 @@ const ALL: TrainerCase[] = [
   {
     id: 'tv-shows',
     title: 'TV Shows',
-    source: 'NOVA IMS DBMS 2026/27, Class 03',
+    source: 'Inspired by a classic database-course exercise',
     difficulty: 2,
     concepts: ['inheritance', 'dependent entity', 'intermediate entity with / without own id', 'cycles'],
     build: buildTvShows,
@@ -235,13 +234,13 @@ const ALL: TrainerCase[] = [
   {
     id: 'timetables',
     title: 'Timetables',
-    source: 'NOVA IMS DBMS 2026/27, Class 03',
+    source: 'Inspired by a classic database-course exercise',
     difficulty: 3,
     concepts: ['intermediate entity that is referenced', 'M:N with attributes', 'time slots', 'alternate keys as rules'],
     build: buildTimetables,
     spec: [
-      'The same course may be shared by several programs and may take different names in those programs - e.g., Databases (LSTI) and Databases I (LGI) are the same course for different programs.',
-      'Consider also the possibility that the course corresponds to different years depending on the program (e.g., Databases could be a 2nd year course for LGI and a 1st year course for LSTI).',
+      'The same course may be shared by several programs and may take different names in those programs - e.g., Databases (Information Systems) and Databases I (Management) are the same course for different programs.',
+      'Consider also the possibility that the course corresponds to different years depending on the program (e.g., Databases could be a 2nd year course in Management and a 1st year course in Information Systems).',
       'For each course there may be several professors, and one professor may teach several courses. The assignment of courses to teachers is done by academic year - "Assignment of Teaching Service".',
       'Each class takes place in a room at a predefined time interval (hh:mm - hh:mm), with slots of 30 minutes, on a particular day of the week and for a given shift (TP, P1, P2, P3, P4).',
       'One class corresponds to one course, and one course can have several classes.',
@@ -304,77 +303,10 @@ const ALL: TrainerCase[] = [
       },
     },
   },
-  {
-    id: 'ride-hailing',
-    title: 'Ride Hailing',
-    source: 'NOVA IMS DBMS 2026/27, Shadow Project — Part I',
-    difficulty: 2,
-    concepts: ['M:N with time intervals (history)', 'dependent entity with order', 'ratings in both directions', 'derived data'],
-    build: buildRideHailing,
-    spec: [
-      'The database must store trip requests (made by riders) and assignments (to drivers/cars).',
-      'Cars, driven by drivers. A car can be shared by several drivers, and a driver can drive several cars in different time intervals.',
-      'Ratings between riders and drivers.',
-      'Riders request trips by providing pickup and drop-off locations and in some cases stop-over locations; riders rate drivers after trips.',
-      'Drivers offer rides using registered vehicles; accept or decline trip requests that have been assigned to them (based on location); drivers rate riders after trips.',
-      'Trip request & assignment: the system searches nearby available drivers/cars, which needs the positions of riders and drivers/cars, and must compute the drivers’ and riders’ rating averages from the ratings history. One driver accepts: the status goes from “Requested” to “Accepted”.',
-      'Trip execution: at pick-up the status becomes “Ongoing”; at completion, “Finished”. Both rider and driver can rate each other.',
-    ],
-    spans: [
-      { p: 0, phrase: 'trip requests', tag: 'entity', target: 'entity:Trip', why: 'The central thing the database remembers → entity Trip.' },
-      { p: 0, phrase: 'made by riders', tag: 'relationship', target: 'relationship:requests', why: 'Rider 1,1 — 0,n Trip.' },
-      { p: 0, phrase: 'assignments (to drivers/cars)', tag: 'relationship', target: 'relationship:serves', why: 'Trip → CarShift (0,1 while still “Requested”): one FK gives the driver **and** the car.' },
-      { p: 1, phrase: 'Cars', tag: 'entity', target: 'entity:Car', why: 'A thing with its own data (plate, make…) → entity.' },
-      { p: 1, phrase: 'shared by several drivers', tag: 'relationship', accept: ['entity'], target: 'entity:Car Shift', why: 'Car many — many Driver → an intermediate entity.' },
-      { p: 1, phrase: 'in different time intervals', tag: 'entity', accept: ['attribute', 'relationship'], target: 'entity:Car Shift', why: 'The same pair repeats over time → CarShift with its own id and start/end time.' },
-      { p: 2, phrase: 'Ratings', tag: 'entity', accept: ['relationship'], target: 'entity:Driver Rating', why: 'Two directions → DriverRating and RiderRating, each dependent 1:1 on Trip.' },
-      { p: 3, phrase: 'Riders', tag: 'entity', target: 'entity:Rider', why: 'An actor with its own data → entity.' },
-      { p: 3, phrase: 'pickup and drop-off locations', tag: 'attribute', target: 'attribute:Trip.pickup_lat', why: 'One pickup and one drop-off per trip → attributes of Trip (lat, lng, address).' },
-      { p: 3, phrase: 'in some cases stop-over locations', tag: 'entity', accept: ['relationship'], target: 'entity:Trip Stop', why: '“In some cases”, possibly several → dependent entity TripStop with `stop_order`, not stop1/stop2 columns.' },
-      { p: 3, phrase: 'riders rate drivers after trips', tag: 'relationship', accept: ['entity'], target: 'relationship:driver_rated', why: 'At most one rating of the driver per trip → DriverRating, dependent 1:1 on Trip.' },
-      { p: 4, phrase: 'Drivers', tag: 'entity', target: 'entity:Driver', why: 'An actor with its own data → entity.' },
-      { p: 4, phrase: 'accept or decline', tag: 'rule', accept: ['entity', 'attribute'], why: 'The reference keeps only the accepted assignment and the status; storing declines needs a TripOffer entity (open point for the group).' },
-      { p: 4, phrase: 'based on location', tag: 'rule', why: 'A business rule computed from positions — not drawn in the model.' },
-      { p: 4, phrase: 'drivers rate riders after trips', tag: 'relationship', accept: ['entity'], target: 'relationship:rider_rated', why: 'At most one rating of the rider per trip → RiderRating, dependent 1:1 on Trip.' },
-      { p: 5, phrase: 'positions of riders and drivers/cars', tag: 'entity', accept: ['attribute'], target: 'entity:Driver Position', why: 'Positions change over time → history entities DriverPosition and RiderPosition (who, recorded_at, lat, lng).' },
-      { p: 5, phrase: 'rating averages from the ratings history', tag: 'rule', accept: ['attribute'], why: 'Derived data: computed with AVG over the ratings, never stored (linter L09).' },
-      { p: 5, phrase: 'status', tag: 'attribute', target: 'attribute:Trip.status', why: 'Trip.status, with a timestamp per stage (accepted_at, started_at…).' },
-      { p: 6, phrase: 'at pick-up', tag: 'attribute', accept: ['rule'], target: 'attribute:Trip.started_at', why: 'The moment of the change → Trip.started_at. The order of the statuses itself is a business rule.' },
-    ],
-    lessons: [
-      '**CarShift** instead of a plain Driver–Car link: “different time intervals” → the pair repeats → own id + start/end.',
-      'Trip → CarShift is **0,1**: NULL while the trip is “Requested”; one FK gives driver and car.',
-      'Ratings: two dependent 1:1 entities, PK = trip_id → at most one rating per direction per trip.',
-      'Store the history, compute the average: no `avg_rating` column.',
-      '**TripStop** is dependent with an order: “in some cases” → 0..n rows, not stop1/stop2 columns.',
-    ],
-    synonyms: {
-      'Car Shift': ['DriverCar', 'Assignment', 'VehicleUsage', 'Shift', 'CarAssignment'],
-      Trip: ['Ride', 'TripRequest'],
-      'Trip Stop': ['Stopover', 'Waypoint', 'Stop'],
-      'Driver Rating': ['RatingOfDriver', 'DriverReview'],
-      'Rider Rating': ['RatingOfRider', 'RiderReview'],
-      Car: ['Vehicle'],
-      'Driver Position': ['DriverLocation'],
-      'Rider Position': ['RiderLocation'],
-    },
-    hints: {
-      'entity:Car Shift': ['A driver drives a car *during a time interval*. Where does the interval live?'],
-      'relationship:drives': ['A driver drives a car *during a time interval*. Where does the interval live?'],
-      'relationship:is_driven': ['A driver drives a car *during a time interval*. Where does the interval live?'],
-      'relationship:serves': ['Which entity tells you both the driver and the car of a trip?', 'Is there a shift while the trip is still “Requested”?'],
-      'entity:Driver Rating': ['How many ratings of the driver can one trip have?'],
-      'entity:Rider Rating': ['How many ratings of the rider can one trip have?'],
-      'entity:Trip Stop': ['“In some cases stop-over locations” — how many, and in which order?'],
-    },
-    walk: {
-      order: ['Rider', 'Trip', 'Trip Stop', 'Driver', 'Car', 'Car Shift', 'Driver Rating', 'Rider Rating', 'Driver Position', 'Rider Position'],
-    },
-  },
 ]
 
 /** Easiest first: the walkthrough and the case picker follow this order. */
-const ORDER = ['library', 'hotel', 'ride-hailing', 'online-shop', 'tv-shows', 'hospital', 'timetables', 'football']
+const ORDER = ['library', 'hotel', 'scooter-sharing', 'online-shop', 'tv-shows', 'hospital', 'timetables', 'football']
 export const CASES: TrainerCase[] = ORDER.map((id) => [...ALL, ...MORE_CASES].find((c) => c.id === id)!)
 
 /** A trainer case, or the practice task of a lesson (not listed in the picker). */

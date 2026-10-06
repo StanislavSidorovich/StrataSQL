@@ -6,16 +6,16 @@ import { addAttribute, addEntity, addIdentifier, addPhysicalKey, addRelationship
 
 export function buildTimetables(): Model {
   const m = emptyModel('Timetables')
-  m.comment = 'Course case (NOVA IMS DBMS, Class 03), adapted.'
+  m.comment = 'Inspired by a classic database-course exercise.'
 
   const program = addEntity(m, { name: 'Program', position: { x: 40, y: 40 } })
   addAttribute(m, program.id, { name: 'program_id', dataType: 'Integer', primary: true })
-  const code = addAttribute(m, program.id, { name: 'code', length: 10, mandatory: true, comment: 'LSTI, LGI…' })
+  const code = addAttribute(m, program.id, { name: 'code', length: 10, mandatory: true, comment: 'IS, MGT…' })
   addIdentifier(m, program.id, { name: 'code', isPrimary: false, attributeIds: [code.id] })
   addAttribute(m, program.id, { name: 'name', length: 100, mandatory: true })
 
   const programCourse = addEntity(m, { name: 'ProgramCourse', position: { x: 330, y: 40 } })
-  addAttribute(m, programCourse.id, { name: 'name_in_program', length: 100, mandatory: true, comment: 'Databases (LSTI) / Databases I (LGI)' })
+  addAttribute(m, programCourse.id, { name: 'name_in_program', length: 100, mandatory: true, comment: 'Databases (IS) / Databases I (MGT)' })
   addAttribute(m, programCourse.id, { name: 'curricular_year', dataType: 'Short integer', mandatory: true })
   updateEntity(m, programCourse.id, { comment: 'Program × Course: the name and the year belong to the pair, not to the course.' })
 

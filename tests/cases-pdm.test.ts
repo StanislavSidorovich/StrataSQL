@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { generatePdm } from '../src/core/cdm2pdm'
 import { findColumn, findTable, type Pdm } from '../src/core/pdm'
 import { integrityProblems, parseModel, serializeModel } from '../src/core/serialize'
-import { buildRideHailing } from '../src/data/examples/ride-hailing'
+import { buildScooterSharing } from '../src/data/examples/scooter-sharing'
 import { buildTimetables } from '../src/data/examples/timetables'
 import { buildTvShows } from '../src/data/examples/tv-shows'
 
@@ -87,28 +87,25 @@ describe('Timetables (cases/timetables.md §5)', () => {
   })
 })
 
-describe('Ride Hailing (cases/ride-hailing.md §5)', () => {
-  const p = generatePdm(buildRideHailing())
+describe('Scooter Sharing (cases/scooter-sharing.md §5)', () => {
+  const p = generatePdm(buildScooterSharing())
 
   it('generates the expected tables and keys', () => {
     expect(summary(p)).toEqual({
+      PROMO_CODE: 'promo_code',
       RIDER: 'rider_id',
-      DRIVER: 'driver_id | AK license_no',
-      CAR: 'car_id | AK plate',
-      CAR_SHIFT: 'shift_id | driver_id → DRIVER; car_id → CAR',
-      TRIP: 'trip_id | rider_id → RIDER; shift_id → CAR_SHIFT',
-      TRIP_STOP: 'trip_id, stop_order | trip_id → TRIP',
-      DRIVER_RATING: 'trip_id | trip_id → TRIP',
-      RIDER_RATING: 'trip_id | trip_id → TRIP',
-      DRIVER_POSITION: 'driver_id, recorded_at | driver_id → DRIVER',
-      RIDER_POSITION: 'rider_id, recorded_at | rider_id → RIDER',
+      RENTAL_PAUSE: 'rental_id, pause_no | rental_id → RENTAL',
+      RENTAL: 'rental_id | rider_id → RIDER; scooter_id → SCOOTER; promo_code → PROMO_CODE',
+      RENTAL_RATING: 'rental_id | rental_id → RENTAL',
+      SCOOTER: 'scooter_id | AK serial_no',
+      SCOOTER_POSITION: 'scooter_id, recorded_at | scooter_id → SCOOTER',
     })
   })
 
-  it('makes rider_id NOT NULL and shift_id NULL in TRIP (lifecycle)', () => {
-    const trip = findTable(p, 'TRIP')!
-    expect(findColumn(trip, 'rider_id')!.nullable).toBe(false)
-    expect(findColumn(trip, 'shift_id')!.nullable).toBe(true)
+  it('makes rider_id NOT NULL and promo_code NULL in RENTAL', () => {
+    const rental = findTable(p, 'RENTAL')!
+    expect(findColumn(rental, 'rider_id')!.nullable).toBe(false)
+    expect(findColumn(rental, 'promo_code')!.nullable).toBe(true)
     expect(p.notes.filter((n) => n.level === 'warning')).toEqual([])
   })
 })
@@ -116,7 +113,7 @@ describe('Ride Hailing (cases/ride-hailing.md §5)', () => {
 describe('reference models', () => {
   it.each([
     ['Timetables', buildTimetables],
-    ['Ride Hailing', buildRideHailing],
+    ['Scooter Sharing', buildScooterSharing],
   ])('%s is consistent and survives save → reload', (_, build) => {
     const m = build()
     expect(integrityProblems(m)).toEqual([])

@@ -6,7 +6,7 @@
 - difficulty: ★ (starter)
 - concepts: entity and attributes, primary vs alternate identifier, one-to-many, plain many-to-many (join table), many-to-many with data → intermediate entity with own id, optional attribute
 
-> Why an own case: the three course cases each mix several hard ideas (inheritance, dependency, cycles, time slots). A beginner needs one case where every step introduces exactly one idea. The four cases form a ladder: **Library** (basics) → **Ride Hailing** (dependent entities, optional FK, history) → **TV Shows** (inheritance, intermediate with/without own id, cycle) → **Timetables** (identification by context, rules as alternate keys).
+> Why an own case: the harder cases each mix several hard ideas (inheritance, dependency, cycles, time slots). A beginner needs one case where every step introduces exactly one idea. The four cases form a ladder: **Library** (basics) → **Ride Hailing** (dependent entities, optional FK, history) → **TV Shows** (inheritance, intermediate with/without own id, cycle) → **Timetables** (identification by context, rules as alternate keys).
 
 ## 2. Specification
 

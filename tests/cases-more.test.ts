@@ -68,7 +68,7 @@ describe('own cases: expected PDM (cases/*.md §5)', () => {
 })
 
 describe('own cases: lint and DDL', () => {
-  it.each(['hotel', 'online-shop', 'hospital'])('%s lints clean', (id) => {
+  it.each(['hotel', 'scooter-sharing', 'online-shop', 'hospital'])('%s lints clean', (id) => {
     expect(lintModel(caseById(id)!.build())).toEqual([])
   })
 
@@ -78,7 +78,7 @@ describe('own cases: lint and DDL', () => {
     expect(issues[0].severity).toBe('warning')
   })
 
-  it.each(['hotel', 'online-shop', 'hospital', 'football'])('%s: SQL Server DDL without generation warnings', (id) => {
+  it.each(['hotel', 'scooter-sharing', 'online-shop', 'hospital', 'football'])('%s: SQL Server DDL without generation warnings', (id) => {
     const pdm = generatePdm(caseById(id)!.build())
     expect(pdm.notes.filter((n) => n.level === 'warning')).toEqual([])
     expect(generateSqlServer(pdm)).toContain('CREATE TABLE')

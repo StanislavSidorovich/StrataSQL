@@ -172,70 +172,65 @@ INSERT INTO CLASSSLOT (course_id, professor_id, year_id, room_id, shift_code, pe
     ],
   },
 
-  // ------------------------------------------------------------------ Ride Hailing
+  // ------------------------------------------------------------------ Scooter Sharing
   {
-    id: 'rh-trip',
-    model: 'Ride Hailing',
-    title: 'Trips, shifts and one rating per trip',
-    intro: 'A trip references the CarShift (driver + car at that time). Ratings are dependent on Trip with a 1:1 key.',
+    id: 'ss-rental',
+    model: 'Scooter Sharing',
+    title: 'Rentals, an optional promo code and one rating per rental',
+    intro: 'RENTAL has its own id, so the same rider and scooter can meet again. The promo code is optional; the rating is dependent on Rental with a 1:1 key.',
     steps: [
       {
-        title: 'Setup: rider, driver, car, shift, finished trip',
-        why: 'CAR_SHIFT tells both the driver and the car of the trip.',
-        sql: `INSERT INTO RIDER (rider_id, name, phone, created_at) VALUES (1, 'Maria', '+351900000001', '2026-09-01 10:00');
-INSERT INTO DRIVER (driver_id, name, phone, license_no) VALUES (1, 'João', '+351900000002', 'L-001');
-INSERT INTO CAR (car_id, plate) VALUES (1, 'AA-11-BB');
-INSERT INTO CAR_SHIFT (shift_id, start_time, driver_id, car_id) VALUES (1, '2026-10-01 08:00', 1, 1);
-INSERT INTO TRIP (trip_id, status, requested_at, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng, rider_id, shift_id)
-VALUES (1, 'Finished', '2026-10-01 09:00', 38.7369, -9.1427, 38.7223, -9.1393, 1, 1);`,
+        title: 'Setup: rider, scooter, finished rental',
+        why: 'RENTAL references both the rider and the scooter.',
+        sql: `INSERT INTO RIDER (rider_id, name, phone) VALUES (1, 'Maria', '+351900000001');
+INSERT INTO SCOOTER (scooter_id, serial_no, model) VALUES (1, 'SC-0001', 'Urban 2');
+INSERT INTO RENTAL (rental_id, status, reserved_at, started_at, finished_at, price, rider_id, scooter_id)
+VALUES (1, 'Finished', '2026-10-01 09:00', '2026-10-01 09:02', '2026-10-01 09:20', 3.40, 1, 1);`,
         expect: 'ok',
       },
       {
-        title: 'Second driver with the same licence number',
-        why: 'license_no is an alternate identifier of Driver → UNIQUE.',
-        sql: `INSERT INTO DRIVER (driver_id, name, phone, license_no) VALUES (2, 'Pedro', '+351900000003', 'L-001');`,
-        expect: { rejectedBy: 'AK_LICENSE_NO_DRIVER' },
+        title: 'Second scooter with the same serial number',
+        why: 'serial_no is an alternate identifier of Scooter → UNIQUE.',
+        sql: `INSERT INTO SCOOTER (scooter_id, serial_no, model) VALUES (2, 'SC-0001', 'Urban 2');`,
+        expect: { rejectedBy: 'AK_SERIAL_NO_SCOOTER' },
       },
       {
-        title: 'Requested trip, no driver yet',
-        why: 'Trip → CarShift is 0,1: shift_id may stay NULL until a driver accepts.',
-        sql: `INSERT INTO TRIP (trip_id, status, requested_at, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng, rider_id)
-VALUES (2, 'Requested', '2026-10-01 11:00', 38.7369, -9.1427, 38.7071, -9.1355, 1);`,
+        title: 'The same rider takes the same scooter again',
+        why: 'Rental has its own id: the pair (rider, scooter) may repeat. Without a promo code promo_code stays NULL (0,1).',
+        sql: `INSERT INTO RENTAL (rental_id, status, reserved_at, rider_id, scooter_id) VALUES (2, 'Reserved', '2026-10-02 18:00', 1, 1);`,
         expect: 'ok',
       },
       {
-        title: 'Trip without a rider',
-        why: 'Trip → Rider is 1,1: every trip is requested by someone.',
-        sql: `INSERT INTO TRIP (trip_id, status, requested_at, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng)
-VALUES (3, 'Requested', '2026-10-01 12:00', 38.7369, -9.1427, 38.7071, -9.1355);`,
-        expect: { rejectedBy: 'NOT NULL TRIP.rider_id' },
+        title: 'Rental without a rider',
+        why: 'Rental → Rider is 1,1: every rental is made by someone.',
+        sql: `INSERT INTO RENTAL (rental_id, status, reserved_at, scooter_id) VALUES (3, 'Reserved', '2026-10-02 19:00', 1);`,
+        expect: { rejectedBy: 'NOT NULL RENTAL.rider_id' },
       },
       {
-        title: 'The rider rates the driver of trip 1',
-        why: 'DRIVER_RATING PK = trip_id, migrated from TRIP.',
-        sql: `INSERT INTO DRIVER_RATING (trip_id, score, rated_at) VALUES (1, 5, '2026-10-01 09:40');`,
+        title: 'The rider rates rental 1',
+        why: 'RENTAL_RATING PK = rental_id, migrated from RENTAL.',
+        sql: `INSERT INTO RENTAL_RATING (rental_id, score, rated_at) VALUES (1, 5, '2026-10-01 09:25');`,
         expect: 'ok',
       },
       {
-        title: 'A second rating for the same trip',
-        why: 'The key is only trip_id, so a trip has at most one driver rating.',
-        sql: `INSERT INTO DRIVER_RATING (trip_id, score, rated_at) VALUES (1, 4, '2026-10-01 09:45');`,
-        expect: { rejectedBy: 'PK_DRIVER_RATING' },
+        title: 'A second rating for the same rental',
+        why: 'The key is only rental_id, so a rental has at most one rating.',
+        sql: `INSERT INTO RENTAL_RATING (rental_id, score, rated_at) VALUES (1, 4, '2026-10-01 09:30');`,
+        expect: { rejectedBy: 'PK_RENTAL_RATING' },
       },
       {
         title: 'Seven stars out of five',
         why: 'Accepted! Nothing in the model limits score. A CHECK (score BETWEEN 1 AND 5) is a business rule you still have to add.',
-        sql: `INSERT INTO RIDER_RATING (trip_id, score, rated_at) VALUES (1, 7, '2026-10-01 09:41');`,
+        sql: `INSERT INTO RENTAL_RATING (rental_id, score, rated_at) VALUES (2, 7, '2026-10-02 18:40');`,
         expect: 'ok',
       },
       {
-        title: 'Average rating per driver — computed, not stored',
-        why: 'The average comes from the ratings history through TRIP → CAR_SHIFT.',
-        sql: `SELECT s.driver_id, AVG(r.score) AS avg_score, COUNT(*) AS ratings
-FROM DRIVER_RATING r
-JOIN TRIP t ON t.trip_id = r.trip_id
-JOIN CAR_SHIFT s ON s.shift_id = t.shift_id
-GROUP BY s.driver_id;`,
+        title: 'Average score per scooter — computed, not stored',
+        why: 'The average comes from the ratings history through RENTAL.',
+        sql: `SELECT t.scooter_id, AVG(r.score) AS avg_score, COUNT(*) AS ratings
+FROM RENTAL_RATING r
+JOIN RENTAL t ON t.rental_id = r.rental_id
+GROUP BY t.scooter_id;`,
         expect: 'ok',
       },
     ],

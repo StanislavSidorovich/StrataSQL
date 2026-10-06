@@ -1,17 +1,17 @@
-# Case: Timetables (NOVA IMS)
+# Case: Timetables
 
 ## 1. Meta
 - id: `timetables`
-- source: NOVA IMS DBMS 2026/27, Class 03 (J. N. Neves), slides 9–15
+- source: inspired by a classic database-course exercise
 - difficulty: ★★★
 - concepts: intermediate entity that is *referenced* by others, M:N with attributes, time slots, alternate keys to enforce business rules, migrated attributes in AKs
 
-> The PDF contains a timetable screenshot and no solution diagram. The reference model is reconstructed from the specification and the "Important information to keep" slide. Points that were open are settled as **StrataSQL decisions** (marked ✱) — chosen to be the clearest for students; your teacher may accept alternatives.
+> The reference model is built from the specification. Points that were open are settled as **StrataSQL decisions** (marked ✱) — chosen to be the clearest for students; your teacher may accept alternatives.
 
-## 2. Specification (verbatim)
+## 2. Specification
 
-- The same course may be shared by several programs and may take different names in those programs - e.g., Databases (LSTI) and Databases I (LGI) are the same course for different programs.
-- Consider also the possibility that the course corresponds to different years depending on the program (e.g., Databases could be a 2nd year course for LGI and a 1st year course for LSTI).
+- The same course may be shared by several programs and may take different names in those programs - e.g., Databases (Information Systems) and Databases I (Management) are the same course for different programs.
+- Consider also the possibility that the course corresponds to different years depending on the program (e.g., Databases could be a 2nd year course in Management and a 1st year course in Information Systems).
 - For each course there may be several professors, and one professor may teach several courses. The assignment of courses to teachers is done by academic year - "Assignment of Teaching Service".
 - Each class takes place in a room at a predefined time interval (hh:mm - hh:mm), with slots of 30 minutes, on a particular day of the week and for a given shift (TP, P1, P2, P3, P4).
 - One class corresponds to one course, and one course can have several classes.
@@ -41,7 +41,7 @@
 ### Entities
 | Entity | Attributes (PI) | Notes |
 |---|---|---|
-| Program | **program_id**, code (LSTI, LGI…), name | |
+| Program | **program_id**, code (IS, MGT…), name | |
 | Course | **course_id**, ects | the "real" course, independent of program |
 | ProgramCourse | name_in_program, curricular_year | dependent on Program + Course, no own id |
 | Professor | **professor_id**, name, email | |
@@ -80,11 +80,11 @@
 | | | **AK2** (professor_id, period_id, weekday, slot_id) — professor not in two places |
 | | | **AK3** (course_id, shift_code, period_id, weekday, slot_id) — same course + shift don't overlap |
 
-For the AKs to exist, `room_id`, `professor_id`, `course_id`, `shift_code`, `period_id`, `weekday` must be present in CLASSSLOT. They arrive there **by migration** in the PDM (lesson: "the alternative keys were implemented in the physical model as the attributes result from the CDM to PDM conversion"). If they were visible in the CDM, you could declare them as Alternate Identifiers already in the CDM. In StrataSQL they are declared in the Physical view ("Keys over columns" of CLASSSLOT).
+For the AKs to exist, `room_id`, `professor_id`, `course_id`, `shift_code`, `period_id`, `weekday` must be present in CLASSSLOT. They arrive there **by migration** in the PDM. If they were visible in the CDM, you could declare them as Alternate Identifiers already in the CDM. In StrataSQL they are declared in the Physical view ("Keys over columns" of CLASSSLOT).
 
 ## 6. Key decisions & lessons
 
-1. **Intermediate entity you need to *reference*.** TeachingAssignment isn't just a join table — `Class` points to it. So it must be a real entity (lesson slide 15: "if you need to reference that relationship, create a 3rd entity").
+1. **Intermediate entity you need to *reference*.** TeachingAssignment isn't just a join table — `Class` points to it. So it must be a real entity.
 2. **Same course, different names.** The name is a property of the (program, course) pair, not of the course → ProgramCourse.
 3. **Why 30-min slots matter.** A UNIQUE constraint can't detect overlapping *intervals* (09:00–11:00 vs 10:00–12:00). Splitting each class into 30-min slot rows turns "overlap" into "same value" → a simple AK enforces it.
 4. **Alternate keys = business rules for free.** Three of the rules become three AKs, no triggers needed.
