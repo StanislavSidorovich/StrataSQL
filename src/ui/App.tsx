@@ -1,5 +1,5 @@
 import { ReactFlowProvider, useReactFlow } from '@xyflow/react'
-import { BookOpen, Check, FilePen, CircleHelp, Download, FileDown, FilePlus, FolderOpen, GraduationCap, Image as ImageIcon, Info, Keyboard, Maximize2, Moon, Play, Plus, Redo2, Save, SaveAll, Sun, Trash2, Undo2 } from 'lucide-react'
+import { BookOpen, Check, FilePen, CircleHelp, Database, Download, FileDown, FilePlus, FolderOpen, GraduationCap, Image as ImageIcon, Info, Keyboard, Maximize2, Moon, Play, Plus, Redo2, Save, SaveAll, Sun, Trash2, Undo2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { emptyModel } from '../core/metamodel'
 import { addEntity, removeEntity, removeInheritance, removeRelationship } from '../core/ops'
@@ -24,6 +24,7 @@ import { SideDock } from './SideDock'
 import { usePortrait } from './viewport'
 import { duplicateSelectedEntity, useEditor, type View } from './store'
 import { CASES } from '../data/cases'
+import { REFERENCE_MODELS, referenceModelById, type ReferenceModel } from '../data/reference-models'
 import { Menu } from './onboarding/Menu'
 import { Onboarding, useOnboarding } from './onboarding/Tour'
 import { NameSuggestionLists, TrainerPane } from './trainer/TrainerPane'
@@ -151,6 +152,28 @@ function Editor() {
     load(build())
     fit()
   }
+
+  const openReference = (ref: ReferenceModel) => {
+    const hadModel = useEditor.getState().model.entities.length > 0
+    openExample(ref.build)
+    setNotice(`${ref.title}: the finished model of a real database. ${ref.link.label}: link in the Model panel.` + (hadModel ? ' Your previous model is one Undo away.' : ''))
+  }
+
+  // Opened from a link (quaera.app's Data screen → `?example=quaera`): load that reference model
+  // once, then drop the parameter so a reload keeps the student's edits instead of reopening it.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const ref = referenceModelById(params.get('example'))
+    if (!ref) return
+    params.delete('example')
+    const rest = params.toString()
+    history.replaceState(null, '', window.location.pathname + (rest ? `?${rest}` : '') + window.location.hash)
+    // A first visit from a link came for this model: no welcome over it this time (not marked as
+    // seen, so the next visit still gets it).
+    useOnboarding.setState({ welcome: false })
+    openReference(ref)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const watchLibrary = () => {
     if (confirmDiscardTask()) useTrainer.getState().walkTo('library', 0)
@@ -308,6 +331,9 @@ Cancel: open it as an ordinary model.`)) {
               'separator',
               { heading: 'Show the answer' },
               ...EXAMPLES.map((x) => ({ label: x.label, onSelect: () => openExample(x.build) })),
+              'separator',
+              { heading: 'Real database' },
+              ...REFERENCE_MODELS.map((r) => ({ label: r.title, icon: <Database size={ICON} />, onSelect: () => openReference(r) })),
               'separator',
               { label: 'Open exercises (no answer)…', icon: <BookOpen size={ICON} />, onSelect: () => useTrainer.getState().openPicker(true) },
               { label: 'My task (own text)…', icon: <FilePen size={ICON} />, onSelect: openMyTask },

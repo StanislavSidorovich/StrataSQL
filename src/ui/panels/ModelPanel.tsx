@@ -3,9 +3,12 @@ import { addDomain, removeDomain, renameModel, updateDomain } from '../../core/o
 import { useEditor } from '../store'
 import { Field, IconButton, NumberInput, Section, Select, SizeInput, TextArea, TextInput } from './fields'
 import { AuthorLinks } from '../AuthorLinks'
+import { referenceModelOf } from '../../data/reference-models'
 
 export function ModelPanel({ model }: { model: Model }) {
   const apply = useEditor((s) => s.apply)
+  // A real database (Examples → Real database): link to where it can be queried.
+  const reference = referenceModelOf(model)
   const usage = (domainId: string) =>
     model.entities.reduce((n, e) => n + e.attributes.filter((a) => a.domainId === domainId).length, 0)
 
@@ -31,6 +34,13 @@ export function ModelPanel({ model }: { model: Model }) {
         <p className="muted">
           {model.entities.length} entities · {model.relationships.length} relationships · {model.inheritances.length} inheritances
         </p>
+        {reference && (
+          <p>
+            <a href={reference.link.url} target="_blank" rel="noopener">
+              {reference.link.label} ↗
+            </a>
+          </p>
+        )}
       </Section>
 
       <Section
