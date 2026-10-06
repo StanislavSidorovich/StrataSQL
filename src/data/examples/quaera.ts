@@ -16,7 +16,8 @@ export function buildQuaera(): Model {
   m.comment =
     'The database behind quaera.app: a distributor of FMCG and OTC pharma, Jan 2024 – Jun 2026. ' +
     'A star schema built for analysis: six fact tables (what happened, counted) around six dimensions (who, what, where, when). ' +
-    'Query it with real data at quaera.app.'
+    'Query it with real data at quaera.app. ' +
+    'Model check shows 3 cycle warnings and 1 hint: they are expected in a star schema and explained there.'
 
   const name = addDomain(m, { name: 'Name', dataType: 'Variable characters', length: 50 })
   const label = addDomain(m, { name: 'Label', dataType: 'Variable characters', length: 20 })

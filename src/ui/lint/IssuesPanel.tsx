@@ -2,6 +2,7 @@
 
 import { issueTouches, RULES, type LintIssue, type Severity } from '../../core/lint'
 import type { Id } from '../../core/metamodel'
+import { referenceModelOf } from '../../data/reference-models'
 import { HelpButton } from '../panels/fields'
 import { useEditor, useLint, type Selection } from '../store'
 
@@ -36,6 +37,22 @@ function IssueRow({ issue, focused }: { issue: LintIssue; focused: boolean }) {
   )
 }
 
+/** A reference model's own word on its issues (Examples → Real database): they are kept on purpose. */
+function ReferenceNote() {
+  const model = useEditor((s) => s.model)
+  const ref = referenceModelOf(model)
+  if (!ref) return null
+  return (
+    <li className="issue-note">
+      <b>ℹ </b>
+      {ref.lintNote}{' '}
+      <a href={ref.docUrl} target="_blank" rel="noopener">
+        Full explanation ↗
+      </a>
+    </li>
+  )
+}
+
 export function IssuesDock() {
   const issues = useLint()
   const open = useEditor((s) => s.issuesOpen)
@@ -59,6 +76,7 @@ export function IssuesDock() {
       </button>
       {open && (
         <ul className="issue-list">
+          {issues.length > 0 && <ReferenceNote />}
           {issues.map((i, n) => (
             <IssueRow key={`${i.rule}-${n}-${i.message}`} issue={i} focused={focused?.message === i.message} />
           ))}
@@ -76,6 +94,7 @@ export function ElementIssues({ kind, id }: { kind: 'entity' | 'relationship' | 
   if (issues.length === 0) return null
   return (
     <ul className="issue-list element-issues" aria-label="Issues">
+      <ReferenceNote />
       {issues.map((i, n) => (
         <IssueRow key={`${i.rule}-${n}`} issue={i} focused={focused?.message === i.message} />
       ))}
