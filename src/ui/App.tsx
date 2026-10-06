@@ -1,5 +1,5 @@
 import { ReactFlowProvider, useReactFlow } from '@xyflow/react'
-import { BookOpen, Check, FilePen, CircleHelp, Database, Download, FileDown, FilePlus, FolderOpen, GraduationCap, Image as ImageIcon, Info, Keyboard, Maximize2, Moon, Play, Plus, Redo2, Save, SaveAll, Sun, Trash2, Undo2 } from 'lucide-react'
+import { BookOpen, Check, FilePen, CircleHelp, Database, Download, FileDown, FilePlus, FolderOpen, GraduationCap, Image as ImageIcon, Info, Keyboard, Maximize2, Moon, Play, Plus, Redo2, Save, SaveAll, Sun, Trash2, Undo2, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { emptyModel } from '../core/metamodel'
 import { addEntity, removeEntity, removeInheritance, removeRelationship } from '../core/ops'
@@ -59,8 +59,11 @@ function useNarrow(): boolean {
   return narrow
 }
 
-/** The model name with the autosave state: “Saved” once the browser holds the latest edit. */
-function SavedState({ name }: { name: string }) {
+/**
+ * The model name with a close button (back to an empty canvas, like File → New model; Ctrl+Z brings
+ * the model back) and the autosave state: “Saved” once the browser holds the latest edit.
+ */
+function SavedState({ name, onClose }: { name: string; onClose?: () => void }) {
   const savedAt = useEditor((s) => s.savedAt)
   const time = savedAt ? new Date(savedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''
   return (
@@ -68,6 +71,11 @@ function SavedState({ name }: { name: string }) {
       <span className="toolbar-model-name" title="Model name">
         {name}
       </span>
+      {onClose && (
+        <button type="button" className="icon-btn" onClick={onClose} title={`Close “${name}” and start an empty model (Ctrl+Z brings it back)`} aria-label="Close model">
+          <X size={14} aria-hidden />
+        </button>
+      )}
       {savedAt > 0 && (
         <span
           key={savedAt}
@@ -406,7 +414,10 @@ Cancel: open it as an ordinary model.`)) {
             </button>
           )}
         </div>
-        <SavedState name={model.name} />
+        <SavedState
+          name={model.name}
+          onClose={model.entities.length > 0 ? () => leaveTrainer() && load(emptyModel()) : undefined}
+        />
         <div className="toolbar-group">
           {updateReady && (
             <button type="button" className="btn btn-primary" onClick={applyUpdate} title="A new version of StrataSQL is ready. Your model is kept.">
