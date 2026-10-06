@@ -103,9 +103,9 @@ export function NameInput({
   )
 }
 
-export function TextArea({ value, onChange, placeholder }: { value: string | undefined; onChange: (v: string) => void; placeholder?: string }) {
+export function TextArea({ value, onChange, placeholder, rows }: { value: string | undefined; onChange: (v: string) => void; placeholder?: string; rows?: number }) {
   return (
-    <textarea className="input min-h-14 resize-y" value={value ?? ''} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} />
+    <textarea className="input min-h-14 resize-y" rows={rows} value={value ?? ''} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} />
   )
 }
 

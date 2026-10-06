@@ -20,6 +20,7 @@ export function ModelPanel({ model }: { model: Model }) {
         </Field>
         <Field label="Comment">
           <TextArea
+            rows={8}
             value={model.comment}
             onChange={(v) =>
               apply(
