@@ -11,3 +11,18 @@ dist
 # local working files
 screenshots-email/
 tsconfig.tsbuildinfo
+
+# trailer: videos, captures and rendered frames stay local (the scripts rebuild them)
+trailer/**/*.mp4
+trailer/**/*.png
+trailer/v2/*_frames/
+trailer/v2/hk/
+trailer/v2/wa/
+trailer/v2/pr/
+trailer/v2/ow/
+trailer/v2/hook2.json
+trailer/v2/hookA.json
+trailer/v2/watch.json
+trailer/v2/practise.json
+trailer/v2/own.json
+trailer/v2/sheet.html

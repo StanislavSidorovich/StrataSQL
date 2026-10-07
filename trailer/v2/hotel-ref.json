@@ -1,0 +1,298 @@
+{
+  "format": "strata-cdm",
+  "version": 1,
+  "name": "Hotel",
+  "comment": "Own case: a small hotel, its rooms, guests and bookings.",
+  "domains": [
+    {
+      "id": "dom_muxwxhcrljh2aw1e",
+      "name": "Name",
+      "dataType": "Variable characters",
+      "length": 100
+    }
+  ],
+  "entities": [
+    {
+      "id": "ent_muxwxhcrlkzrqgv5",
+      "name": "Room Type",
+      "code": "ROOM_TYPE",
+      "comment": "Single, double, suite: the price belongs to the type, so it is stored once.",
+      "position": {
+        "x": 40,
+        "y": 40
+      },
+      "attributes": [
+        {
+          "id": "att_muxwxhcrll238e3d",
+          "name": "type_name",
+          "code": "type_name",
+          "dataType": "Variable characters",
+          "length": 20,
+          "mandatory": true
+        },
+        {
+          "id": "att_muxwxhcrlnvv4bmz",
+          "name": "nightly_price",
+          "code": "nightly_price",
+          "dataType": "Decimal",
+          "length": 8,
+          "precision": 2,
+          "mandatory": true
+        },
+        {
+          "id": "att_muxwxhcrlootfini",
+          "name": "max_guests",
+          "code": "max_guests",
+          "dataType": "Short integer",
+          "mandatory": true
+        }
+      ],
+      "identifiers": [
+        {
+          "id": "idf_muxwxhcrlmculqf3",
+          "name": "Identifier_1",
+          "isPrimary": true,
+          "attributeIds": [
+            "att_muxwxhcrll238e3d"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ent_muxwxhcrlpmobhih",
+      "name": "Room",
+      "code": "ROOM",
+      "position": {
+        "x": 420,
+        "y": 40
+      },
+      "attributes": [
+        {
+          "id": "att_muxwxhcrlqfppd5h",
+          "name": "room_no",
+          "code": "room_no",
+          "dataType": "Short integer",
+          "mandatory": true
+        },
+        {
+          "id": "att_muxwxhcrlsug315n",
+          "name": "floor",
+          "code": "floor",
+          "dataType": "Short integer",
+          "mandatory": true
+        }
+      ],
+      "identifiers": [
+        {
+          "id": "idf_muxwxhcrlrjlor75",
+          "name": "Identifier_1",
+          "isPrimary": true,
+          "attributeIds": [
+            "att_muxwxhcrlqfppd5h"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ent_muxwxhcrltfave55",
+      "name": "Guest",
+      "code": "GUEST",
+      "position": {
+        "x": 40,
+        "y": 340
+      },
+      "attributes": [
+        {
+          "id": "att_muxwxhcrlu1z3yi8",
+          "name": "guest_no",
+          "code": "guest_no",
+          "dataType": "Integer",
+          "mandatory": true
+        },
+        {
+          "id": "att_muxwxhcrlw6m726b",
+          "name": "name",
+          "code": "name",
+          "dataType": "Variable characters",
+          "length": 100,
+          "domainId": "dom_muxwxhcrljh2aw1e",
+          "mandatory": true
+        },
+        {
+          "id": "att_muxwxhcrlxb2glmj",
+          "name": "phone",
+          "code": "phone",
+          "dataType": "Variable characters",
+          "length": 20,
+          "mandatory": false
+        },
+        {
+          "id": "att_muxwxhcrlyqgtfeg",
+          "name": "passport_no",
+          "code": "passport_no",
+          "dataType": "Variable characters",
+          "length": 20,
+          "mandatory": true
+        }
+      ],
+      "identifiers": [
+        {
+          "id": "idf_muxwxhcrlv1fpwtz",
+          "name": "Identifier_1",
+          "isPrimary": true,
+          "attributeIds": [
+            "att_muxwxhcrlu1z3yi8"
+          ]
+        },
+        {
+          "id": "idf_muxwxhcrlz3ku4cj",
+          "name": "passport_no",
+          "isPrimary": false,
+          "attributeIds": [
+            "att_muxwxhcrlyqgtfeg"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ent_muxwxhcrm0klhq5g",
+      "name": "Booking",
+      "code": "BOOKING",
+      "position": {
+        "x": 420,
+        "y": 340
+      },
+      "attributes": [
+        {
+          "id": "att_muxwxhcrm1l6tsv8",
+          "name": "booking_id",
+          "code": "booking_id",
+          "dataType": "Integer",
+          "mandatory": true
+        },
+        {
+          "id": "att_muxwxhcrm3osqx9g",
+          "name": "arrival_date",
+          "code": "arrival_date",
+          "dataType": "Date",
+          "mandatory": true
+        },
+        {
+          "id": "att_muxwxhcrm469qcz3",
+          "name": "departure_date",
+          "code": "departure_date",
+          "dataType": "Date",
+          "mandatory": true
+        },
+        {
+          "id": "att_muxwxhcrm5un7snz",
+          "name": "booked_on",
+          "code": "booked_on",
+          "dataType": "Date",
+          "mandatory": true
+        },
+        {
+          "id": "att_muxwxhcrm6q2kxa3",
+          "name": "cancelled_on",
+          "code": "cancelled_on",
+          "dataType": "Date",
+          "mandatory": false,
+          "comment": "NULL unless the booking was cancelled"
+        }
+      ],
+      "identifiers": [
+        {
+          "id": "idf_muxwxhcrm2djlwdn",
+          "name": "Identifier_1",
+          "isPrimary": true,
+          "attributeIds": [
+            "att_muxwxhcrm1l6tsv8"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ent_muxwxhcrm7y2hmmd",
+      "name": "Booked Room",
+      "code": "BOOKED_ROOM",
+      "comment": "Booking × Room with the number of guests; a room is listed once per booking, so no own id.",
+      "position": {
+        "x": 800,
+        "y": 190
+      },
+      "attributes": [
+        {
+          "id": "att_muxwxhcrm8gnduqq",
+          "name": "guests",
+          "code": "guests",
+          "dataType": "Short integer",
+          "mandatory": true
+        }
+      ],
+      "identifiers": []
+    }
+  ],
+  "relationships": [
+    {
+      "id": "rel_muxwxhcrm9eclu2v",
+      "name": "is_of_type",
+      "entityA": "ent_muxwxhcrlkzrqgv5",
+      "entityB": "ent_muxwxhcrlpmobhih",
+      "cardinalityA": {
+        "min": 1,
+        "max": 1
+      },
+      "cardinalityB": {
+        "min": 0,
+        "max": "n"
+      },
+      "dependentSide": null
+    },
+    {
+      "id": "rel_muxwxhcrmayipt7e",
+      "name": "makes",
+      "entityA": "ent_muxwxhcrltfave55",
+      "entityB": "ent_muxwxhcrm0klhq5g",
+      "cardinalityA": {
+        "min": 1,
+        "max": 1
+      },
+      "cardinalityB": {
+        "min": 0,
+        "max": "n"
+      },
+      "dependentSide": null
+    },
+    {
+      "id": "rel_muxwxhcrmb9o76qq",
+      "name": "includes",
+      "entityA": "ent_muxwxhcrm0klhq5g",
+      "entityB": "ent_muxwxhcrm7y2hmmd",
+      "cardinalityA": {
+        "min": 1,
+        "max": 1
+      },
+      "cardinalityB": {
+        "min": 1,
+        "max": "n"
+      },
+      "dependentSide": "B"
+    },
+    {
+      "id": "rel_muxwxhcrmcw0twby",
+      "name": "is_booked",
+      "entityA": "ent_muxwxhcrlpmobhih",
+      "entityB": "ent_muxwxhcrm7y2hmmd",
+      "cardinalityA": {
+        "min": 1,
+        "max": 1
+      },
+      "cardinalityB": {
+        "min": 0,
+        "max": "n"
+      },
+      "dependentSide": "B"
+    }
+  ],
+  "inheritances": []
+}

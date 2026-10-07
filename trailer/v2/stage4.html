@@ -1,0 +1,73 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+*{box-sizing:border-box;margin:0}
+html,body{width:1080px;height:1350px;overflow:hidden;background:#0f172a;font-family:"Segoe UI",system-ui,sans-serif}
+#cap{position:absolute;top:80px;left:60px;right:60px;color:#fff;font-size:68px;font-weight:700;line-height:1.12;letter-spacing:-.5px}
+#cap em{font-style:normal;color:#60a5fa}
+#col{position:absolute;top:290px;left:40px;right:40px;bottom:150px;display:flex;flex-direction:column;justify-content:center;align-items:stretch;gap:12px}
+.lbl{color:#94a3b8;font-size:30px;font-weight:600;letter-spacing:1px;text-transform:uppercase;margin-left:6px}
+.card{background:#fff;border-radius:18px;padding:16px;display:flex;justify-content:center;box-shadow:0 20px 60px rgba(0,0,0,.45)}
+.card.cover{align-items:flex-start!important;overflow:hidden;position:relative;padding:24px 28px 0}
+.card.cover::after{content:'';position:absolute;left:0;right:0;bottom:0;height:140px;background:linear-gradient(transparent,#fff)}
+.card.small{align-self:center;padding:12px 18px}
+.wrap{position:relative;display:inline-block;line-height:0}
+.wrap img{max-width:100%;display:block}
+.wrap img.b{position:absolute;left:0;top:0;width:100%;height:100%}
+.pressed{transform:scale(.94)}
+#cur{position:absolute;z-index:5;width:46px;height:46px;margin:-5px 0 0 -7px;display:none}
+#foot{position:absolute;bottom:50px;left:0;right:0;text-align:center;color:#94a3b8;font-size:34px;font-weight:600}
+#steps{display:flex;margin-bottom:26px;gap:14px;justify-content:center;align-items:center;color:#64748b;font-size:36px;font-weight:600}
+#steps span{padding:8px 22px;border-radius:999px;border:2px solid #334155}
+#steps span.on{background:#2563eb;border-color:#2563eb;color:#fff}
+#modes{position:absolute;top:52px;left:0;right:0;display:none;justify-content:center;gap:18px}
+#modes span{font-size:38px;font-weight:700;padding:10px 30px;border-radius:999px;border:3px solid #334155;color:#64748b}
+#modes span.on{background:#2563eb;border-color:#2563eb;color:#fff}
+body.m #cap{top:150px;text-align:center;font-size:62px}
+body.m #col{top:250px;bottom:175px}
+body.m .lbl{font-size:26px}
+.prog{width:620px;height:14px;margin:0 auto 18px;background:#1e293b;border-radius:99px;overflow:hidden}
+.prog i{display:block;height:100%;background:#60a5fa;border-radius:99px}
+#rip{position:absolute;border:5px solid #60a5fa;border-radius:50%;display:none;pointer-events:none}
+#fade{position:absolute;left:0;top:0;width:1080px;height:1350px;display:none;z-index:9}
+#foot b{color:#fff;background:#2563eb;padding:6px 22px;border-radius:999px;font-weight:600}
+</style></head><body>
+<div id="cap"></div>
+<div id="col"></div>
+<div id="foot"></div>
+<div id="modes"></div><div id="rip"></div><img id="fade">
+<svg id="cur" viewBox="0 0 24 24"><path d="M3 2l7 19 2.5-7.5L20 11z" fill="#111" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></svg>
+<script>
+let lastKey=''
+function layout(s){
+  const key=JSON.stringify([s.cap,s.mode,s.blocks.map(b=>[b.id,b.small,b.maxH,b.cardH])])
+  if(key===lastKey) return
+  lastKey=key
+  document.getElementById('cap').innerHTML=s.cap
+  const col=document.getElementById('col'); col.innerHTML=''
+  for(const b of s.blocks){
+    if(b.label) col.insertAdjacentHTML('beforeend',`<div class="lbl" id="l_${b.id}">${b.label}</div>`)
+    col.insertAdjacentHTML('beforeend',`<div class="card ${b.small?'small':''} ${b.cover?'cover':''}" style="${b.cardH?`height:${b.cardH}px;align-items:center`:''}${b.pad0?';padding:0;overflow:hidden':''}"><div class="wrap" id="w_${b.id}"><img class="a" src="${b.img}" style="${b.small?`height:${b.h||90}px;max-width:none`:b.cover?'width:100%':`max-height:${b.maxH||440}px`}"><img class="b" style="opacity:0"></div></div>`)
+  }
+}
+const pos=(c)=>{const r=document.querySelector('#w_'+c.id+' img.a').getBoundingClientRect();return{x:r.left+c.fx*r.width,y:r.top+c.fy*r.height}}
+const ease=t=>t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2
+async function fadeFrom(src,o){const f=document.getElementById('fade');if(!src){f.style.display='none';return}f.src=src;await f.decode().catch(()=>{});f.style.opacity=o;f.style.display='block'}
+async function render(s){
+  document.body.classList.toggle('m',!!s.mode)
+  const md=document.getElementById('modes'); md.style.display=s.mode?'flex':'none'
+  if(s.mode) md.innerHTML=['① Watch','② Practise'].map((n,i)=>`<span class="${i+1===s.mode?'on':''}">${n}</span>`).join('')
+  layout(s)
+  for(const b of s.blocks){
+    const w=document.getElementById('w_'+b.id)
+    w.querySelector('img.a').src=b.img
+    const ib=w.querySelector('img.b'); if(b.imgB){ib.src=b.imgB;ib.style.opacity=b.mix??0}else ib.style.opacity=0
+    w.classList.toggle('pressed',!!b.pressed)
+    const l=document.getElementById('l_'+b.id); if(l&&b.label) l.textContent=b.label
+  }
+  await Promise.all([...document.images].filter(i=>i.getAttribute('src')).map(i=>i.decode().catch(()=>{})))
+  document.getElementById('foot').innerHTML=s.foot??(s.pill?`<b>${s.pill}</b>`:'')
+  const c=document.getElementById('cur')
+  if(s.cur){const a=pos(s.cur.a),z=s.cur.b?pos(s.cur.b):a,t=ease(s.cur.t??0);c.style.display='block';c.style.left=(a.x+(z.x-a.x)*t)+'px';c.style.top=(a.y+(z.y-a.y)*t)+'px'}else c.style.display='none'
+  const r=document.getElementById('rip')
+  if(s.cur&&s.click!=null){const a=pos(s.cur.b&&s.cur.t>=1?s.cur.b:s.cur.a),k=s.click,d=30+70*k;r.style.display='block';r.style.width=r.style.height=d+'px';r.style.left=(a.x-d/2)+'px';r.style.top=(a.y-d/2)+'px';r.style.opacity=1-k}else r.style.display='none'
+}
+</script></body></html>
