@@ -545,7 +545,10 @@ export function CheckPanel({ c, level, next: nextButton }: { c: TrainerCase; lev
               Model check: {check.lintErrors} error(s), {check.lintWarnings} warning(s) — see the dock under the canvas.
             </p>
           )}
-          {check.result.score === 100 && check.lintErrors === 0 && <p className="trainer-done">✓ Everything the reference has is in your model.</p>}
+          {check.result.complete && check.lintErrors === 0 && <p className="trainer-done">✓ Everything the reference has is in your model.</p>}
+          {check.result.score === 100 && !check.result.complete && (
+            <p className="text-xs">The entities and relationships match the reference. Some details (attributes or keys) are still missing — see below.</p>
+          )}
           {!stale && check.result.score >= DONE_AT && (nextButton ?? <NextStepButton />)}
           {groups.map(([st, items]) =>
             items.length === 0 ? null : (

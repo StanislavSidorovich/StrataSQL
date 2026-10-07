@@ -48,7 +48,20 @@ describe('reference models compared with themselves', () => {
     expect(s.extra).toEqual([])
     expect(s.res.items.some((i) => i.kind === 'attribute')).toBe(false)
     expect(s.res.score).toBe(100)
+    expect(s.res.complete).toBe(true)
     expect(s.res.counts.matched).toBe(build().entities.length + build().relationships.length + build().inheritances.length)
+  })
+
+  it('score 100 with attributes missing is not complete (attributes are not scored)', () => {
+    const ref = buildHotel()
+    const m = buildHotel()
+    const guest = ent(m, 'Guest')
+    guest.attributes = guest.attributes.filter((a) => a.name === 'guest_no')
+    guest.identifiers = guest.identifiers.filter((i) => i.attributeIds.every((id) => guest.attributes.some((a) => a.id === id)))
+    const res = compareModels(m, ref)
+    expect(res.score).toBe(100)
+    expect(res.counts.missing).toBeGreaterThan(0)
+    expect(res.complete).toBe(false)
   })
 
   it('matching does not depend on ids or on the order of entities', () => {

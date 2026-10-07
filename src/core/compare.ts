@@ -52,6 +52,8 @@ export interface CompareResult {
   counts: Record<CompareStatus, number>
   /** 0–100: matched reference elements, a “different” one counts half. Attributes are not scored. */
   score: number
+  /** Nothing is missing or different (extras allowed). Score 100 alone is not enough: attributes are not scored. */
+  complete: boolean
 }
 
 export interface CompareOptions {
@@ -717,7 +719,8 @@ export function compareModels(student: Model, ref: Model, opts: CompareOptions =
   got -= items.filter((i) => KEY_KINDS.includes(i.kind) && i.status !== 'matched' && i.status !== 'extra').length / 2
   const order: Record<CompareStatus, number> = { missing: 0, different: 1, extra: 2, matched: 3 }
   items.sort((a, b) => order[a.status] - order[b.status])
-  return { items, entityMatch: match, counts, score: total ? Math.max(0, Math.round((100 * got) / total)) : 100 }
+  const score = total ? Math.max(0, Math.round((100 * got) / total)) : 100
+  return { items, entityMatch: match, counts, score, complete: counts.missing === 0 && counts.different === 0 }
 }
 
 /** The entity is identified through another one (a dependent end of some relationship). */
