@@ -1,4 +1,4 @@
-# StrataSQL trailer (LinkedIn, 1080×1350, ~47 s)
+# StrataSQL trailer (LinkedIn, 1080×1350, ~48 s)
 
 Videos, captures and rendered frames are not in git; these scripts rebuild them.
 Run from this folder with the dev server on http://localhost:5173 (`npm run dev` in the repo root).

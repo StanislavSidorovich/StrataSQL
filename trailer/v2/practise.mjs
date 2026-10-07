@@ -24,7 +24,7 @@ const TX = 9, TY = 190
 const PIN = `.react-flow__viewport { transform: translate(${TX}px, ${TY}px) scale(1) !important }`
 await p.addStyleTag({ content: PIN })
 const at = f => ({ x: pane.x + TX + f.x, y: pane.y + TY + f.y }) // flow → screen, in the pinned view
-const FULL = { x: pane.x + TX + 15, y: pane.y + TY + 15, width: 970, height: 510 }
+const FULL = { x: pane.x + TX + 15, y: pane.y + TY + 15, width: 970, height: 540 }
 const frac = q => ({ fx: (q.x - FULL.x) / FULL.width, fy: (q.y - FULL.y) / FULL.height })
 const view = (x0, y0, x1, y1) => ({ x: (x0 - FULL.x) / FULL.width, y: (y0 - FULL.y) / FULL.height, w: (x1 - x0) / FULL.width, h: (y1 - y0) / FULL.height })
 // React Flow's own viewport moves (it centres a new entity); pan it back under the pinned picture before acting
@@ -203,6 +203,8 @@ F.push({ state: { mode: 2, cap: CAP, pill: `Check → ${score}: what is still mi
 // ── beat 7: the same model, finished (the full reference) → Check again → 100 %
 await p.evaluate(m => localStorage.setItem('stratasql.trainer.model', JSON.stringify({ ...m, name: 'Hotel — my model' })), ref)
 await p.reload(); await p.waitForTimeout(1500)
+await p.addStyleTag({ content: PIN }); await p.mouse.move(1, 1); await p.waitForTimeout(300)
+const fullDone = await snap(FULL)
 await p.getByRole('button', { name: /^Check my model/ }).click(); await p.waitForTimeout(1200)
 await p.getByRole('button', { name: /^Check again/ }).evaluate(e => e.scrollIntoView({ block: 'start' })); await p.waitForTimeout(300)
 await p.evaluate(() => { const n = [...document.querySelectorAll('.trainer-pane button')].find(b => /^Next:/.test(b.textContent)); if (n) n.style.display = 'none' })
@@ -210,6 +212,6 @@ const ca2 = await box(p.getByRole('button', { name: /^Check again/ }))
 const done = await box(p.locator('.trainer-pane .trainer-done').first())
 const doneImg = await snap({ x: tp.left + 8, y: ca2.y - 6, width: tp.width - 16, height: done.y + done.height + 10 - (ca2.y - 6) })
 console.log(await p.evaluate(() => document.querySelector('.trainer-pane').innerText.match(/Check again[\s\S]*?model\./)[0]))
-F.push({ state: { mode: 2, cap: CAP, pill: 'Fix what is missing → 100 % ✓', blocks: [{ id: 'fb', label: 'Your model vs the reference', img: doneImg, maxH: 520 }] }, fade: 0.4, dur: 2.4 })
+F.push({ state: { mode: 2, cap: CAP, pill: 'Fix what is missing → 100 % ✓', blocks: [cv(fullDone, VF, { label: 'Your finished model', maxH: 500 }), { id: 'fb', img: doneImg, maxH: 190 }] }, fade: 0.45, dur: 3.0 })
 fs.writeFileSync('practise.json', JSON.stringify(F))
 await b.close()
