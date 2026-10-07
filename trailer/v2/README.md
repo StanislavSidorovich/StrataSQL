@@ -1,4 +1,4 @@
-# StrataSQL trailer (LinkedIn, 1080×1350, ~41 s)
+# StrataSQL trailer (LinkedIn, 1080×1350, ~45 s)
 
 Videos, captures and rendered frames are not in git; these scripts rebuild them.
 Run from this folder with the dev server on http://localhost:5173 (`npm run dev` in the repo root).
@@ -12,7 +12,7 @@ captions as JSON) → `node render.mjs <plan>.json <out>.mp4`. `render.mjs` draw
 | Clip | Capture | Plan → render |
 |---|---|---|
 | 01-hookA.mp4 — the finished Hotel CDM (close-up → app window) → PDM → SQL | hook2.mjs → hk/ | `node hookplan.mjs A` → hookA.json |
-| 02-watch.mp4 — ① Watch: steps 2→3 explained, ⏩ 4–10 | watch.mjs → wa/ | watchplan.mjs → watch.json |
+| 02-watch.mp4 — ① Watch: steps 2→3 explained, then the cards fold away, the camera pulls back and 4–10 run with one explanation line | watch.mjs → wa/ | watchplan.mjs → watch.json |
 | 03-practise.mp4 — ② Practise: level 3, Guest (L01 → PI → ✓), ⏩ Booking, link, pull back, ⏩ the rest, Check | practise.mjs → pr/ + practise.json (uses hotel-ref.json) | — |
 | 05-endcard.mp4 | endcard.mjs (endcard.html → endcard.png) | `ffmpeg -loop 1 -i endcard.png -t 4.5 …` |
 

@@ -53,6 +53,7 @@ for (const s of [2, 3]) {
   await p.screenshot({ path: `wa/two${s}.png`, clip: twoClip })
   meta[`s${s}`] = r
 }
+meta.full = full; meta.two = twoClip
 meta.nextFrac = { fx: (meta.s2.next.x + meta.s2.next.width * 0.55 - meta.s2.panel.x) / meta.s2.panel.width, fy: (meta.s2.next.y + meta.s2.next.height * 0.65 - meta.s2.panel.y) / meta.s2.panel.height }
 fs.writeFileSync('wa/meta.json', JSON.stringify(meta, null, 1))
 console.log(meta.steps.join('\n'), JSON.stringify(meta.s2.panel), JSON.stringify(meta.s3.panel), JSON.stringify(meta.s2.para), JSON.stringify(meta.s3.para))

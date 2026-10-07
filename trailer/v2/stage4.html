@@ -28,6 +28,8 @@ body.m .lbl{font-size:26px}
 .prog i{display:block;height:100%;background:#60a5fa;border-radius:99px}
 .okn{font-size:34px;color:#166534;background:#dcfce7;border-left:8px solid #16a34a;border-radius:10px;padding:22px 30px;font-weight:600;width:900px}
 .okn small{display:block;font-size:28px;font-weight:500;color:#15803d;margin-top:6px}
+.ffl{font-size:33px;color:#0f172a;line-height:1.3;padding:18px 28px;width:1000px;background:#fff;border-radius:18px;box-shadow:0 20px 60px rgba(0,0,0,.45);height:100%}
+.ffl .to{display:block;color:#1d4ed8;font-weight:600;margin-top:6px}
 #rip{position:absolute;border:5px solid #60a5fa;border-radius:50%;display:none;pointer-events:none}
 #fade{position:absolute;left:0;top:0;width:1080px;height:1350px;display:none;z-index:9}
 #foot b{color:#fff;background:#2563eb;padding:6px 22px;border-radius:999px;font-weight:600}
@@ -40,15 +42,15 @@ body.m .lbl{font-size:26px}
 <script>
 let lastKey=''
 function layout(s){
-  const key=JSON.stringify([s.cap,s.mode,s.blocks.map(b=>[b.id,b.small,b.maxH,b.cardH])])
+  const key=JSON.stringify([s.cap,s.mode,s.blocks.map(b=>[b.id,b.small,b.maxH,b.cardH,b.lblH,b.bare,b.html!=null,!!b.view,b.label!=null])])
   if(key===lastKey) return
   lastKey=key
   document.getElementById('cap').innerHTML=s.cap
   const col=document.getElementById('col'); col.innerHTML=''
   for(const b of s.blocks){
-    if(b.label) col.insertAdjacentHTML('beforeend',`<div class="lbl" id="l_${b.id}">${b.label}</div>`)
+    if(b.label!=null) col.insertAdjacentHTML('beforeend',`<div class="lbl" id="l_${b.id}" style="${b.lblH!=null?`height:${b.lblH}px;overflow:hidden`:''}">${b.label}</div>`)
     if(b.view){col.insertAdjacentHTML('beforeend',`<div class="card" style="padding:0;overflow:hidden;align-self:center"><div class="wrap" id="w_${b.id}" style="position:relative;overflow:hidden"><img class="a" style="position:absolute;max-width:none"></div></div>`);continue}
-    if(b.html!=null){col.insertAdjacentHTML('beforeend',`<div class="card" style="${b.cardH?`height:${b.cardH}px;align-items:center`:''}"><div class="wrap" id="w_${b.id}" style="line-height:normal"></div></div>`);continue}
+    if(b.html!=null){col.insertAdjacentHTML('beforeend',`<div class="card" style="${b.cardH!=null?`height:${b.cardH}px;align-items:center;overflow:hidden`:''}${b.bare?';background:none;box-shadow:none;padding:0':''}"><div class="wrap" id="w_${b.id}" style="line-height:normal"></div></div>`);continue}
     col.insertAdjacentHTML('beforeend',`<div class="card ${b.small?'small':''} ${b.cover?'cover':''}" style="${b.cardH?`height:${b.cardH}px;align-items:center`:''}${b.pad0?';padding:0;overflow:hidden':''}"><div class="wrap" id="w_${b.id}"><img class="a" src="${b.img}" style="${b.small?`height:${b.h||90}px;max-width:none`:b.cover?'width:100%':`max-height:${b.maxH||440}px`}"><img class="b" style="opacity:0"></div></div>`)
   }
 }
@@ -62,12 +64,13 @@ async function render(s){
   layout(s)
   for(const b of s.blocks){
     const w=document.getElementById('w_'+b.id)
+    w.parentElement.style.opacity=b.op??1; const lb=document.getElementById('l_'+b.id); if(lb) lb.style.opacity=b.op??1
     if(b.html!=null){if(w.innerHTML!==b.html)w.innerHTML=b.html;continue}
     w.querySelector('img.a').src=b.img
     if(b.view)continue
     const ib=w.querySelector('img.b'); if(b.imgB){ib.src=b.imgB;ib.style.opacity=b.mix??0}else ib.style.opacity=0
     w.classList.toggle('pressed',!!b.pressed)
-    const l=document.getElementById('l_'+b.id); if(l&&b.label) l.textContent=b.label
+    const l=document.getElementById('l_'+b.id); if(l&&b.label!=null) l.textContent=b.label
   }
   await Promise.all([...document.images].filter(i=>i.getAttribute('src')).map(i=>i.decode().catch(()=>{})))
   // camera blocks: show the view rect {x,y,w,h} (fractions of the picture) in a card camW wide, at most maxH tall
