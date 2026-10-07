@@ -200,5 +200,16 @@ const tx = await p.evaluate(() => document.querySelector('.trainer-pane').innerT
 console.log(tx)
 const score = (tx.match(/(\d+)%/) ?? [])[0]
 F.push({ state: { mode: 2, cap: CAP, pill: `Check → ${score}: what is still missing`, blocks: [{ id: 'fb', label: 'Your model vs the reference', img: fbImg, maxH: 760 }] }, fade: 0.35, dur: 3.0 })
+// ── beat 7: the same model, finished (the full reference) → Check again → 100 %
+await p.evaluate(m => localStorage.setItem('stratasql.trainer.model', JSON.stringify({ ...m, name: 'Hotel — my model' })), ref)
+await p.reload(); await p.waitForTimeout(1500)
+await p.getByRole('button', { name: /^Check my model/ }).click(); await p.waitForTimeout(1200)
+await p.getByRole('button', { name: /^Check again/ }).evaluate(e => e.scrollIntoView({ block: 'start' })); await p.waitForTimeout(300)
+await p.evaluate(() => { const n = [...document.querySelectorAll('.trainer-pane button')].find(b => /^Next:/.test(b.textContent)); if (n) n.style.display = 'none' })
+const ca2 = await box(p.getByRole('button', { name: /^Check again/ }))
+const done = await box(p.locator('.trainer-pane .trainer-done').first())
+const doneImg = await snap({ x: tp.left + 8, y: ca2.y - 6, width: tp.width - 16, height: done.y + done.height + 10 - (ca2.y - 6) })
+console.log(await p.evaluate(() => document.querySelector('.trainer-pane').innerText.match(/Check again[\s\S]*?model\./)[0]))
+F.push({ state: { mode: 2, cap: CAP, pill: 'Fix what is missing → 100 % ✓', blocks: [{ id: 'fb', label: 'Your model vs the reference', img: doneImg, maxH: 520 }] }, fade: 0.4, dur: 2.4 })
 fs.writeFileSync('practise.json', JSON.stringify(F))
 await b.close()
