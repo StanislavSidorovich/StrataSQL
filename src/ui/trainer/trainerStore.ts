@@ -124,6 +124,7 @@ export const useTrainer = create<TrainerState>()((set, get) => ({
     useEditor.setState({
       model: levelStartModel(c, level),
       trainerBackup: backup,
+      doc: editor.doc + 1,
       past: [],
       future: [],
       selection: null,
@@ -152,6 +153,7 @@ export const useTrainer = create<TrainerState>()((set, get) => ({
     useEditor.setState({
       model: { ...emptyModel(`${x.title} — my model`), comment: id === MY_TASK_ID ? `My task: ${x.title}.` : `Open exercise: ${x.title}.` },
       trainerBackup: editor.trainerBackup ?? editor.model,
+      doc: editor.doc + 1,
       past: [],
       future: [],
       selection: null,
@@ -209,6 +211,7 @@ export const useTrainer = create<TrainerState>()((set, get) => ({
     useEditor.setState({
       model: asking ? steps[at - 1].model : s.model,
       trainerBackup: editor.trainerBackup ?? editor.model,
+      doc: editor.doc + 1,
       past: [],
       future: [],
       selection: first && !asking ? { kind: first.kind, id: first.id } : null,
@@ -252,7 +255,7 @@ export const useTrainer = create<TrainerState>()((set, get) => ({
   exit() {
     const { trainerBackup } = useEditor.getState()
     if (trainerBackup)
-      useEditor.setState({ model: trainerBackup, trainerBackup: null, past: [], future: [], selection: null, focusedIssue: null, walkthrough: null })
+      useEditor.setState({ model: trainerBackup, trainerBackup: null, doc: useEditor.getState().doc + 1, past: [], future: [], selection: null, focusedIssue: null, walkthrough: null })
     writeJson(TRAINER_MODEL_KEY, null)
     set({ session: null, check: null, pickerOpen: false })
   },
@@ -422,7 +425,7 @@ export function restoreTrainer() {
   }
   const model = loadStoredModel(TRAINER_MODEL_KEY) ?? (session.exercise ? emptyModel() : levelStartModel(caseById(session.caseId)!, session.level))
   const editor = useEditor.getState()
-  useEditor.setState({ model, trainerBackup: editor.model, past: [], future: [] })
+  useEditor.setState({ model, trainerBackup: editor.model, doc: editor.doc + 1, past: [], future: [] })
   useTrainer.setState({ session })
 }
 

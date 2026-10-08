@@ -1,5 +1,7 @@
 // Saving the model to a file. “Save as” lets the user pick the folder and name (File System Access API,
-// Chrome and Edge); after that, “Save” writes to the same file until another model is loaded.
+// Chrome and Edge); after that, “Save” writes to the same file until another model is loaded. A trainer
+// task is a document of its own (`doc` changes when it starts and ends), so its file never receives the
+// student's own model, and the other way round.
 // Browsers without the API download the file instead (to the downloads folder, or wherever the browser asks).
 
 import { exportPowerDesigner } from '../core/export/powerdesigner'
@@ -46,13 +48,13 @@ async function write(file: WritableFile) {
 
 /** Save: to the “Save as” file of this document if there is one, else a download. Returns a message for the user. */
 export async function saveModel(): Promise<string | null> {
-  const { doc, trainerBackup } = useEditor.getState()
-  if (current && current.doc === doc && !trainerBackup) {
+  const { doc } = useEditor.getState()
+  if (current && current.doc === doc) {
     await write(current.file)
     return `Saved to ${current.file.name}`
   }
-  download()
-  return null
+  const name = download()
+  return canPickFolder() ? `Downloaded ${name}. Use File → Save as to pick a folder: Ctrl+S then saves there.` : null
 }
 
 /** Save as: pick a folder and a name. Returns a message for the user, or null when cancelled. */
@@ -74,7 +76,7 @@ export async function saveModelAs(): Promise<string | null> {
     throw e
   }
   await write(file)
-  if (!useEditor.getState().trainerBackup) current = { file, doc }
+  current = { file, doc }
   return `Saved to ${file.name}. Ctrl+S now saves to this file.`
 }
 
