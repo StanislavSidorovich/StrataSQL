@@ -23,9 +23,45 @@ function fromBase64Url(text: string): Uint8Array {
   return Uint8Array.from(bin, (c) => c.charCodeAt(0))
 }
 
-/** The model as a URL-safe string (compact JSON, deflate, base64url). */
+/**
+ * A copy with short ids (`0`, `1`, … `z`, `10`…). Generated ids like `att_muzbof4c1lf7mepf4` are
+ * random, so deflate cannot shrink them; on a 12-entity model they were over a third of the link.
+ */
+export function withShortIds(m: Model): Model {
+  const copy = JSON.parse(serializeModel(m)) as Model
+  const ids = new Map<string, string>()
+  const short = (id: string) => ids.get(id) ?? id
+  const own = (o: { id: string }) => {
+    ids.set(o.id, ids.size.toString(36))
+    o.id = short(o.id)
+  }
+  copy.domains.forEach(own)
+  for (const e of copy.entities) {
+    own(e)
+    e.attributes.forEach(own)
+    e.identifiers.forEach(own)
+    e.physicalKeys?.forEach(own)
+  }
+  copy.relationships.forEach(own)
+  copy.inheritances.forEach(own)
+  for (const e of copy.entities) {
+    for (const a of e.attributes) if (a.domainId) a.domainId = short(a.domainId)
+    for (const i of e.identifiers) i.attributeIds = i.attributeIds.map(short)
+  }
+  for (const r of copy.relationships) {
+    r.entityA = short(r.entityA)
+    r.entityB = short(r.entityB)
+  }
+  for (const h of copy.inheritances) {
+    h.parentId = short(h.parentId)
+    h.childIds = h.childIds.map(short)
+  }
+  return copy
+}
+
+/** The model as a URL-safe string (short ids, compact JSON, deflate, base64url). */
 export async function encodeShare(m: Model): Promise<string> {
-  const json = JSON.stringify(JSON.parse(serializeModel(m)))
+  const json = JSON.stringify(withShortIds(m))
   return toBase64Url(await pipe(new TextEncoder().encode(json), new CompressionStream('deflate-raw')))
 }
 
