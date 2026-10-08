@@ -19,6 +19,16 @@
     <meta property="og:image:height" content="630" />
     <meta property="og:image:alt" content="StrataSQL logo: three blue layers, with the text Conceptual model → tables → SQL" />
     <meta name="twitter:card" content="summary_large_image" />
+    <!-- Cloudflare Web Analytics: cookieless page-view counts, on the live site only (not local runs). -->
+    <script>
+      if (location.hostname === 'model.quaera.app') {
+        const s = document.createElement('script')
+        s.defer = true
+        s.src = 'https://static.cloudflareinsights.com/beacon.min.js'
+        s.dataset.cfBeacon = '{"token": "6535ed020f9b4694aa311e98943f8829"}'
+        document.head.appendChild(s)
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

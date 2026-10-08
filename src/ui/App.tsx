@@ -1,10 +1,12 @@
 import { ReactFlowProvider, useReactFlow } from '@xyflow/react'
-import { BookOpen, Check, FilePen, CircleHelp, Database, Download, FileDown, FilePlus, FolderOpen, GraduationCap, Image as ImageIcon, Info, Keyboard, Maximize2, Moon, Play, Plus, Redo2, Save, SaveAll, Sun, Trash2, Undo2, X } from 'lucide-react'
+import { BookOpen, Check, FilePen, CircleHelp, Database, Download, FileDown, FilePlus, FolderOpen, GraduationCap, Image as ImageIcon, Info, Keyboard, Link2, Maximize2, MessageSquare, Moon, Play, Plus, Redo2, Save, SaveAll, Sun, Trash2, Undo2, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { emptyModel } from '../core/metamodel'
 import { addEntity, removeEntity, removeInheritance, removeRelationship } from '../core/ops'
 import { importPowerDesigner } from '../core/import/powerdesigner'
 import { FILE_EXTENSION, parseModel, readSavedTask } from '../core/serialize'
+import { decodeShare, SHARE_PARAM, shareDataFromHash, shareUrl } from '../core/shareLink'
+import { FEEDBACK_URL } from './AuthorLinks'
 import { applyUpdate, installApp, useUpdateReady } from '../pwa/register'
 import { Canvas } from './canvas/Canvas'
 import { exportDiagram } from './exportImage'
@@ -183,6 +185,47 @@ function Editor() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // Opened from a share link (`#m=…`): load the model it carries, then drop the fragment so a
+  // reload keeps the reader's own edits. Also when a link is pasted into an open tab (hashchange).
+  useEffect(() => {
+    const openShared = async () => {
+      const data = shareDataFromHash(window.location.hash)
+      if (!data) return
+      const params = new URLSearchParams(window.location.hash.slice(1))
+      params.delete(SHARE_PARAM)
+      const rest = params.toString()
+      history.replaceState(null, '', window.location.pathname + window.location.search + (rest ? `#${rest}` : ''))
+      try {
+        const shared = await decodeShare(data)
+        if (!leaveTrainer()) return
+        const hadModel = useEditor.getState().model.entities.length > 0
+        useOnboarding.setState({ welcome: false })
+        setView('cdm')
+        load(shared)
+        fit()
+        setNotice(`Opened “${shared.name}” from a shared link: this is your own copy, edits stay in this browser.` + (hadModel ? ' Your previous model is one Undo away.' : ''))
+      } catch (e) {
+        showError(`Could not open the shared model: ${(e as Error).message}`)
+      }
+    }
+    void openShared()
+    const onHash = () => void openShared()
+    window.addEventListener('hashchange', onHash)
+    return () => window.removeEventListener('hashchange', onHash)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const copyShareLink = async () => {
+    try {
+      const url = await shareUrl(useEditor.getState().model, window.location.href)
+      await navigator.clipboard.writeText(url)
+      const kb = Math.max(1, Math.round(url.length / 1024))
+      setNotice(`Link copied (${kb} KB). Whoever opens it gets a copy of this model; nothing is uploaded, the model is inside the link. Later edits need a new link.`)
+    } catch (e) {
+      showError(`Could not copy the link: ${(e as Error).message}`)
+    }
+  }
+
   const watchLibrary = () => {
     if (confirmDiscardTask()) useTrainer.getState().walkTo('library', 0)
   }
@@ -310,6 +353,12 @@ Cancel: open it as an ordinary model.`)) {
               { label: 'Open…', icon: <FolderOpen size={ICON} />, hint: `${FILE_EXTENSION}, .cdm`, onSelect: () => fileInput.current?.click() },
               { label: 'Save', icon: <Save size={ICON} />, hint: 'Ctrl+S', onSelect: () => save(false) },
               { label: 'Save as…', icon: <SaveAll size={ICON} />, hint: 'Ctrl+Shift+S', onSelect: () => save(true) },
+              {
+                label: 'Copy share link',
+                icon: <Link2 size={ICON} />,
+                disabled: model.entities.length === 0,
+                onSelect: () => void copyShareLink(),
+              },
               'separator',
               ...([['.cdm', exportCdm, 'CDM'], ['.pdm', exportPdm, 'PDM']] as const).map(([hint, run, what]) => ({
                 label: `Export ${what} for PowerDesigner`,
@@ -450,6 +499,9 @@ Cancel: open it as an ordinary model.`)) {
               { label: 'Watch a model being built…', icon: <Play size={ICON} />, onSelect: () => useTrainer.getState().openPicker(true) },
               { label: 'Keyboard shortcuts', icon: <Keyboard size={ICON} />, hint: '?', onSelect: () => useOnboarding.getState().showShortcuts(true) },
               { label: 'Install as app (works offline)…', icon: <Download size={ICON} />, onSelect: () => void installApp().then((msg) => msg && setNotice(msg)) },
+              ...(FEEDBACK_URL
+                ? [{ label: 'Send feedback…', icon: <MessageSquare size={ICON} />, onSelect: () => window.open(FEEDBACK_URL, '_blank', 'noopener') }]
+                : []),
               { label: 'About StrataSQL', onSelect: () => useOnboarding.getState().showAbout(true) },
               'separator',
               { label: 'Quaera: SQL & analytics trainer ↗', hint: 'quaera.app', onSelect: () => window.open('https://quaera.app', '_blank', 'noopener') },

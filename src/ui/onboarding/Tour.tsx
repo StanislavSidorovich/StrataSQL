@@ -4,7 +4,7 @@ import { useEffect, useLayoutEffect, useState } from 'react'
 import { create } from 'zustand'
 import { CASES } from '../../data/cases'
 import { LESSONS } from '../../data/lessons'
-import { AuthorLinks, GITHUB_URL, LINKEDIN_URL } from '../AuthorLinks'
+import { AuthorLinks, FEEDBACK_URL, GITHUB_URL, LINKEDIN_URL } from '../AuthorLinks'
 
 const WELCOMED_KEY = 'stratasql.welcomed'
 
@@ -334,6 +334,20 @@ function About() {
             LinkedIn
           </a>
           . Code under Apache-2.0, learning content under CC BY-NC-SA 4.0.
+        </p>
+        <p>
+          Privacy: your models stay in this browser and in the files you save; a share link carries the model inside the
+          link itself. The site counts page views with Cloudflare Web Analytics (no cookies, no personal data).
+          {FEEDBACK_URL && (
+            <>
+              {' '}
+              Stuck or found a mistake?{' '}
+              <a href={FEEDBACK_URL} target="_blank" rel="noopener">
+                Send feedback
+              </a>
+              .
+            </>
+          )}
         </p>
         <p className="about-small">
           PowerDesigner is a trademark of SAP SE and SQL Server of Microsoft; StrataSQL is not affiliated with either.
