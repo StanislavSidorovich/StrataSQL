@@ -18,8 +18,8 @@ import {
 } from '@xyflow/react'
 import { useEffect, useMemo } from 'react'
 import { sqlServerType } from '../../core/ddl/sqlserver'
-import type { Model, Point } from '../../core/metamodel'
-import { columnFlags, type Pdm, type PdmForeignKey, type PdmTable } from '../../core/pdm'
+import type { Model } from '../../core/metamodel'
+import { columnFlags, tablePosition, type Pdm, type PdmForeignKey, type PdmTable } from '../../core/pdm'
 import { add, edgeEnds, perp, scale, sub, unit } from '../canvas/geometry'
 import { EntityNode } from '../canvas/EntityNode'
 import { InheritanceNode } from '../canvas/InheritanceNode'
@@ -36,25 +36,7 @@ type FkEdgeType = Edge<{ fk: PdmForeignKey; offset: number; highlighted: boolean
 const nodeTypes = { table: TableNode, entity: EntityNode, inheritance: InheritanceNode }
 const edgeTypes = { fk: FkEdge, relationship: RelationshipEdge, inheritance: InheritanceEdge }
 
-/** Tables are wider than entities: spread the conceptual layout a little. */
-const SPREAD = { x: 1.3, y: 1.12 }
 const PARALLEL_GAP = 22
-
-function tablePosition(m: Model, t: PdmTable): Point {
-  const spread = (p: Point) => ({ x: Math.round(p.x * SPREAD.x), y: Math.round(p.y * SPREAD.y) })
-  if (t.source.kind === 'entity') {
-    const id = t.source.id
-    const e = m.entities.find((x) => x.id === id)
-    return spread(e?.position ?? { x: 0, y: 0 })
-  }
-  const relId = t.source.kind === 'relationship' ? t.source.id : ''
-  const r = m.relationships.find((x) => x.id === relId)
-  const a = m.entities.find((e) => e.id === r?.entityA)?.position ?? { x: 0, y: 0 }
-  const b = m.entities.find((e) => e.id === r?.entityB)?.position ?? a
-  const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }
-  // A reflexive join table would sit on top of its entity: move it aside.
-  return spread(r?.entityA === r?.entityB ? { x: mid.x + 260, y: mid.y } : mid)
-}
 
 function buildNodes(m: Model, pdm: Pdm, selected: string | null): TableNodeType[] {
   return pdm.tables.map((t) => ({

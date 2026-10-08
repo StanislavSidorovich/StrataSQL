@@ -5,6 +5,7 @@
 // Browsers without the API download the file instead (to the downloads folder, or wherever the browser asks).
 
 import { exportPowerDesigner } from '../core/export/powerdesigner'
+import { exportPowerDesignerPdm } from '../core/export/powerdesigner-pdm'
 import { FILE_EXTENSION, serializeModel, type SavedTask } from '../core/serialize'
 import { fileBaseName } from './pdm/SqlView'
 import { useEditor } from './store'
@@ -83,6 +84,7 @@ export async function saveModelAs(): Promise<string | null> {
 /** File kinds for exports: what the save dialog shows and filters on. */
 export const FILE_KINDS = {
   cdm: { description: 'PowerDesigner conceptual model', accept: { 'application/xml': ['.cdm'] } },
+  pdm: { description: 'PowerDesigner physical model', accept: { 'application/xml': ['.pdm'] } },
   sql: { description: 'SQL script', accept: { 'text/plain': ['.sql'] } },
   png: { description: 'PNG image', accept: { 'image/png': ['.png'] } },
   svg: { description: 'SVG image', accept: { 'image/svg+xml': ['.svg'] } },
@@ -121,6 +123,15 @@ export async function exportCdm(): Promise<string | null> {
   const { model } = useEditor.getState()
   const { xml, warnings } = exportPowerDesigner(model)
   const name = await saveExport(`${fileBaseName(model.name)}.cdm`, 'cdm', () => new Blob([xml], { type: 'application/xml' }))
+  if (!name) return null
+  return `Exported ${name} — open it in PowerDesigner (File → Open).` + (warnings.length ? `\n${warnings.join('\n')}` : '')
+}
+
+/** Export the generated tables for PowerDesigner: a .pdm (XML) for SQL Server 2008. */
+export async function exportPdm(): Promise<string | null> {
+  const { model } = useEditor.getState()
+  const { xml, warnings } = exportPowerDesignerPdm(model)
+  const name = await saveExport(`${fileBaseName(model.name)}.pdm`, 'pdm', () => new Blob([xml], { type: 'application/xml' }))
   if (!name) return null
   return `Exported ${name} — open it in PowerDesigner (File → Open).` + (warnings.length ? `\n${warnings.join('\n')}` : '')
 }

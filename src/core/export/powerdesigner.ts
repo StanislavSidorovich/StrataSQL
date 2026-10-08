@@ -25,9 +25,9 @@ export function pdTypeCode(t: { dataType: DataType; length?: number; precision?:
 }
 
 /** Canvas pixels → PD units (the importer's SCALE is 0.012). */
-const UNITS = 1 / 0.012
+export const UNITS = 1 / 0.012
 
-const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+export const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 
 /** PD codes: upper case, letters/digits/underscore. */
 export function pdCode(name: string): string {
@@ -41,7 +41,7 @@ export function pdCode(name: string): string {
   )
 }
 
-function randomGuid(): string {
+export function randomGuid(): string {
   const c = globalThis.crypto
   if (c?.randomUUID) return c.randomUUID().toUpperCase()
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (ch) => {
@@ -50,18 +50,18 @@ function randomGuid(): string {
   })
 }
 
-interface Rect {
+export interface Rect {
   x1: number
   y1: number
   x2: number
   y2: number
 }
 
-const rectText = (r: Rect) => `((${r.x1},${r.y1}), (${r.x2},${r.y2}))`
-const center = (r: Rect): Point => ({ x: Math.round((r.x1 + r.x2) / 2), y: Math.round((r.y1 + r.y2) / 2) })
+export const rectText = (r: Rect) => `((${r.x1},${r.y1}), (${r.x2},${r.y2}))`
+export const center = (r: Rect): Point => ({ x: Math.round((r.x1 + r.x2) / 2), y: Math.round((r.y1 + r.y2) / 2) })
 
 /** Where the line from the rectangle's centre towards `to` leaves the rectangle. */
-function border(r: Rect, to: Point): Point {
+export function border(r: Rect, to: Point): Point {
   const c = center(r)
   const dx = to.x - c.x
   const dy = to.y - c.y
@@ -72,13 +72,13 @@ function border(r: Rect, to: Point): Point {
   return { x: Math.round(c.x + dx * t), y: Math.round(c.y + dy * t) }
 }
 
-function boundsOf(points: Point[]): Rect {
+export function boundsOf(points: Point[]): Rect {
   const xs = points.map((p) => p.x)
   const ys = points.map((p) => p.y)
   return { x1: Math.min(...xs) - 400, y1: Math.min(...ys) - 400, x2: Math.max(...xs) + 400, y2: Math.max(...ys) + 400 }
 }
 
-const points = (ps: Point[]) => `(${ps.map((p) => `(${p.x},${p.y})`).join(',')})`
+export const points = (ps: Point[]) => `(${ps.map((p) => `(${p.x},${p.y})`).join(',')})`
 
 /** Approximate size of an entity symbol in PD units, from its longest line and the number of lines. */
 function entitySize(e: Entity): { w: number; h: number } {

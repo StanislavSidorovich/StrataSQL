@@ -19,7 +19,7 @@ import { PdmPanel } from './pdm/PdmPanel'
 import { fileBaseName, SqlView } from './pdm/SqlView'
 import { SandboxView } from './sandbox/SandboxView'
 import { AppearanceButton } from './Appearance'
-import { exportCdm, saveModel, saveModelAs } from './fileSave'
+import { exportCdm, exportPdm, saveModel, saveModelAs } from './fileSave'
 import { SideDock } from './SideDock'
 import { usePortrait } from './viewport'
 import { duplicateSelectedEntity, useEditor, type View } from './store'
@@ -311,11 +311,15 @@ Cancel: open it as an ordinary model.`)) {
               { label: 'Save', icon: <Save size={ICON} />, hint: 'Ctrl+S', onSelect: () => save(false) },
               { label: 'Save as…', icon: <SaveAll size={ICON} />, hint: 'Ctrl+Shift+S', onSelect: () => save(true) },
               'separator',
-              { label: 'Export for PowerDesigner', icon: <FileDown size={ICON} />, hint: '.cdm', onSelect: () =>
-                  void exportCdm()
+              ...([['.cdm', exportCdm, 'CDM'], ['.pdm', exportPdm, 'PDM']] as const).map(([hint, run, what]) => ({
+                label: `Export ${what} for PowerDesigner`,
+                icon: <FileDown size={ICON} />,
+                hint,
+                onSelect: () =>
+                  void run()
                     .then((msg) => msg && setNotice(msg))
                     .catch((err: Error) => showError(`Export failed: ${err.message}`)),
-              },
+              })),
               ...(['png', 'svg'] as const).map((format) => ({
                 label: `Export diagram as ${format.toUpperCase()}`,
                 icon: <ImageIcon size={ICON} />,

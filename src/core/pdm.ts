@@ -1,7 +1,7 @@
 // Physical Data Model (PDM) — the tables generated from a CDM (SPEC §6).
 // DBMS-independent: columns keep the conceptual type; each DDL dialect maps it to SQL.
 
-import type { DataType, Id } from './metamodel'
+import type { DataType, Id, Model, Point } from './metamodel'
 
 /** Where a PDM element comes from in the CDM, so the UI can point back to it. */
 export type PdmSource =
@@ -103,4 +103,24 @@ export function columnFlags(table: PdmTable): Map<string, string[]> {
   table.foreignKeys.forEach((fk, i) => fk.columns.forEach((c) => push(c, table.foreignKeys.length > 1 ? `fk${i + 1}` : 'fk')))
   table.alternateKeys.forEach((ak, i) => ak.columns.forEach((c) => push(c, table.alternateKeys.length > 1 ? `ak${i + 1}` : 'ak')))
   return flags
+}
+
+/** Tables are wider than entities: spread the conceptual layout a little. */
+const SPREAD = { x: 1.3, y: 1.12 }
+
+/** Where a table is drawn: at its entity, or between the two entities of a join table's relationship. */
+export function tablePosition(m: Model, t: PdmTable): Point {
+  const spread = (p: Point) => ({ x: Math.round(p.x * SPREAD.x), y: Math.round(p.y * SPREAD.y) })
+  if (t.source.kind === 'entity') {
+    const id = t.source.id
+    const e = m.entities.find((x) => x.id === id)
+    return spread(e?.position ?? { x: 0, y: 0 })
+  }
+  const relId = t.source.kind === 'relationship' ? t.source.id : ''
+  const r = m.relationships.find((x) => x.id === relId)
+  const a = m.entities.find((e) => e.id === r?.entityA)?.position ?? { x: 0, y: 0 }
+  const b = m.entities.find((e) => e.id === r?.entityB)?.position ?? a
+  const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }
+  // A reflexive join table would sit on top of its entity: move it aside.
+  return spread(r?.entityA === r?.entityB ? { x: mid.x + 260, y: mid.y } : mid)
 }
