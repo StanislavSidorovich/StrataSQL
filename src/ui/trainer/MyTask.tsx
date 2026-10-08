@@ -1,9 +1,11 @@
 // “My task”: the student's own task text. A dialog to paste or load it, the text with phrases the
-// student tags by selecting them, and the coverage list (tagged phrases vs the model).
+// student tags by selecting them, Compare my tagging (questions from the text cues, `textcues.ts`),
+// optional dotted hints, and the coverage list (tagged phrases vs the model).
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { create } from 'zustand'
 import { coverage, MARK_TAGS, MY_TASK_ID, paragraphs, type Mark, type MarkTag } from '../../data/mytask'
+import { compareTagging, findCues, type Cue } from '../../data/textcues'
 import { useEditor } from '../store'
 import { confirmDiscardTask, useTrainer } from './trainerStore'
 
@@ -55,7 +57,7 @@ export function MyTaskDialog() {
       <div className="modal mytask-dialog" onClick={(e) => e.stopPropagation()}>
         <h2>My task</h2>
         <p className="muted text-sm">
-          Paste the text of your own task (homework, a project, an idea) or load a <b>.txt</b> / <b>.md</b> file. It stays in this browser. There is no reference answer: you tag the phrases yourself, and StrataSQL shows what is not in your model yet.
+          Paste the text of your own task (homework, a project, an idea) or load a <b>.txt</b> / <b>.md</b> file. It stays in this browser. There is no reference answer: you tag the phrases yourself, StrataSQL asks about phrases it noticed (Compare my tagging) and shows what is not in your model yet.
         </p>
         <label className="field">
           <span className="field-label">Title</span>
@@ -144,7 +146,22 @@ export function MyTaskText() {
   const myTask = useTrainer((s) => s.myTask)!
   const { markPhrase, unmarkPhrase } = useTrainer.getState()
   const [pending, setPending] = useState<Pending | null>(null)
+  const [showHints, setShowHints] = useState(false)
+  const [compared, setCompared] = useState(false)
+  const [showAll, setShowAll] = useState(false)
   const ps = useMemo(() => paragraphs(myTask.text), [myTask.text])
+  const cues = useMemo(() => findCues(ps), [ps])
+  // Recomputed as the student tags, so an answered question goes away.
+  const questions = useMemo(() => (compared ? compareTagging(myTask.marks, cues) : []), [compared, myTask.marks, cues])
+  const textRef = useRef<HTMLDivElement>(null)
+
+  /** Opens the tag bar on a cue's words (or on the student's tag there), as if the student had selected them. */
+  const openCue = (c: Cue) => {
+    const index = myTask.marks.findIndex((m) => m.p === c.p && m.start < c.end && m.end > c.start)
+    const m = myTask.marks[index]
+    setPending(m ? { p: m.p, start: m.start, end: m.end, text: m.text, index } : { p: c.p, start: c.start, end: c.end, text: c.text })
+    textRef.current?.querySelector(`[data-p="${c.p}"]`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+  }
 
   const onSelect = () => {
     const sel = window.getSelection()
@@ -187,12 +204,36 @@ export function MyTaskText() {
 
   return (
     <>
-      <div className="trainer-spec walk-spec mytask-text" onMouseUp={onSelect}>
+      <div ref={textRef} className="trainer-spec walk-spec mytask-text" onMouseUp={onSelect}>
         {ps.map((t, p) => {
           const marks = myTask.marks.map((m, index) => ({ m, index })).filter((x) => x.m.p === p)
+          // Dotted hints only where the student has not tagged anything.
+          const hints = showHints ? cues.filter((c) => c.p === p && !marks.some(({ m }) => m.start < c.end && m.end > c.start)) : []
+          const items = [...marks.map((mark) => ({ start: mark.m.start, mark })), ...hints.map((cue) => ({ start: cue.start, cue }))].sort((a, b) => a.start - b.start)
           const parts: ReactNode[] = []
           let at = 0
-          for (const { m, index } of marks) {
+          for (const item of items) {
+            if ('cue' in item) {
+              const c = item.cue
+              if (c.start > at) parts.push(t.slice(at, c.start))
+              parts.push(
+                <span
+                  key={`cue-${c.start}`}
+                  role="button"
+                  tabIndex={0}
+                  className={`spec-span is-cue cue-${c.tag} ${pending && pending.index === undefined && pending.p === p && pending.start === c.start ? 'is-open' : ''}`}
+                  title={`Hint: ${c.tag}? ${c.why}. Click to tag it.`}
+                  onMouseUp={(e) => e.stopPropagation()}
+                  onClick={() => openCue(c)}
+                  onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), openCue(c))}
+                >
+                  {c.text}
+                </span>,
+              )
+              at = c.end
+              continue
+            }
+            const { m, index } = item.mark
             if (m.start > at) parts.push(t.slice(at, m.start))
             parts.push(
               <span
@@ -248,6 +289,50 @@ export function MyTaskText() {
         </div>
       ) : (
         <p className="muted text-xs">Select words in the text to tag them (entity, attribute, identifier, relationship…). Keys 1–6 pick the tag.</p>
+      )}
+      <div className="mytask-compare">
+        <button
+          type="button"
+          className="btn btn-small"
+          disabled={myTask.marks.length === 0}
+          title={myTask.marks.length === 0 ? 'Tag some phrases yourself first' : 'Questions where the text and your tags differ'}
+          onClick={() => {
+            setCompared(true)
+            setShowAll(false)
+          }}
+        >
+          Compare my tagging
+        </button>
+        <label className="text-xs mytask-hints-toggle" title="Dotted lines under phrases StrataSQL noticed and you have not tagged">
+          <input type="checkbox" checked={showHints} onChange={(e) => setShowHints(e.target.checked)} /> Show hints in the text
+        </label>
+      </div>
+      {compared && (
+        <div className="mytask-questions">
+          {questions.length === 0 ? (
+            <p className="trainer-done">✓ Your tags cover everything StrataSQL noticed in the text.</p>
+          ) : (
+            <>
+              <p className="text-xs font-semibold">{questions.length} question(s) about your tagging</p>
+              <ul className="mytask-list">
+                {(showAll ? questions : questions.slice(0, 8)).map((q, k) => (
+                  <li key={k}>
+                    <button type="button" className={`spec-span tag-${q.mark?.tag ?? q.cue.tag} ${q.mark ? '' : 'is-cue'}`} onClick={() => openCue(q.cue)} title="Show it in the text and tag it">
+                      {q.cue.text}
+                    </button>{' '}
+                    <span className="muted">— {q.text}</span>
+                  </li>
+                ))}
+              </ul>
+              {questions.length > 8 && !showAll && (
+                <button type="button" className="link text-xs" onClick={() => setShowAll(true)}>
+                  Show all {questions.length}
+                </button>
+              )}
+            </>
+          )}
+          <p className="muted text-xs">StrataSQL reads the text with simple word patterns, no AI, so a question can be wrong. Your judgement wins: a question you disagree with can stay.</p>
+        </div>
       )}
     </>
   )

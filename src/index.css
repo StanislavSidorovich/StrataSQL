@@ -2334,6 +2334,30 @@ body {
   border-radius: 8px;
   background: var(--panel-bg);
 }
+/* Hints from the text cues: dotted, no fill — the student's own tags stay the solid ones. */
+.spec-span.is-cue { background: none; box-shadow: none; text-decoration: underline dotted 2px; text-underline-offset: 3px; }
+.spec-span.is-cue:hover { background: var(--accent-soft); }
+.spec-span.is-cue.cue-entity, .spec-span.is-cue.tag-entity, .spec-span.is-cue.cue-identifier, .spec-span.is-cue.tag-identifier { text-decoration-color: var(--tag-entity); }
+.spec-span.is-cue.cue-attribute, .spec-span.is-cue.tag-attribute { text-decoration-color: var(--tag-attribute); }
+.spec-span.is-cue.cue-relationship, .spec-span.is-cue.tag-relationship { text-decoration-color: var(--tag-relationship); }
+.spec-span.is-cue.cue-inheritance, .spec-span.is-cue.tag-inheritance { text-decoration-color: var(--tag-inheritance); }
+.spec-span.is-cue.cue-rule, .spec-span.is-cue.tag-rule { text-decoration-color: var(--tag-rule); }
+.mytask-compare {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+.mytask-hints-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+.mytask-questions {
+  margin-top: 6px;
+}
 .mytask-list {
   margin: 0 0 6px;
   padding-left: 16px;
