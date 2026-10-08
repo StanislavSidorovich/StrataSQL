@@ -297,6 +297,7 @@ Cancel: open it as an ordinary model.`)) {
   return (
     <div className="app-root flex flex-col">
       <header className="toolbar" ref={toolbar}>
+        <div className="toolbar-row">
         <div className="brand">
           Strata<span>SQL</span>
         </div>
@@ -388,10 +389,12 @@ Cancel: open it as an ordinary model.`)) {
           </span>
           <div className="segmented" role="radiogroup" aria-labelledby="link-as">
             <button type="button" role="radio" aria-checked={linkKind === 'relationship'} className={linkKind === 'relationship' ? 'on' : ''} onClick={() => setLinkKind('relationship')} title="Dragging from the ● handle of an entity to another entity creates a relationship">
-              Relationship
+              <span className="label-wide">Relationship</span>
+              <span className="label-tight">Rel.</span>
             </button>
             <button type="button" role="radio" aria-checked={linkKind === 'inheritance'} className={linkKind === 'inheritance' ? 'on' : ''} onClick={() => setLinkKind('inheritance')} title="Dragging from the ● handle of a child entity to its parent creates an inheritance">
-              Inheritance
+              <span className="label-wide">Inheritance</span>
+              <span className="label-tight">Inh.</span>
             </button>
           </div>
         </div>
@@ -452,6 +455,7 @@ Cancel: open it as an ordinary model.`)) {
           <button type="button" className="btn btn-icon" onClick={toggleTheme} title="Toggle light/dark theme" aria-label="Toggle light/dark theme">
             {dark ? <Sun size={ICON} aria-hidden /> : <Moon size={ICON} aria-hidden />}
           </button>
+        </div>
         </div>
       </header>
 

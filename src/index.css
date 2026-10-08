@@ -114,14 +114,25 @@ body {
 
 /* ------------------------------------------------------------ toolbar */
 
+/* The toolbar is a size container: its breakpoints below follow its own width, which the text size
+   (“Aa”, zoom) shrinks — so a larger text switches to shorter labels instead of a second row. */
 .toolbar {
+  container: toolbar / inline-size;
+  padding: 8px 14px;
+  background: var(--panel-bg);
+  border-bottom: 1px solid var(--panel-border);
+}
+.toolbar-row {
   display: flex;
   align-items: center;
   gap: 14px;
   flex-wrap: wrap;
-  padding: 8px 14px;
-  background: var(--panel-bg);
-  border-bottom: 1px solid var(--panel-border);
+}
+/* The model name takes only the space left over (basis 0) and ends in “…”, so it never pushes the
+   buttons onto a second row; a second row comes only when the buttons themselves do not fit. */
+.toolbar-row > .toolbar-model {
+  flex: 1 1 0;
+  justify-content: flex-end;
 }
 .brand {
   font-weight: 700;
@@ -141,6 +152,7 @@ body {
 }
 .toolbar-model-name {
   max-width: 180px;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -211,8 +223,9 @@ body {
   width: 16px;
   color: var(--muted);
 }
-/* Short labels for narrow screens (CDM / PDM), see the toolbar breakpoints. */
-.label-short {
+/* Short labels for narrow screens (CDM / PDM; Rel. / Inh. one step later), see the toolbar breakpoints. */
+.label-short,
+.label-tight {
   display: none;
 }
 .btn-small {
@@ -599,24 +612,27 @@ body {
   padding: 4px 7px;
 }
 
-/* Toolbar on one row down to a 1024 px tablet: tighter below 1440 px, short labels below 1200 px, no brand below 1100 px, icons only below 900 px. */
-@media (max-width: 1439px) {
-  .toolbar {
+/* Toolbar on one row down to a 1024 px tablet: tighter below 1440 px, short labels below 1200 px, no brand below 1100 px, icons only below 900 px.
+   Container queries: the widths are the toolbar's own, after the text size zoom. */
+@container toolbar (max-width: 1439px) {
+  .toolbar-row {
     gap: 10px;
   }
   .toolbar-model-name {
-    display: none;
+    max-width: 120px;
   }
 }
-@media (max-width: 1279px) {
+@container toolbar (max-width: 1279px) {
   .menu .btn-icon .label-long {
     display: none;
   }
 }
-@media (max-width: 1199px) {
-  .toolbar {
+@container toolbar (max-width: 1199px) {
+  .toolbar-row {
     gap: 8px;
-    padding: 8px 10px;
+  }
+  .toolbar-model-name {
+    display: none;
   }
   .label-long {
     display: none;
@@ -628,15 +644,29 @@ body {
     display: none;
   }
 }
-@media (max-width: 1099px) {
+@container toolbar (max-width: 1099px) {
+  .toolbar-row {
+    gap: 6px;
+  }
+  .label-wide {
+    display: none;
+  }
+  .label-tight {
+    display: inline;
+  }
   .brand,
   .saved-label {
     display: none;
   }
 }
-@media (max-width: 899px) {
+@container toolbar (max-width: 899px) {
   .btn-icon:not(.keep-label) > span:not(.menu-caret) {
     display: none;
+  }
+}
+@media (max-width: 1199px) {
+  .toolbar {
+    padding: 8px 10px;
   }
 }
 .table-node {
