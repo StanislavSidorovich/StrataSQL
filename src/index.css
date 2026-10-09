@@ -140,6 +140,48 @@ body {
 .toolbar-right {
   justify-content: flex-end;
 }
+.toolbar-center {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+/* The draw tools docked in the top bar: same controls, no floating card. */
+.draw-docked {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.draw-grip {
+  display: inline-flex;
+  align-self: stretch;
+  align-items: center;
+  margin-right: -2px;
+  color: var(--muted);
+  cursor: grab;
+  touch-action: none;
+}
+.draw-grip:hover {
+  color: var(--accent);
+}
+.draw-dragging,
+.draw-dragging * {
+  cursor: grabbing !important;
+  user-select: none;
+}
+/* While the bar is dragged, the top bar shows where it can go. */
+.draw-dragging .toolbar {
+  outline: 2px dashed var(--accent);
+  outline-offset: -3px;
+}
+.draw-dragging .draw-docked {
+  position: relative;
+}
+.draw-dragging .canvas-tools,
+.draw-dragging .draw-docked {
+  z-index: 80;
+  opacity: 0.85;
+}
 .toolbar-right > .toolbar-model {
   flex: 0 1 auto;
 }

@@ -9,7 +9,7 @@ import { decodeShare, SHARE_PARAM, shareDataFromHash, shareUrl } from '../core/s
 import { FEEDBACK_URL } from './AuthorLinks'
 import { applyUpdate, installApp, useUpdateReady } from '../pwa/register'
 import { Canvas } from './canvas/Canvas'
-import { CDM_FIT, DrawTools } from './canvas/CanvasTools'
+import { CDM_FIT, DrawTools, setFitForDock, useDrawDock } from './canvas/CanvasTools'
 import { exportDiagram } from './exportImage'
 import { HelpDrawer } from './help/HelpDrawer'
 import { IssuesDock } from './lint/IssuesPanel'
@@ -143,10 +143,21 @@ function Editor() {
   const fileInput = useRef<HTMLInputElement>(null)
   // The toolbar's height (it wraps at large text sizes or on narrow screens): the help drawer starts below it.
   const toolbar = useRef<HTMLElement>(null)
+  // The draw tools may be docked in the top bar (the student drags them there) while the bar is wide
+  // enough for them: its own width after the text size zoom; narrower, they float on the canvas.
+  const [drawDocked, setDrawDocked] = useDrawDock()
+  const [barWide, setBarWide] = useState(true)
+  const docked = drawDocked && barWide
+  setFitForDock(docked)
   useEffect(() => {
     const el = toolbar.current
     if (!el) return
-    const ro = new ResizeObserver(() => document.documentElement.style.setProperty('--toolbar-h', `${el.getBoundingClientRect().height}px`))
+    const ro = new ResizeObserver(() => {
+      const r = el.getBoundingClientRect()
+      document.documentElement.style.setProperty('--toolbar-h', `${r.height}px`)
+      const zoom = Number(getComputedStyle(document.documentElement).getPropertyValue('--ui-zoom')) || 1
+      setBarWide(r.width / zoom >= 1280)
+    })
     ro.observe(el)
     return () => ro.disconnect()
   }, [])
@@ -428,6 +439,7 @@ Cancel: open it as an ordinary model.`)) {
           <span>Trainer</span>
         </button>
         </div>
+        <div className="toolbar-center">
         <div className="segmented view-switch" role="tablist" aria-label="View" data-tour="views">
           {VIEWS.map((v) => (
             <button key={v.id} type="button" role="tab" aria-selected={view === v.id} className={view === v.id ? 'on' : ''} onClick={() => setView(v.id)} title={v.title}>
@@ -435,6 +447,12 @@ Cancel: open it as an ordinary model.`)) {
               <span className="label-short">{v.short}</span>
             </button>
           ))}
+        </div>
+        {docked && (
+          <div className={view === 'cdm' && !veiled ? '' : 'invisible'}>
+            <DrawTools onAddEntity={addEntityAtCenter} docked onDock={setDrawDocked} canDock={barWide} />
+          </div>
+        )}
         </div>
         <div className="toolbar-side toolbar-right">
         <SavedState
@@ -500,7 +518,7 @@ Cancel: open it as an ordinary model.`)) {
         <main className="relative flex min-w-0 flex-1 flex-col">
           <div className="canvas-area relative min-h-0 flex-1" data-tour="canvas">
           {view === 'cdm' && <Canvas dark={dark} />}
-          {view === 'cdm' && !veiled && <DrawTools onAddEntity={addEntityAtCenter} />}
+          {view === 'cdm' && !veiled && !docked && <DrawTools onAddEntity={addEntityAtCenter} docked={false} onDock={setDrawDocked} canDock={barWide} />}
           {view === 'pdm' && <PdmCanvas dark={dark} />}
           {view === 'sql' && <SqlView />}
           {model.entities.length === 0 && view !== 'sql' && (
