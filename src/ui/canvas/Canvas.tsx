@@ -1,6 +1,5 @@
 import {
   Background,
-  Controls,
   MiniMap,
   ReactFlow,
   useNodesState,
@@ -15,6 +14,7 @@ import type { Model } from '../../core/metamodel'
 import { addEntity, addRelationship, linkInheritance, updateEntity, updateInheritance } from '../../core/ops'
 import { FkEdge, TableNode } from '../pdm/PdmCanvas'
 import { useEditor, type Selection } from '../store'
+import { CanvasControls, CDM_FIT } from './CanvasTools'
 import { EntityNode, type EntityNodeType } from './EntityNode'
 import { InheritanceEdge, type InheritanceEdgeType } from './InheritanceEdge'
 import { InheritanceNode, type InheritanceNodeType } from './InheritanceNode'
@@ -93,7 +93,6 @@ function buildEdges(m: Model, sel: Selection): Edge[] {
 }
 
 // Readable on open: never zoom past 100 % (one new entity used to fill the screen).
-const FIT = { padding: 0.15, maxZoom: 1 }
 // A small model fits on screen; the minimap would only hide part of it.
 const MINIMAP_FROM = 10
 
@@ -220,12 +219,12 @@ export function Canvas({ dark }: { dark: boolean }) {
         multiSelectionKeyCode="Shift"
         colorMode={dark ? 'dark' : 'light'}
         fitView
-        fitViewOptions={FIT}
+        fitViewOptions={CDM_FIT}
         minZoom={0.2}
       >
         <Background gap={20} />
         <KeepOnScreen />
-        <Controls showInteractive={false} />
+        <CanvasControls fit={CDM_FIT} history />
         {nodes.length >= MINIMAP_FROM && <MiniMap pannable zoomable className="!bg-[var(--panel-bg)]" />}
       </ReactFlow>
     </div>

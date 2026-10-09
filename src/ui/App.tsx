@@ -1,5 +1,5 @@
 import { ReactFlowProvider, useReactFlow } from '@xyflow/react'
-import { BookOpen, Check, FilePen, CircleHelp, Database, Download, FileDown, FilePlus, FolderOpen, GraduationCap, Image as ImageIcon, Info, Keyboard, Link2, Maximize2, MessageSquare, Moon, Play, Plus, Redo2, Save, SaveAll, Sun, Trash2, Undo2, X } from 'lucide-react'
+import { BookOpen, Check, FilePen, CircleHelp, Database, Download, FileDown, FilePlus, FolderOpen, GraduationCap, Image as ImageIcon, Info, Keyboard, Link2, MessageSquare, Play, Save, SaveAll, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { emptyModel } from '../core/metamodel'
 import { addEntity, removeEntity, removeInheritance, removeRelationship } from '../core/ops'
@@ -9,6 +9,7 @@ import { decodeShare, SHARE_PARAM, shareDataFromHash, shareUrl } from '../core/s
 import { FEEDBACK_URL } from './AuthorLinks'
 import { applyUpdate, installApp, useUpdateReady } from '../pwa/register'
 import { Canvas } from './canvas/Canvas'
+import { CDM_FIT, DrawTools } from './canvas/CanvasTools'
 import { exportDiagram } from './exportImage'
 import { HelpDrawer } from './help/HelpDrawer'
 import { IssuesDock } from './lint/IssuesPanel'
@@ -69,7 +70,7 @@ function SavedState({ name, onClose }: { name: string; onClose?: () => void }) {
   const savedAt = useEditor((s) => s.savedAt)
   const time = savedAt ? new Date(savedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''
   return (
-    <div className="toolbar-model ml-auto">
+    <div className="toolbar-model">
       <span className="toolbar-model-name" title="Model name">
         {name}
       </span>
@@ -127,9 +128,6 @@ function Editor() {
   const updateReady = useUpdateReady()
   const model = useEditor((s) => s.model)
   const selection = useEditor((s) => s.selection)
-  const canUndo = useEditor((s) => s.past.length > 0)
-  const canRedo = useEditor((s) => s.future.length > 0)
-  const linkKind = useEditor((s) => s.linkKind)
   const error = useEditor((s) => s.error)
   const view = useEditor((s) => s.view)
   const helpOpen = useEditor((s) => s.help !== null)
@@ -154,7 +152,7 @@ function Editor() {
   }, [])
   const flow = useReactFlow()
 
-  const fit = () => setTimeout(() => flow.fitView({ padding: 0.15, maxZoom: 1, duration: 300 }), 50)
+  const fit = () => setTimeout(() => flow.fitView({ ...CDM_FIT, duration: 300 }), 50)
 
   const openExample = (build: () => ReturnType<typeof emptyModel>) => {
     if (!leaveTrainer()) return
@@ -311,6 +309,11 @@ Cancel: open it as an ordinary model.`)) {
         if (sel?.kind !== 'entity') return
         e.preventDefault()
         duplicateSelectedEntity(sel.id)
+      } else if (!mod && !e.altKey && useEditor.getState().view === 'cdm' && ['e', 'r', 'i'].includes(e.key.toLowerCase())) {
+        const k = e.key.toLowerCase()
+        e.preventDefault() // the new entity's name field takes the focus: the E must not land in it
+        if (k === 'e') addEntityAtCenter()
+        else setLinkKind(k === 'r' ? 'relationship' : 'inheritance')
       } else if (e.key === '?') {
         useOnboarding.getState().showShortcuts(true)
       } else if ((e.key === 'Delete' || e.key === 'Backspace') && useEditor.getState().view === 'cdm') {
@@ -344,6 +347,10 @@ Cancel: open it as an ordinary model.`)) {
         <div className="brand">
           Strata<span>SQL</span>
         </div>
+        <SavedState
+          name={model.name}
+          onClose={model.entities.length > 0 ? () => leaveTrainer() && load(emptyModel()) : undefined}
+        />
         <div className="toolbar-group">
           <Menu
             label="File"
@@ -431,50 +438,7 @@ Cancel: open it as an ordinary model.`)) {
           <GraduationCap size={ICON} aria-hidden />
           <span>Trainer</span>
         </button>
-        {view === 'cdm' && (
-        <div className="toolbar-group" data-tour="add">
-          <button type="button" className="btn btn-primary btn-icon keep-label" onClick={addEntityAtCenter} title="Add an entity (or double-click the canvas)">
-            <Plus size={ICON} aria-hidden />
-            <span>Entity</span>
-          </button>
-          <span className="toolbar-label" id="link-as">
-            Link as:
-          </span>
-          <div className="segmented" role="radiogroup" aria-labelledby="link-as">
-            <button type="button" role="radio" aria-checked={linkKind === 'relationship'} className={linkKind === 'relationship' ? 'on' : ''} onClick={() => setLinkKind('relationship')} title="Dragging from the ● handle of an entity to another entity creates a relationship">
-              <span className="label-wide">Relationship</span>
-              <span className="label-tight">Rel.</span>
-            </button>
-            <button type="button" role="radio" aria-checked={linkKind === 'inheritance'} className={linkKind === 'inheritance' ? 'on' : ''} onClick={() => setLinkKind('inheritance')} title="Dragging from the ● handle of a child entity to its parent creates an inheritance">
-              <span className="label-wide">Inheritance</span>
-              <span className="label-tight">Inh.</span>
-            </button>
-          </div>
-        </div>
-        )}
-        <div className="toolbar-group">
-          <button type="button" className="btn btn-icon" onClick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)" aria-label="Undo">
-            <Undo2 size={ICON} aria-hidden />
-          </button>
-          <button type="button" className="btn btn-icon" onClick={redo} disabled={!canRedo} title="Redo (Ctrl+Y)" aria-label="Redo">
-            <Redo2 size={ICON} aria-hidden />
-          </button>
-          {view === 'cdm' && (
-            <button type="button" className="btn btn-icon" onClick={deleteSelection} disabled={!selection} title={selection ? `Delete the selected ${selection.kind} (Delete)` : 'Delete: select an entity or a line first'} aria-label="Delete the selection">
-              <Trash2 size={ICON} aria-hidden />
-            </button>
-          )}
-          {(view === 'cdm' || view === 'pdm') && (
-            <button type="button" className="btn btn-icon" onClick={() => flow.fitView({ padding: 0.15, maxZoom: 1, duration: 300 })} title="Fit the model on screen" aria-label="Fit">
-              <Maximize2 size={ICON} aria-hidden />
-            </button>
-          )}
-        </div>
-        <SavedState
-          name={model.name}
-          onClose={model.entities.length > 0 ? () => leaveTrainer() && load(emptyModel()) : undefined}
-        />
-        <div className="toolbar-group">
+        <div className="toolbar-group ml-auto">
           {updateReady && (
             <button type="button" className="btn btn-primary" onClick={applyUpdate} title="A new version of StrataSQL is ready. Your model is kept.">
               Update
@@ -507,10 +471,7 @@ Cancel: open it as an ordinary model.`)) {
               { label: 'Quaera: SQL & analytics trainer ↗', hint: 'quaera.app', onSelect: () => window.open('https://quaera.app', '_blank', 'noopener') },
             ]}
           />
-          <AppearanceButton dark={dark} />
-          <button type="button" className="btn btn-icon" onClick={toggleTheme} title="Toggle light/dark theme" aria-label="Toggle light/dark theme">
-            {dark ? <Sun size={ICON} aria-hidden /> : <Moon size={ICON} aria-hidden />}
-          </button>
+          <AppearanceButton dark={dark} onToggleTheme={toggleTheme} />
         </div>
         </div>
       </header>
@@ -533,8 +494,9 @@ Cancel: open it as an ordinary model.`)) {
         )}
         <NameSuggestionLists />
         <main className="relative flex min-w-0 flex-1 flex-col">
-          <div className="relative min-h-0 flex-1" data-tour="canvas">
+          <div className="canvas-area relative min-h-0 flex-1" data-tour="canvas">
           {view === 'cdm' && <Canvas dark={dark} />}
+          {view === 'cdm' && !veiled && <DrawTools onAddEntity={addEntityAtCenter} />}
           {view === 'pdm' && <PdmCanvas dark={dark} />}
           {view === 'sql' && <SqlView />}
           {model.entities.length === 0 && view !== 'sql' && (

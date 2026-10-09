@@ -4,7 +4,6 @@
 import {
   Background,
   BaseEdge,
-  Controls,
   Handle,
   MiniMap,
   Position,
@@ -20,6 +19,7 @@ import { useEffect, useMemo } from 'react'
 import { sqlServerType } from '../../core/ddl/sqlserver'
 import type { Model } from '../../core/metamodel'
 import { columnFlags, tablePosition, type Pdm, type PdmForeignKey, type PdmTable } from '../../core/pdm'
+import { CanvasControls } from '../canvas/CanvasTools'
 import { add, edgeEnds, perp, scale, sub, unit } from '../canvas/geometry'
 import { EntityNode } from '../canvas/EntityNode'
 import { InheritanceNode } from '../canvas/InheritanceNode'
@@ -119,7 +119,7 @@ export function PdmCanvas({ dark }: { dark: boolean }) {
       >
         <Background gap={20} />
         <KeepOnScreen />
-        <Controls showInteractive={false} />
+        <CanvasControls fit={FIT} />
         {nodes.length >= MINIMAP_FROM && <MiniMap pannable zoomable className="!bg-[var(--panel-bg)]" />}
       </ReactFlow>
     </div>

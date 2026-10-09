@@ -14,6 +14,7 @@ import { confirmDiscardTask, exerciseFor, isRightTag, isVeiled, openPathStep, ta
 import { MyTaskCoverage, MyTaskEntry, MyTaskText, openMyTaskDialog } from './MyTask'
 import { WalkthroughPane } from './Walkthrough'
 import { LessonList, LessonPane, sessionLesson } from './Lesson'
+import { CDM_FIT } from '../canvas/CanvasTools'
 
 const TAG_LABEL: Record<Tag, string> = Object.fromEntries(TAGS.map((t) => [t.id, t.label])) as Record<Tag, string>
 
@@ -282,7 +283,7 @@ function TaskPane({ c, level }: { c: TrainerCase; level: Level }) {
   const go = (l: Level) => {
     if (!confirmDiscardTask()) return
     start(c.id, l)
-    setTimeout(() => flow.fitView({ padding: 0.15, maxZoom: 1, duration: 300 }), 50)
+    setTimeout(() => flow.fitView({ ...CDM_FIT, duration: 300 }), 50)
   }
   const info = LEVELS[level]
   return (

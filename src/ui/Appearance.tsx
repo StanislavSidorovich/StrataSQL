@@ -1,8 +1,9 @@
-// Text size and colours (toolbar "Aa"). Text size zooms the panels; the diagram's text grows with it too
+// Theme, text size and colours (toolbar "Aa"). Text size zooms the panels; the diagram's text grows with it too
 // (font size, not zoom — React Flow measures the nodes again), unless the student turns that off.
 // Colours are kept per theme, so a pale canvas chosen in light mode does not end up behind light text in dark mode.
 // Input fields keep their own white (or dark) background.
 
+import { Moon, Sun } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useKeepInView } from './useKeepInView'
 
@@ -60,7 +61,7 @@ function applyLook(look: Look, theme: Theme) {
   set('--panel-bg', look.panels[theme])
 }
 
-export function AppearanceButton({ dark }: { dark: boolean }) {
+export function AppearanceButton({ dark, onToggleTheme }: { dark: boolean; onToggleTheme: () => void }) {
   const theme: Theme = dark ? 'dark' : 'light'
   const [look, setLook] = useState(readLook)
   const [open, setOpen] = useState(false)
@@ -123,11 +124,22 @@ export function AppearanceButton({ dark }: { dark: boolean }) {
 
   return (
     <div className="menu" ref={root}>
-      <button type="button" className="btn" aria-haspopup="dialog" aria-expanded={open} title="Text size and colours" onClick={() => setOpen((o) => !o)}>
+      <button type="button" className="btn" aria-haspopup="dialog" aria-expanded={open} title="Appearance: light or dark theme, text size, colours" onClick={() => setOpen((o) => !o)}>
         Aa
       </button>
       {open && (
-        <div ref={panel} role="dialog" aria-label="Text size and colours" className="menu-list menu-right look-panel">
+        <div ref={panel} role="dialog" aria-label="Appearance" className="menu-list menu-right look-panel">
+          <div className="look-row">
+            <div className="look-label">Theme</div>
+            <div className="segmented self-start" role="radiogroup" aria-label="Theme">
+              {([false, true] as const).map((d) => (
+                <button key={String(d)} type="button" role="radio" aria-checked={dark === d} className={`btn-icon ${dark === d ? 'on' : ''}`} onClick={() => dark !== d && onToggleTheme()}>
+                  {d ? <Moon size={14} aria-hidden /> : <Sun size={14} aria-hidden />}
+                  <span>{d ? 'Dark' : 'Light'}</span>
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="look-row">
             <div className="look-label">Text size</div>
             <div className="segmented">

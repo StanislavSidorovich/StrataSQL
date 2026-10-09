@@ -128,11 +128,10 @@ body {
   gap: 14px;
   flex-wrap: wrap;
 }
-/* The model name takes only the space left over (basis 0) and ends in “…”, so it never pushes the
-   buttons onto a second row; a second row comes only when the buttons themselves do not fit. */
+/* The model name sits next to the logo (as in Figma) and is the one item that shrinks: it ends in “…”
+   instead of pushing the buttons onto a second row. */
 .toolbar-row > .toolbar-model {
-  flex: 1 1 0;
-  justify-content: flex-end;
+  flex: 0 1 auto;
 }
 .brand {
   font-weight: 700;
@@ -151,7 +150,9 @@ body {
   white-space: nowrap;
 }
 .toolbar-model-name {
-  max-width: 180px;
+  max-width: 260px;
+  color: var(--text);
+  font-weight: 500;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -223,10 +224,55 @@ body {
   width: 16px;
   color: var(--muted);
 }
-/* Short labels for narrow screens (CDM / PDM; Rel. / Inh. one step later), see the toolbar breakpoints. */
-.label-short,
-.label-tight {
+/* Short labels for narrow screens (CDM / PDM), see the toolbar breakpoints. */
+.label-short {
   display: none;
+}
+
+/* Drawing tools float on top of the conceptual canvas (Excalidraw-style); the canvas area is a size
+   container, so a narrow canvas (open trainer column, tablet) drops the “Link as:” label first. */
+.canvas-area {
+  container: canvas / inline-size;
+}
+.canvas-tools {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 6px;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  box-shadow: 0 2px 10px rgb(0 0 0 / 0.08);
+  white-space: nowrap;
+}
+.canvas-tools-sep {
+  width: 1px;
+  align-self: stretch;
+  margin: 2px 2px;
+  background: var(--panel-border);
+}
+.canvas-tools .toolbar-label {
+  margin-left: 0;
+}
+@container canvas (max-width: 479px) {
+  .canvas-tools .toolbar-label,
+  .canvas-tools-sep {
+    display: none;
+  }
+}
+/* Lucide icons in the React Flow corner controls (undo / redo) are outlines, not filled shapes. */
+.react-flow__controls-button svg.lucide {
+  fill: none;
+  max-width: 14px;
+  max-height: 14px;
+}
+.react-flow__controls-button.control-history {
+  border-top: 2px solid var(--panel-border);
 }
 .btn-small {
   padding: 1px 8px;
@@ -612,55 +658,51 @@ body {
   padding: 4px 7px;
 }
 
-/* Toolbar on one row down to a 1024 px tablet: tighter below 1440 px, short labels below 1200 px, no brand below 1100 px, icons only below 900 px.
-   Container queries: the widths are the toolbar's own, after the text size zoom. */
-@container toolbar (max-width: 1439px) {
+/* The top bar holds only the document (name, File, Examples, views, Trainer, Help, Aa); the drawing
+   tools live on the canvas. So it fits on one row with full labels down to a 1024 px tablet, and only
+   narrower bars shorten. Container queries: the widths are the toolbar's own, after the text size zoom. */
+@container toolbar (max-width: 1199px) {
   .toolbar-row {
     gap: 10px;
   }
   .toolbar-model-name {
-    max-width: 120px;
+    max-width: 160px;
   }
 }
-@container toolbar (max-width: 1279px) {
-  .menu .btn-icon .label-long {
-    display: none;
-  }
-}
-@container toolbar (max-width: 1199px) {
-  .toolbar-row {
-    gap: 8px;
-  }
-  .toolbar-model-name {
-    display: none;
-  }
-  .label-long {
-    display: none;
-  }
-  .label-short {
-    display: inline;
-  }
-  .toolbar-label {
-    display: none;
-  }
-}
-@container toolbar (max-width: 1099px) {
+@container toolbar (max-width: 999px) {
   .toolbar-row {
     gap: 6px;
   }
-  .label-wide {
-    display: none;
-  }
-  .label-tight {
-    display: inline;
-  }
-  .brand,
+  .menu .btn-icon .label-long,
   .saved-label {
     display: none;
   }
 }
 @container toolbar (max-width: 899px) {
+  .label-long,
+  .brand {
+    display: none;
+  }
+  .label-short {
+    display: inline;
+  }
+}
+@container toolbar (max-width: 699px) {
+  .toolbar-model-name {
+    max-width: 70px;
+  }
+  .saved-state {
+    display: none;
+  }
+  .view-switch button {
+    padding: 4px 6px;
+  }
   .btn-icon:not(.keep-label) > span:not(.menu-caret) {
+    display: none;
+  }
+}
+@container toolbar (max-width: 639px) {
+  .toolbar .keep-label > span {
     display: none;
   }
 }
@@ -2262,6 +2304,7 @@ body {
 }
 /* Text size zooms the panels; the diagrams keep their own zoom (the tour card is placed by script, so it is left alone). */
 .toolbar,
+.canvas-tools,
 .dock-body,
 .issues-dock,
 .help-drawer,
