@@ -10,7 +10,7 @@ import {
   type NodeMouseHandler,
 } from '@xyflow/react'
 import { useCallback, useEffect, useMemo, useRef, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react'
-import type { Model } from '../../core/metamodel'
+import { CARD, type Model } from '../../core/metamodel'
 import { addEntity, addRelationship, linkInheritance, updateEntity, updateInheritance } from '../../core/ops'
 import { FkEdge, TableNode } from '../pdm/PdmCanvas'
 import { useEditor, type Selection } from '../store'
@@ -116,8 +116,13 @@ export function Canvas({ dark }: { dark: boolean }) {
   }, [model, selection, setNodes])
   const edges = useMemo(() => buildEdges(model, selection), [model, selection])
 
+  // A self-link ends on the node it started from, so the browser also sends that node a click: it must not replace the new link's selection.
+  const selfLinkedAt = useRef(0)
   const onNodeClick: NodeMouseHandler<AnyNode> = useCallback(
-    (_, node) => select(node.type === 'entity' ? { kind: 'entity', id: node.id } : { kind: 'inheritance', id: node.id }),
+    (_, node) => {
+      if (Date.now() - selfLinkedAt.current < 400) return
+      select(node.type === 'entity' ? { kind: 'entity', id: node.id } : { kind: 'inheritance', id: node.id })
+    },
     [select],
   )
 
@@ -143,18 +148,33 @@ export function Canvas({ dark }: { dark: boolean }) {
   )
 
   // Links are created by dragging from an entity's handle and dropping anywhere on another entity.
+  // Dropping on the "link to itself" target (or back on the same entity once the pointer has left the handle) makes a reflexive relationship; a plain click adds nothing.
+  const dragStart = useRef<{ x: number; y: number } | undefined>(undefined)
+  const onConnectStart = useCallback((event: MouseEvent | TouchEvent) => {
+    const p = 'touches' in event ? event.touches[0] : event
+    dragStart.current = { x: p.clientX, y: p.clientY }
+  }, [])
   const onConnectEnd = useCallback(
     (event: MouseEvent | TouchEvent, state: FinalConnectionState) => {
       const fromId = state.fromNode?.id
       const point = 'changedTouches' in event ? event.changedTouches[0] : event
       const el = document.elementFromPoint(point.clientX, point.clientY)
       const toId = el?.closest('.react-flow__node')?.getAttribute('data-id')
-      if (!fromId || !toId || fromId === toId) return
+      if (!fromId || !toId) return
       const { model: m, linkKind } = useEditor.getState()
       if (!m.entities.some((e) => e.id === toId)) return
+      const start = dragStart.current
+      const reflexive = fromId === toId
+      const onTarget = !!el?.closest('.self-drop')
+      if (reflexive && (linkKind !== 'relationship' || (!onTarget && (!start || Math.hypot(point.clientX - start.x, point.clientY - start.y) < 12)))) return
       if (linkKind === 'relationship') {
         let createdId = ''
-        if (apply((d) => (createdId = addRelationship(d, fromId, toId).id))) select({ kind: 'relationship', id: createdId })
+        // 1,1 on a self-link would need an endless chain of parents: the default is 0,1 (the top of the hierarchy has none).
+        const input = reflexive ? { cardinalityA: CARD.zeroOne } : undefined
+        if (apply((d) => (createdId = addRelationship(d, fromId, toId, input).id))) {
+          if (reflexive) selfLinkedAt.current = Date.now()
+          select({ kind: 'relationship', id: createdId })
+        }
       } else {
         let createdId = ''
         if (apply((d) => (createdId = linkInheritance(d, fromId, toId).id))) select({ kind: 'inheritance', id: createdId })
@@ -212,6 +232,7 @@ export function Canvas({ dark }: { dark: boolean }) {
         onNodeDragStop={onNodeDragStop}
         onEdgeClick={onEdgeClick}
         onPaneClick={() => select(null)}
+        onConnectStart={onConnectStart}
         onConnectEnd={onConnectEnd}
         zoomOnDoubleClick={false}
         deleteKeyCode={null}

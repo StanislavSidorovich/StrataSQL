@@ -643,6 +643,21 @@ body {
 .entity-node.is-selected .link-handle {
   opacity: 1;
 }
+/* While a link is dragged from an entity, a target under it makes a reflexive link possible (and visible). */
+.self-drop {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  padding: 5px 10px;
+  border: 2px dashed var(--accent);
+  border-radius: 999px;
+  background: var(--entity-header);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+}
 /* Finger or pen: a bigger ● that is always visible, with a wide invisible area to grab it. */
 @media (pointer: coarse) {
   .react-flow__handle.link-handle {

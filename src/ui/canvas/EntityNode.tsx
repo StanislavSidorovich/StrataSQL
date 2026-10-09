@@ -1,4 +1,4 @@
-import { Handle, Position, type Node, type NodeProps } from '@xyflow/react'
+import { Handle, Position, useConnection, type Node, type NodeProps } from '@xyflow/react'
 import { formatDataType } from '../../core/metamodel'
 import { issueTouches } from '../../core/lint'
 import { worstSeverity } from '../lint/IssuesPanel'
@@ -11,7 +11,8 @@ export function HiddenTarget() {
   return <Handle type="target" position={Position.Top} className="hidden-handle" isConnectable={false} />
 }
 
-export function EntityNode({ data, selected }: NodeProps<EntityNodeType>) {
+export function EntityNode({ id, data, selected }: NodeProps<EntityNodeType>) {
+  const linkingFromHere = useConnection((c) => c.inProgress && c.fromNode.id === id)
   const entity = useEditor((s) => s.model.entities.find((e) => e.id === data.entityId))
   const parentName = useEditor((s) => {
     const inh = s.model.inheritances.find((i) => i.childIds.includes(data.entityId))
@@ -33,6 +34,11 @@ export function EntityNode({ data, selected }: NodeProps<EntityNodeType>) {
     >
       <HiddenTarget />
       <Handle type="source" position={Position.Right} className="link-handle" title="Drag to another entity to link" />
+      {linkingFromHere && (
+        <div className="self-drop" title="Drop here: the entity is linked to itself (reflexive)">
+          ↻ drop here to link {entity.name} to itself
+        </div>
+      )}
       <div className="entity-header">
         <span>{entity.name}</span>
         {parentName && <span className="entity-parent">⊂ {parentName}</span>}
