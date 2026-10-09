@@ -46,6 +46,8 @@ interface Session {
   answers?: Record<number, number>
   /** Level 1: the finished model is shown although not every phrase is tagged yet. */
   peek?: boolean
+  /** Walkthrough: the canvas shows the finished model for a moment; the step stays where it was. */
+  walkPeek?: boolean
   /** Open exercise (`caseId` is then an exercise id, level 3): the checklist items ticked. */
   exercise?: number[]
 }
@@ -78,6 +80,8 @@ interface TrainerState {
   walkTo: (caseId: string, step: number) => void
   /** Answers (or skips, with null) the question of the current walkthrough step, which reveals it. */
   answerWalk: (option: number | null) => void
+  /** Walkthrough: shows the finished model (true) or goes back to the current step (false). */
+  peekFinished: (on: boolean) => void
   setAskFirst: (on: boolean) => void
   setSuggestNames: (on: boolean) => void
   setPeek: (peek: boolean) => void
@@ -233,6 +237,18 @@ export const useTrainer = create<TrainerState>()((set, get) => ({
     if (!s || s.walk === undefined) return
     set({ session: { ...s, answers: { ...s.answers, [s.walk]: option ?? -1 } } })
     get().walkTo(s.caseId, s.walk)
+  },
+
+  peekFinished(on) {
+    const s = get().session
+    if (!s || s.walk === undefined) return
+    // Going back is walkTo: it rebuilds the step (and its open question) and drops walkPeek.
+    if (!on) return get().walkTo(s.caseId, s.walk)
+    const c = caseById(s.caseId)
+    if (!c) return
+    const editor = useEditor.getState()
+    useEditor.setState({ model: walkSteps(c).at(-1)!.model, doc: editor.doc + 1, past: [], future: [], selection: null, tableSelection: null, walkthrough: { spotlight: [] } })
+    set({ session: { ...s, walkPeek: true } })
   },
 
   setAskFirst(askFirst) {

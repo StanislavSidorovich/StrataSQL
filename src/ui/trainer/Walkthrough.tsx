@@ -29,7 +29,9 @@ export function WalkthroughPane({ c, step }: { c: TrainerCase; step: number }) {
   const s = steps[step]
   const answers = useTrainer((x) => x.session?.answers ?? {})
   const askFirst = useTrainer((x) => x.askFirst)
-  const { walkTo, start, exit, openPicker, answerWalk, setAskFirst } = useTrainer.getState()
+  const peeking = useTrainer((x) => !!x.session?.walkPeek)
+  const { walkTo, start, exit, openPicker, answerWalk, setAskFirst, peekFinished } = useTrainer.getState()
+  const last = steps.length - 1
   const q = s.question
   const asking = isAsking(q, askFirst, answers[step])
   const answer = answers[step]
@@ -47,13 +49,15 @@ export function WalkthroughPane({ c, step }: { c: TrainerCase; step: number }) {
     const timers = [setTimeout(fit, 150), setTimeout(fit, 700)]
     specRef.current?.querySelector('.is-now')?.scrollIntoView({ block: 'nearest' })
     return () => timers.forEach(clearTimeout)
-  }, [step, asking, flow])
+  }, [step, asking, peeking, flow])
 
   const go = (k: number) => walkTo(c.id, k)
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.target as HTMLElement).closest?.('input, textarea, select') || useEditor.getState().help !== null) return
-      if (asking && q && /^[1-9]$/.test(e.key) && Number(e.key) <= q.options.length) answerWalk(Number(e.key) - 1)
+      if (peeking) {
+        if (e.key === 'ArrowRight' || e.key === 'ArrowLeft' || e.key === 'Escape') peekFinished(false)
+      } else if (asking && q && /^[1-9]$/.test(e.key) && Number(e.key) <= q.options.length) answerWalk(Number(e.key) - 1)
       else if (e.key === 'ArrowRight' && !asking && step < steps.length - 1) go(step + 1)
       else if (e.key === 'ArrowLeft' && step > 0) go(step - 1)
     }
@@ -110,7 +114,29 @@ export function WalkthroughPane({ c, step }: { c: TrainerCase; step: number }) {
           )}
         </div>
 
-        {asking && q && (
+        {step > 0 && step < last && (
+          <button
+            type="button"
+            className="btn btn-small self-start"
+            aria-pressed={peeking}
+            onClick={() => peekFinished(!peeking)}
+            title={peeking ? `Back to step ${step} (← → or Esc)` : 'Look at the finished model, then come back to this step'}
+          >
+            {peeking ? `← Back to step ${step}` : '◎ Peek at the finished model'}
+          </button>
+        )}
+
+        {peeking ? (
+          <section className="walk-step" aria-live="polite">
+            <h3>The finished model</h3>
+            <p>
+              This is where the walkthrough ends: {steps[last].model.entities.length} entities, {steps[last].model.relationships.length} relationships. Step {step} is
+              waiting where you left it.
+            </p>
+          </section>
+        ) : null}
+
+        {!peeking && asking && q && (
           <section className="walk-ask" aria-live="polite" aria-label="Predict first">
             <div className="walk-ask-prompt">{richText(q.prompt)}</div>
             <div className="walk-ask-options">
@@ -126,7 +152,7 @@ export function WalkthroughPane({ c, step }: { c: TrainerCase; step: number }) {
           </section>
         )}
 
-        {!asking && (
+        {!peeking && !asking && (
         <section className="walk-step" aria-live="polite">
           {q && answer !== undefined && (
             <div className={`trainer-why ${answered === null ? '' : answered ? 'is-right' : 'is-wrong'}`} role="status">
