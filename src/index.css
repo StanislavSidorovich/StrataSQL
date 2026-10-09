@@ -123,14 +123,24 @@ body {
   border-bottom: 1px solid var(--panel-border);
 }
 .toolbar-row {
+  display: grid;
+  /* left (brand, File, Examples, Trainer) · views in the centre · right (model name, Help, Aa).
+     The left side never shrinks; the right one gives way first (the model name ends in “…”), so the
+     views stay centred while there is room and slide right only on narrow bars. */
+  grid-template-columns: minmax(max-content, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+}
+.toolbar-side {
   display: flex;
   align-items: center;
   gap: 14px;
-  flex-wrap: wrap;
+  min-width: 0;
 }
-/* The model name sits next to the logo (as in Figma) and is the one item that shrinks: it ends in “…”
-   instead of pushing the buttons onto a second row. */
-.toolbar-row > .toolbar-model {
+.toolbar-right {
+  justify-content: flex-end;
+}
+.toolbar-right > .toolbar-model {
   flex: 0 1 auto;
 }
 .brand {
@@ -662,7 +672,8 @@ body {
    tools live on the canvas. So it fits on one row with full labels down to a 1024 px tablet, and only
    narrower bars shorten. Container queries: the widths are the toolbar's own, after the text size zoom. */
 @container toolbar (max-width: 1199px) {
-  .toolbar-row {
+  .toolbar-row,
+  .toolbar-side {
     gap: 10px;
   }
   .toolbar-model-name {
@@ -670,7 +681,8 @@ body {
   }
 }
 @container toolbar (max-width: 999px) {
-  .toolbar-row {
+  .toolbar-row,
+  .toolbar-side {
     gap: 6px;
   }
   .menu .btn-icon .label-long,

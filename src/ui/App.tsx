@@ -344,13 +344,10 @@ Cancel: open it as an ordinary model.`)) {
     <div className="app-root flex flex-col">
       <header className="toolbar" ref={toolbar}>
         <div className="toolbar-row">
+        <div className="toolbar-side toolbar-left">
         <div className="brand">
           Strata<span>SQL</span>
         </div>
-        <SavedState
-          name={model.name}
-          onClose={model.entities.length > 0 ? () => leaveTrainer() && load(emptyModel()) : undefined}
-        />
         <div className="toolbar-group">
           <Menu
             label="File"
@@ -420,14 +417,6 @@ Cancel: open it as an ordinary model.`)) {
             }}
           />
         </div>
-        <div className="segmented view-switch" role="tablist" aria-label="View" data-tour="views">
-          {VIEWS.map((v) => (
-            <button key={v.id} type="button" role="tab" aria-selected={view === v.id} className={view === v.id ? 'on' : ''} onClick={() => setView(v.id)} title={v.title}>
-              <span className="label-long">{v.label}</span>
-              <span className="label-short">{v.short}</span>
-            </button>
-          ))}
-        </div>
         <button
           type="button"
           data-tour="trainer"
@@ -438,7 +427,21 @@ Cancel: open it as an ordinary model.`)) {
           <GraduationCap size={ICON} aria-hidden />
           <span>Trainer</span>
         </button>
-        <div className="toolbar-group ml-auto">
+        </div>
+        <div className="segmented view-switch" role="tablist" aria-label="View" data-tour="views">
+          {VIEWS.map((v) => (
+            <button key={v.id} type="button" role="tab" aria-selected={view === v.id} className={view === v.id ? 'on' : ''} onClick={() => setView(v.id)} title={v.title}>
+              <span className="label-long">{v.label}</span>
+              <span className="label-short">{v.short}</span>
+            </button>
+          ))}
+        </div>
+        <div className="toolbar-side toolbar-right">
+        <SavedState
+          name={model.name}
+          onClose={model.entities.length > 0 ? () => leaveTrainer() && load(emptyModel()) : undefined}
+        />
+        <div className="toolbar-group">
           {updateReady && (
             <button type="button" className="btn btn-primary" onClick={applyUpdate} title="A new version of StrataSQL is ready. Your model is kept.">
               Update
@@ -472,6 +475,7 @@ Cancel: open it as an ordinary model.`)) {
             ]}
           />
           <AppearanceButton dark={dark} onToggleTheme={toggleTheme} />
+        </div>
         </div>
         </div>
       </header>
