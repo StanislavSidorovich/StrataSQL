@@ -34,7 +34,8 @@ import { NameSuggestionLists, TrainerPane } from './trainer/TrainerPane'
 import { nextLesson, openLesson } from './trainer/Lesson'
 import { LESSONS } from '../data/lessons'
 import { MyTaskDialog, openMyTask } from './trainer/MyTask'
-import { confirmDiscardTask, continueTask, isVeiled, leaveTrainer, savedTaskLabel, useTrainer } from './trainer/trainerStore'
+import { confirmDiscardTask, continueTask, isVeiled, leaveTrainer, openCaseFile, savedTaskLabel, useTrainer } from './trainer/trainerStore'
+import { isCaseFile } from '../data/caseFile'
 
 /** The trainer cases, easiest first: their reference models are the examples. */
 const EXAMPLES = CASES.map((c) => ({ id: c.id, label: `${c.title} ${'★'.repeat(c.difficulty)}`, build: c.build }))
@@ -282,6 +283,9 @@ function Editor() {
           `Imported ${imported.entities.length} entities and ${imported.relationships.length} relationships from ${file.name}.` +
             (warnings.length ? `\n${warnings.join('\n')}` : ''),
         )
+      } else if (isCaseFile(text)) {
+        const c = openCaseFile(text)
+        setNotice(`Opened the case ${c.title}: watch it built step by step (→ / ←).`)
       } else {
         const model = parseModel(text)
         const task = readSavedTask(text)

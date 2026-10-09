@@ -4,7 +4,8 @@
 
 import { create } from 'zustand'
 import { compareModels, type CompareResult } from '../../core/compare'
-import { caseById, LEVELS, type Tag, type TrainerCase } from '../../data/cases'
+import { addFileCase, caseById, LEVELS, type Tag, type TrainerCase } from '../../data/cases'
+import { parseCaseFile } from '../../data/caseFile'
 import { exerciseById, type Exercise } from '../../data/exercises'
 import { addMark, MY_TASK_ID, myTaskExercise, remapMarks, type Mark, type MyTask } from '../../data/mytask'
 import { emptyModel, type Model } from '../../core/metamodel'
@@ -19,6 +20,7 @@ const PROGRESS_KEY = 'stratasql.trainer.progress'
 const ASK_KEY = 'stratasql.walk.ask'
 const SUGGEST_KEY = 'stratasql.suggest'
 const MY_TASK_KEY = 'stratasql.mytask'
+const FILE_CASE_KEY = 'stratasql.fileCase'
 
 export interface Check {
   result: CompareResult
@@ -351,11 +353,12 @@ export function isVeiled(s: Session | null): boolean {
   return !!c && Object.keys(s.tags).length < c.spans.length
 }
 
-const stepCache = new Map<string, WalkStep[]>()
+// Keyed by the case object: a case file opened again under the same id is a new object.
+const stepCache = new WeakMap<TrainerCase, WalkStep[]>()
 /** The walkthrough steps of a case, generated once per page. */
 export function walkSteps(c: TrainerCase): WalkStep[] {
-  let steps = stepCache.get(c.id)
-  if (!steps) stepCache.set(c.id, (steps = walkthroughSteps(c)))
+  let steps = stepCache.get(c)
+  if (!steps) stepCache.set(c, (steps = walkthroughSteps(c)))
   return steps
 }
 
@@ -414,8 +417,27 @@ useTrainer.subscribe((state, prev) => {
   if (state.session !== prev.session) writeJson(SESSION_KEY, state.session)
 })
 
+/**
+ * File → Open of a `.strata-case.json`: the case is checked, kept for this browser (so a reload
+ * resumes it; only the last one) and its walkthrough starts. Throws a readable error.
+ */
+export function openCaseFile(text: string): TrainerCase {
+  const c = parseCaseFile(text)
+  addFileCase(c)
+  writeJson(FILE_CASE_KEY, text)
+  useTrainer.getState().walkTo(c.id, 0)
+  return c
+}
+
 /** After a reload: resume the open task with its working model. */
 export function restoreTrainer() {
+  const caseText = readJson<string | null>(FILE_CASE_KEY, null)
+  if (caseText)
+    try {
+      addFileCase(parseCaseFile(caseText))
+    } catch {
+      writeJson(FILE_CASE_KEY, null)
+    }
   const session = readJson<Session | null>(SESSION_KEY, null)
   if (!session || !(session.exercise ? exerciseFor(session.caseId) : caseById(session.caseId))) return
   if (session.walk !== undefined) {

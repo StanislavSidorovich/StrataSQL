@@ -309,9 +309,18 @@ const ALL: TrainerCase[] = [
 const ORDER = ['library', 'hotel', 'scooter-sharing', 'online-shop', 'tv-shows', 'hospital', 'timetables', 'football']
 export const CASES: TrainerCase[] = ORDER.map((id) => [...ALL, ...MORE_CASES].find((c) => c.id === id)!)
 
-/** A trainer case, or the practice task of a lesson (not listed in the picker). */
+/** Cases opened from a `.strata-case.json` file (`caseFile.ts`): found by id, not listed in the picker. */
+const FILE_CASES: TrainerCase[] = []
+
+export function addFileCase(c: TrainerCase) {
+  const k = FILE_CASES.findIndex((x) => x.id === c.id)
+  if (k >= 0) FILE_CASES[k] = c
+  else FILE_CASES.push(c)
+}
+
+/** A trainer case, the practice task of a lesson, or a case opened from a file (the last two not listed in the picker). */
 export function caseById(id: string): TrainerCase | undefined {
-  return CASES.find((c) => c.id === id) ?? LESSON_CASES.find((c) => c.id === id)
+  return CASES.find((c) => c.id === id) ?? LESSON_CASES.find((c) => c.id === id) ?? FILE_CASES.find((c) => c.id === id)
 }
 
 /** A paragraph cut into plain text and spans, in order. Throws if a phrase is not found (tested). */

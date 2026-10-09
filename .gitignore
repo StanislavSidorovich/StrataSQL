@@ -26,3 +26,7 @@ trailer/v2/watch.json
 trailer/v2/practise.json
 trailer/v2/own.json
 trailer/v2/sheet.html
+
+# private task files (graded group work): never committed
+*.strata-case.json
+/DBMS_group_project*

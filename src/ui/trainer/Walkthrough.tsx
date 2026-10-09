@@ -36,7 +36,8 @@ export function WalkthroughPane({ c, step }: { c: TrainerCase; step: number }) {
   const answered = q && answer !== undefined && answer >= 0 ? q.right.includes(answer) : null
   const flow = useReactFlow()
   const specRef = useRef<HTMLDivElement>(null)
-  const next = CASES[CASES.indexOf(c) + 1]
+  // A case opened from a file is not in the list: no “Next case”.
+  const next = CASES.includes(c) ? CASES[CASES.indexOf(c) + 1] : undefined
 
   // Each step: fit the growing model (not closer than 100 %), show the step's first phrase.
   useEffect(() => {

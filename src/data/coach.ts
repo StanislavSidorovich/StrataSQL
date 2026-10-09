@@ -69,11 +69,12 @@ export const coachKey = (item: CoachItem) => `${item.kind}|${item.refKey ?? item
 
 const KIND_ORDER: Record<CoachItem['kind'], number> = { entity: 0, attribute: 1, mandatory: 1, duplicate: 1, identifier: 2, alternate: 2, relationship: 3, inheritance: 3, keys: 4 }
 
-const orderCache = new Map<string, Map<string, number>>()
+// Keyed by the case object: a case file opened again under the same id is a new object.
+const orderCache = new WeakMap<TrainerCase, Map<string, number>>()
 /** Walkthrough step key → index, per case. */
 function stepRank(c: TrainerCase): Map<string, number> {
-  let rank = orderCache.get(c.id)
-  if (!rank) orderCache.set(c.id, (rank = new Map(walkthroughSteps(c).map((s, i) => [s.key, i]))))
+  let rank = orderCache.get(c)
+  if (!rank) orderCache.set(c, (rank = new Map(walkthroughSteps(c).map((s, i) => [s.key, i]))))
   return rank
 }
 
