@@ -58,6 +58,9 @@ describe('diffModels', () => {
     const book = changeOf(c, 'entity', ent(rev, 'Book').id)!
     expect(book.status).toBe('changed')
     expect(book.details).toEqual(['title: VA200 → VA300, now optional', '− pub_year', '+ pages'])
+    const b = ent(rev, 'Book')
+    const id = (n: string) => b.attributes.find((x) => x.name === n)!.id
+    expect(book.attributes).toEqual({ added: [id('pages')], changed: [id('title')], removed: ['pub_year'] })
     expect(changeOf(c, 'relationship', rel(rev, 'fined').id)?.status).toBe('new')
     const removed = c.changes.filter((x) => x.status === 'removed').map((x) => x.label)
     expect(removed).toEqual(['Publisher', 'Publisher — Book (publishes)'])

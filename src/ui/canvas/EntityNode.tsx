@@ -56,12 +56,13 @@ export function EntityNode({ id, data, selected }: NodeProps<EntityNodeType>) {
         )}
       </div>
       <div className="entity-body">
-        {entity.attributes.length === 0 && <div className="entity-empty">no attributes</div>}
+        {entity.attributes.length === 0 && !change?.attributes?.removed.length && <div className="entity-empty">no attributes</div>}
         {entity.attributes.map((a) => {
           const inPi = pi?.attributeIds.includes(a.id) ?? false
           const ak = akIndex(a.id)
+          const mark = change?.status === 'new' ? '' : change?.attributes?.added.includes(a.id) ? 'chg-attr-new' : change?.attributes?.changed.includes(a.id) ? 'chg-attr-changed' : ''
           return (
-            <div key={a.id} className="entity-attr">
+            <div key={a.id} className={`entity-attr ${mark}`}>
               <span className={inPi ? 'attr-pi' : ''}>{a.name}</span>
               <span className="attr-flags">
                 {inPi && <b>&lt;pi&gt;</b>}
@@ -72,6 +73,11 @@ export function EntityNode({ id, data, selected }: NodeProps<EntityNodeType>) {
             </div>
           )
         })}
+        {change?.attributes?.removed.map((name) => (
+          <div key={`removed:${name}`} className="entity-attr chg-attr-removed" title="Removed since the earlier version">
+            <span>{name}</span>
+          </div>
+        ))}
       </div>
       {entity.identifiers.length > 0 && (
         <div className="entity-idents">

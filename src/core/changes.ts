@@ -23,6 +23,8 @@ export interface Change {
   details: string[]
   /** Why: the revised element's comment (removed elements: the base element's comment). */
   note?: string
+  /** A changed entity's attributes, for marking rows on the diagram: revised ids, and the removed ones by name. */
+  attributes?: AttributeMarks
   /**
    * A new line of a new entity (or a removed line of a removed entity) comes with it: it shares the
    * entity's number instead of taking its own, so 15 new entities read as 15 changes, not 40.
@@ -30,6 +32,12 @@ export interface Change {
   with?: Id
   /** 1, 2, 3… in reading order on the canvas (removed elements come last). */
   n: number
+}
+
+export interface AttributeMarks {
+  added: Id[]
+  changed: Id[]
+  removed: string[]
 }
 
 export interface ModelChanges {
@@ -106,8 +114,9 @@ function pairAttributes(base: Entity, rev: Entity): Map<Id, Attribute> {
   return out
 }
 
-function entityDetails(base: Entity, rev: Entity): string[] {
+function entityDetails(base: Entity, rev: Entity): { details: string[]; marks: AttributeMarks } {
   const out: string[] = []
+  const marks: AttributeMarks = { added: [], changed: [], removed: [] }
   if (base.name !== rev.name) out.push(`renamed from ${base.name}`)
   const pairs = pairAttributes(base, rev)
   const claimed = new Set([...pairs.values()].map((a) => a.id))
@@ -115,15 +124,23 @@ function entityDetails(base: Entity, rev: Entity): string[] {
     const ra = pairs.get(ba.id)
     if (!ra) {
       out.push(`− ${ba.name}`)
+      marks.removed.push(ba.name)
       continue
     }
     const parts: string[] = []
     if (ra.name !== ba.name) parts.push(`renamed from ${ba.name}`)
     if (formatDataType(ra) !== formatDataType(ba)) parts.push(`${formatDataType(ba)} → ${formatDataType(ra)}`)
     if (ra.mandatory !== ba.mandatory) parts.push(ra.mandatory ? 'now mandatory' : 'now optional')
-    if (parts.length) out.push(`${ra.name}: ${parts.join(', ')}`)
+    if (parts.length) {
+      out.push(`${ra.name}: ${parts.join(', ')}`)
+      marks.changed.push(ra.id)
+    }
   }
-  for (const ra of rev.attributes) if (!claimed.has(ra.id)) out.push(`+ ${ra.name}`)
+  for (const ra of rev.attributes)
+    if (!claimed.has(ra.id)) {
+      out.push(`+ ${ra.name}`)
+      marks.added.push(ra.id)
+    }
   // A different choice of key (a renamed key attribute is reported above). A key that only went
   // away with its attribute (a child of an inheritance takes its parent's) needs no second line.
   const bKey = primaryIdentifier(base)?.attributeIds ?? []
@@ -134,7 +151,7 @@ function entityDetails(base: Entity, rev: Entity): string[] {
     out.push(`identifier: ${piNames(base).join(' + ') || 'none'} → ${piNames(rev).join(' + ') || 'none'}`)
   const alt = (e: Entity) => e.identifiers.filter((i) => !i.isPrimary).length
   if (alt(rev) !== alt(base)) out.push(`alternate identifiers: ${alt(base)} → ${alt(rev)}`)
-  return out
+  return { details: out, marks }
 }
 
 // ---------------------------------------------------------------- relationships
@@ -184,8 +201,8 @@ export function diffModels(base: Model, rev: Model): ModelChanges {
       items.push({ status: 'new', kind: 'entity', id: e.id, label: e.name, details: [], note: e.comment })
       continue
     }
-    const details = entityDetails(b, e)
-    if (details.length) items.push({ status: 'changed', kind: 'entity', id: e.id, baseId: b.id, label: e.name, details, note: e.comment })
+    const { details, marks } = entityDetails(b, e)
+    if (details.length) items.push({ status: 'changed', kind: 'entity', id: e.id, baseId: b.id, label: e.name, details, note: e.comment, attributes: marks })
     else kept++
   }
   for (const b of base.entities)

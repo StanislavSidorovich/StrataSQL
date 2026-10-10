@@ -2721,3 +2721,17 @@ body {
   border-left-color: var(--chg-new);
   background: var(--chg-new-soft);
 }
+/* Attribute rows of a changed entity: added, changed, and the removed ones as struck-through ghosts. */
+.entity-attr.chg-attr-new {
+  background: var(--chg-new-soft);
+  box-shadow: inset 3px 0 0 var(--chg-new);
+}
+.entity-attr.chg-attr-changed {
+  background: var(--chg-changed-soft);
+  box-shadow: inset 3px 0 0 var(--chg-changed);
+}
+.entity-attr.chg-attr-removed {
+  color: var(--chg-removed);
+  text-decoration: line-through;
+  font-style: italic;
+}

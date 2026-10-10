@@ -63,7 +63,8 @@ export function RelationshipEdge({ id, source, target, data, selected }: EdgePro
           </text>
         )}
       </g>
-      {change && !change.with && <EdgeBadge at={add(mid, scale(perp(dirA), 14))} n={change.n} status={change.status} />}
+      {/* A third of the way from A: the middle holds the line's name. */}
+      {change && !change.with && <EdgeBadge at={add(from, scale(sub(to, from), 0.33))} n={change.n} status={change.status} />}
     </>
   )
 }
