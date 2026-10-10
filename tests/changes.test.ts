@@ -65,6 +65,9 @@ describe('diffModels', () => {
     const removed = c.changes.filter((x) => x.status === 'removed').map((x) => x.label)
     expect(removed).toEqual(['Publisher', 'Publisher — Book (publishes)'])
     expect(c.counts).toEqual({ new: 1, changed: 1, removed: 1 })
+    // “Her” tables: every entity of the revision that comes from the base, changed or not.
+    expect(c.fromBase.has(ent(rev, 'Book').id) && c.fromBase.has(ent(rev, 'Loan').id)).toBe(true)
+    expect(c.fromBase.has(ent(rev, 'Fine').id)).toBe(false)
     // The new line comes with Fine: same number, right after it.
     const k = c.changes.findIndex((x) => x.label === 'Fine')
     expect(c.changes[k + 1]).toMatchObject({ label: 'Loan — Fine (fined)', n: fine.n, with: fine.id })

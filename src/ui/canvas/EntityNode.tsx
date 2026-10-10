@@ -3,7 +3,7 @@ import { formatDataType } from '../../core/metamodel'
 import { issueTouches } from '../../core/lint'
 import { worstSeverity } from '../lint/IssuesPanel'
 import { ChangeBadge } from '../changes/ChangesPanel'
-import { useEditor, useLint, useShownChange, useSpotlight } from '../store'
+import { useEditor, useFromBase, useLint, useShownChange, useSpotlight } from '../store'
 
 export type EntityNodeType = Node<{ entityId: string }, 'entity'>
 
@@ -23,6 +23,7 @@ export function EntityNode({ id, data, selected }: NodeProps<EntityNodeType>) {
   const focused = useEditor((s) => (s.focusedIssue ? issueTouches(s.focusedIssue, 'entity', data.entityId) : false))
   const isNew = useSpotlight(data.entityId)
   const change = useShownChange('entity', data.entityId)
+  const fromBase = useFromBase(data.entityId)
   if (!entity) return null
   const severity = worstSeverity(issues, 'entity', entity.id)
   const pi = entity.identifiers.find((i) => i.isPrimary)
@@ -31,7 +32,7 @@ export function EntityNode({ id, data, selected }: NodeProps<EntityNodeType>) {
 
   return (
     <div
-      className={`entity-node ${selected ? 'is-selected' : ''} ${severity ? `lint-${severity}` : ''} ${focused ? 'lint-focus' : ''} ${isNew ? 'walk-new' : ''} ${change ? `chg-${change.status}` : ''}`}
+      className={`entity-node ${selected ? 'is-selected' : ''} ${severity ? `lint-${severity}` : ''} ${focused ? 'lint-focus' : ''} ${isNew ? 'walk-new' : ''} ${change ? `chg-${change.status}` : ''} ${fromBase ? 'chg-from-base' : ''}`}
       data-testid={`entity-${entity.name}`}
     >
       <HiddenTarget />

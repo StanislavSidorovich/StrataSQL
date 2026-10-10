@@ -45,6 +45,8 @@ export interface ModelChanges {
   changes: Change[]
   /** Elements of the base that are still there unchanged. */
   kept: number
+  /** Entities of the revised model that come from the base (changed or not): “her” tables. */
+  fromBase: Set<Id>
   /** Numbered changes by status (lines that come with an entity are not counted again). */
   counts: Record<ChangeStatus, number>
 }
@@ -192,6 +194,7 @@ export function diffModels(base: Model, rev: Model): ModelChanges {
   const bName = (id: Id) => bEnt.get(id)?.name ?? '?'
   const rName = (id: Id) => rEnt.get(id)?.name ?? '?'
   const toRev = (id: Id) => match.get(id)
+  const fromBase = new Set<Id>(match.values())
   const items: Omit<Change, 'n'>[] = []
   let kept = 0
 
@@ -299,5 +302,5 @@ export function diffModels(base: Model, rev: Model): ModelChanges {
   }
   const counts: Record<ChangeStatus, number> = { new: 0, changed: 0, removed: 0 }
   for (const c of changes) if (!c.with) counts[c.status]++
-  return { changes, kept, counts }
+  return { changes, kept, counts, fromBase }
 }

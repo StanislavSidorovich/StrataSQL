@@ -283,6 +283,13 @@ export function useChanges(): ModelChanges | null {
   return c
 }
 
+/** The entity comes from the earlier version (changed or not), while the changes are shown. */
+export function useFromBase(id: Id): boolean {
+  const c = useChanges()
+  const on = useEditor((s) => s.showChanges && s.trainerBackup === null)
+  return !!(on && c?.fromBase.has(id))
+}
+
 /** The change of an element while the changes are shown on the canvas. */
 export function useShownChange(kind: ChangeKind, id: Id | undefined): Change | undefined {
   const c = useChanges()

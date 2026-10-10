@@ -53,6 +53,8 @@
   --chg-changed-soft: #efe7fd;
   --chg-removed: #6b7385;
   --chg-removed-soft: #eef0f3;
+  /* Entities from the earlier version: PowerDesigner's own header colour, so a teammate knows her tables. */
+  --chg-base-header: #c9f1f1;
 
   color-scheme: light;
 }
@@ -107,6 +109,7 @@
   --chg-changed-soft: #2c2347;
   --chg-removed: #98a0b3;
   --chg-removed-soft: #262b35;
+  --chg-base-header: #1d4146;
 
   color-scheme: dark;
 }
@@ -2567,8 +2570,12 @@ body {
 .entity-node.chg-new {
   box-shadow: 0 0 0 3px var(--chg-new);
 }
+/* A changed table of the earlier version stays “hers”: its header colour, a violet number and marked rows, no heavy frame. */
 .entity-node.chg-changed {
-  box-shadow: 0 0 0 3px var(--chg-changed);
+  border-color: var(--chg-changed);
+}
+.entity-node.chg-from-base .entity-header {
+  background: var(--chg-base-header);
 }
 .entity-node,
 .inheritance-node {
