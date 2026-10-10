@@ -23,6 +23,12 @@ function currentTask(): SavedTask | undefined {
   return s && s.walk === undefined ? { id: s.caseId, level: s.level } : undefined
 }
 
+/** The earlier version the user's own model is compared with (a trainer task has none). */
+function comparedWith() {
+  const { changesBase, trainerBackup } = useEditor.getState()
+  return trainerBackup ? null : changesBase
+}
+
 const picker = (): SavePicker | undefined => (window as unknown as { showSaveFilePicker?: SavePicker }).showSaveFilePicker
 
 /** The file chosen with “Save as”, and the document it belongs to. */
@@ -34,7 +40,7 @@ function download(): string {
   const { model } = useEditor.getState()
   const name = `${fileBaseName(model.name)}${FILE_EXTENSION}`
   const a = document.createElement('a')
-  a.href = URL.createObjectURL(new Blob([serializeModel(model, currentTask())], { type: 'application/json' }))
+  a.href = URL.createObjectURL(new Blob([serializeModel(model, currentTask(), comparedWith())], { type: 'application/json' }))
   a.download = name
   a.click()
   setTimeout(() => URL.revokeObjectURL(a.href), 1000)
@@ -43,7 +49,7 @@ function download(): string {
 
 async function write(file: WritableFile) {
   const out = await file.createWritable()
-  await out.write(serializeModel(useEditor.getState().model, currentTask()))
+  await out.write(serializeModel(useEditor.getState().model, currentTask(), comparedWith()))
   await out.close()
 }
 

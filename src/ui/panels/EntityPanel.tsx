@@ -24,6 +24,7 @@ import {
   uniqueName,
   updateEntity,
 } from '../../core/ops'
+import { ElementChange } from '../changes/ChangesPanel'
 import { ElementIssues } from '../lint/IssuesPanel'
 import { EntityResult } from '../pdm/PhysicalResult'
 import { duplicateSelectedEntity, useEditor } from '../store'
@@ -61,6 +62,7 @@ export function EntityPanel({ entity, model }: { entity: Entity; model: Model })
   return (
     <div>
       <ElementIssues kind="entity" id={id} />
+      <ElementChange kind="entity" id={id} />
       <Section title="Entity" help="entity">
         <Field label="Name" help="names-and-codes">
           <div ref={nameBox} className="contents">

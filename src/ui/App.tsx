@@ -1,11 +1,13 @@
 import { ReactFlowProvider, useReactFlow } from '@xyflow/react'
-import { BookOpen, Check, FilePen, CircleHelp, Database, Download, FileDown, FilePlus, FolderOpen, GraduationCap, Image as ImageIcon, Info, Keyboard, Link2, MessageSquare, Play, Save, SaveAll, X } from 'lucide-react'
+import { BookOpen, Check, FilePen, GitCompare, CircleHelp, Database, Download, FileDown, FilePlus, FolderOpen, GraduationCap, Image as ImageIcon, Info, Keyboard, Link2, MessageSquare, Play, Save, SaveAll, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import { emptyModel } from '../core/metamodel'
+import { emptyModel, type Model } from '../core/metamodel'
 import { addEntity, removeEntity, removeInheritance, removeRelationship } from '../core/ops'
 import { importPowerDesigner } from '../core/import/powerdesigner'
-import { FILE_EXTENSION, parseModel, readSavedTask } from '../core/serialize'
-import { decodeShare, SHARE_PARAM, shareDataFromHash, shareUrl } from '../core/shareLink'
+import { FILE_EXTENSION, parseModel, readSavedBase, readSavedTask } from '../core/serialize'
+import { BASE_PARAM, decodeShare, SHARE_PARAM, shareDataFromHash, shareUrl } from '../core/shareLink'
+import { diffModels } from '../core/changes'
+import { ChangesDock } from './changes/ChangesPanel'
 import { FEEDBACK_URL } from './AuthorLinks'
 import { applyUpdate, installApp, useUpdateReady } from '../pwa/register'
 import { Canvas } from './canvas/Canvas'
@@ -142,6 +144,9 @@ function Editor() {
   const trainerKey = useTrainer((s) => `${s.pickerOpen}|${s.session?.caseId}|${s.session?.level}|${s.session?.walk === undefined}`)
   const { undo, redo, load, apply, select, setLinkKind, setView, showError } = useEditor.getState()
   const fileInput = useRef<HTMLInputElement>(null)
+  const compareInput = useRef<HTMLInputElement>(null)
+  const comparing = useEditor((s) => s.changesBase !== null && s.trainerBackup === null)
+  const [changesOpen, setChangesOpen] = useState(true)
   // The toolbar's height (it wraps at large text sizes or on narrow screens): the help drawer starts below it.
   const toolbar = useRef<HTMLElement>(null)
   // The draw tools may be docked in the top bar (the student drags them there) while the bar is wide
@@ -202,18 +207,29 @@ function Editor() {
       const data = shareDataFromHash(window.location.hash)
       if (!data) return
       const params = new URLSearchParams(window.location.hash.slice(1))
+      const baseData = params.get(BASE_PARAM)
       params.delete(SHARE_PARAM)
+      params.delete(BASE_PARAM)
       const rest = params.toString()
       history.replaceState(null, '', window.location.pathname + window.location.search + (rest ? `#${rest}` : ''))
       try {
         const shared = await decodeShare(data)
+        const sharedBase = baseData ? await decodeShare(baseData) : null
         if (!leaveTrainer()) return
         const hadModel = useEditor.getState().model.entities.length > 0
         useOnboarding.setState({ welcome: false })
         setView('cdm')
         load(shared)
+        if (sharedBase) {
+          useEditor.getState().setChangesBase(sharedBase)
+          setChangesOpen(true)
+        }
         fit()
-        setNotice(`Opened “${shared.name}” from a shared link: this is your own copy, edits stay in this browser.` + (hadModel ? ' Your previous model is one Undo away.' : ''))
+        setNotice(
+          `Opened “${shared.name}” from a shared link: this is your own copy, edits stay in this browser.` +
+            (sharedBase ? ` The numbers show what changed since “${sharedBase.name}” (list under the diagram).` : '') +
+            (hadModel ? ' Your previous model is one Undo away.' : ''),
+        )
       } catch (e) {
         showError(`Could not open the shared model: ${(e as Error).message}`)
       }
@@ -227,10 +243,16 @@ function Editor() {
 
   const copyShareLink = async () => {
     try {
-      const url = await shareUrl(useEditor.getState().model, window.location.href)
+      const { model: m, changesBase, trainerBackup } = useEditor.getState()
+      const base = trainerBackup ? null : changesBase
+      const url = await shareUrl(m, window.location.href, base)
       await navigator.clipboard.writeText(url)
       const kb = Math.max(1, Math.round(url.length / 1024))
-      setNotice(`Link copied (${kb} KB). Whoever opens it gets a copy of this model; nothing is uploaded, the model is inside the link. Later edits need a new link.`)
+      setNotice(
+        `Link copied (${kb} KB). Whoever opens it gets a copy of this model` +
+          (base ? `, with the changes since “${base.name}” numbered` : '') +
+          '; nothing is uploaded, the model is inside the link. Later edits need a new link.',
+      )
     } catch (e) {
       showError(`Could not copy the link: ${(e as Error).message}`)
     }
@@ -296,7 +318,14 @@ OK: continue it as that task (text, Check and hints in the left column).
 Cancel: open it as an ordinary model.`)) {
           continueTask(task, model)
           setNotice(`Continuing ${label}.`)
-        } else load(model)
+        } else {
+          load(model)
+          const base = readSavedBase(text)
+          if (base) {
+            useEditor.getState().setChangesBase(base)
+            setChangesOpen(true)
+          }
+        }
       }
       fit()
     } catch (e) {
@@ -304,28 +333,51 @@ Cancel: open it as an ordinary model.`)) {
     }
   }
 
+  /** File → Compare with…: an earlier version (a teammate's draft) whose changes get numbered. */
+  const compareWith = async (file: File) => {
+    try {
+      const text = await file.text()
+      let base: Model
+      if (/\.(cdm|cdb|pdm|pdb)$/i.test(file.name)) base = importPowerDesigner(text, file.name).model
+      else if (isCaseFile(text)) throw new Error('a case file holds a task, not a model to compare with')
+      else base = parseModel(text)
+      const { model: m, setChangesBase } = useEditor.getState()
+      setChangesBase(base)
+      setView('cdm')
+      setChangesOpen(true)
+      const n = diffModels(base, m).counts
+      setNotice(
+        `Comparing with “${base.name}”: ${n.new} new, ${n.changed} changed, ${n.removed} removed. They are numbered on the diagram and listed under it. ` +
+          'Save and Copy share link keep the comparison; File → Stop comparing drops it.',
+      )
+    } catch (e) {
+      showError(`Could not compare with ${file.name}: ${(e as Error).message}`)
+    }
+  }
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const typing = (e.target as HTMLElement).closest('input, textarea, select')
+      const typing = (e.target as HTMLElement).closest?.('input, textarea, select')
       const mod = e.ctrlKey || e.metaKey
-      if (mod && e.key.toLowerCase() === 's') {
+      // Non-Latin layouts (Russian: Ctrl+S gives "ы") fall back to the physical key, or the browser's own Save page opens.
+      const k = /^[a-z]$/i.test(e.key) ? e.key.toLowerCase() : e.code.startsWith('Key') ? e.code.slice(3).toLowerCase() : e.key.toLowerCase()
+      if (mod && k === 's') {
         e.preventDefault()
         save(e.shiftKey)
       } else if (typing) {
         return
-      } else if (mod && e.key.toLowerCase() === 'z' && !e.shiftKey) {
+      } else if (mod && k === 'z' && !e.shiftKey) {
         e.preventDefault()
         undo()
-      } else if (mod && (e.key.toLowerCase() === 'y' || (e.key.toLowerCase() === 'z' && e.shiftKey))) {
+      } else if (mod && (k === 'y' || (k === 'z' && e.shiftKey))) {
         e.preventDefault()
         redo()
-      } else if (mod && e.key.toLowerCase() === 'd' && useEditor.getState().view === 'cdm') {
+      } else if (mod && k === 'd' && useEditor.getState().view === 'cdm') {
         const sel = useEditor.getState().selection
         if (sel?.kind !== 'entity') return
         e.preventDefault()
         duplicateSelectedEntity(sel.id)
-      } else if (!mod && !e.altKey && useEditor.getState().view === 'cdm' && ['e', 'r', 'i'].includes(e.key.toLowerCase())) {
-        const k = e.key.toLowerCase()
+      } else if (!mod && !e.altKey && useEditor.getState().view === 'cdm' && ['e', 'r', 'i'].includes(k)) {
         e.preventDefault() // the new entity's name field takes the focus: the E must not land in it
         if (k === 'e') addEntityAtCenter()
         else setLinkKind(k === 'r' ? 'relationship' : 'inheritance')
@@ -373,6 +425,16 @@ Cancel: open it as an ordinary model.`)) {
               { label: 'Save', icon: <Save size={ICON} />, hint: 'Ctrl+S', onSelect: () => save(false) },
               { label: 'Save as…', icon: <SaveAll size={ICON} />, hint: 'Ctrl+Shift+S', onSelect: () => save(true) },
               {
+                label: comparing ? 'Compare with another version…' : 'Compare with an earlier version…',
+                icon: <GitCompare size={ICON} />,
+                hint: `${FILE_EXTENSION}, .cdm`,
+                disabled: trainerOn || model.entities.length === 0,
+                onSelect: () => compareInput.current?.click(),
+              },
+              ...(comparing
+                ? [{ label: 'Stop comparing', icon: <X size={ICON} />, onSelect: () => useEditor.getState().setChangesBase(null) }]
+                : []),
+              {
                 label: 'Copy share link',
                 icon: <Link2 size={ICON} />,
                 disabled: model.entities.length === 0,
@@ -419,6 +481,17 @@ Cancel: open it as an ordinary model.`)) {
               { label: 'Open exercises (no answer)…', icon: <BookOpen size={ICON} />, onSelect: () => useTrainer.getState().openPicker(true) },
               { label: 'My task (own text)…', icon: <FilePen size={ICON} />, onSelect: openMyTask },
             ]}
+          />
+          <input
+            ref={compareInput}
+            type="file"
+            accept=".json,application/json,.cdm,.cdb"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0]
+              if (f) void compareWith(f)
+              e.target.value = ''
+            }}
           />
           <input
             ref={fileInput}
@@ -568,6 +641,7 @@ Cancel: open it as an ordinary model.`)) {
             </div>
           )}
           </div>
+          {view === 'cdm' && comparing && !walkOn && <ChangesDock open={changesOpen} onToggle={() => setChangesOpen(!changesOpen)} />}
           {view === 'cdm' && model.entities.length > 0 && !walkOn && <IssuesDock />}
         </main>
         <SideDock

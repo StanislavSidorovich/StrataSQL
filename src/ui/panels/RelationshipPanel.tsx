@@ -1,6 +1,7 @@
 import { formatCardinality, parseCardinality, type Cardinality, type Model, type Relationship } from '../../core/metamodel'
 import { foreignKeyHolder } from '../../core/cdm2pdm'
 import { removeRelationship, setDependentSide, setForeignKeySide, swapRelationshipSides, updateRelationship } from '../../core/ops'
+import { ElementChange } from '../changes/ChangesPanel'
 import { ElementIssues } from '../lint/IssuesPanel'
 import { RelationshipResult } from '../pdm/PhysicalResult'
 import { useEditor } from '../store'
@@ -33,6 +34,7 @@ export function RelationshipPanel({ rel, model }: { rel: Relationship; model: Mo
   return (
     <div>
       <ElementIssues kind="relationship" id={id} />
+      <ElementChange kind="relationship" id={id} />
       <Section title="Relationship" help="relationship">
         <Field label="Name" help="names-and-codes">
           <TextInput value={rel.name} onChange={(v) => apply((m) => updateRelationship(m, id, { name: v }), { coalesce: `rn:${id}` })} />

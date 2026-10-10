@@ -2,7 +2,7 @@ import { BaseEdge, useInternalNode, type Edge, type EdgeProps, type InternalNode
 import { formatCardinality, type Cardinality } from '../../core/metamodel'
 import { issueTouches } from '../../core/lint'
 import { worstSeverity } from '../lint/IssuesPanel'
-import { useEditor, useLint, useSpotlight } from '../store'
+import { useEditor, useLint, useShownChange, useSpotlight } from '../store'
 import { add, edgeEnds, perp, scale, sub, unit, type Rect, type Vec } from './geometry'
 
 export type RelationshipEdgeData = { relationshipId: string; offset: number }
@@ -21,13 +21,16 @@ export function RelationshipEdge({ id, source, target, data, selected }: EdgePro
   const severity = worstSeverity(useLint(), 'relationship', data?.relationshipId ?? '')
   const focused = useEditor((s) => (s.focusedIssue ? issueTouches(s.focusedIssue, 'relationship', data?.relationshipId ?? '') : false))
   const isNew = useSpotlight(data?.relationshipId)
+  const change = useShownChange('relationship', data?.relationshipId)
   if (!rel || !a || !b) return null
 
   const stroke = selected
     ? 'var(--edge-selected)'
     : isNew
       ? 'var(--walk-new)'
-      : focused || severity === 'error'
+      : change
+        ? `var(--chg-${change.status})`
+        : focused || severity === 'error'
       ? 'var(--lint-error)'
       : severity === 'warning'
         ? 'var(--lint-warning)'
@@ -46,7 +49,7 @@ export function RelationshipEdge({ id, source, target, data, selected }: EdgePro
 
   return (
     <>
-      <BaseEdge id={id} path={path} interactionWidth={16} style={{ stroke, strokeWidth: selected || focused || isNew ? 2.4 : 1.4 }} />
+      <BaseEdge id={id} path={path} interactionWidth={16} style={{ stroke, strokeWidth: selected || focused || isNew || change ? 2.4 : 1.4 }} />
       <g className="pointer-events-none" stroke={stroke} fill="none" strokeWidth={1.4}>
         <EndMarker at={from} dir={dirA} card={rel.cardinalityA} dependent={rel.dependentSide === 'A'} stroke={stroke} />
         <EndMarker at={to} dir={dirB} card={rel.cardinalityB} dependent={rel.dependentSide === 'B'} stroke={stroke} />
@@ -60,7 +63,21 @@ export function RelationshipEdge({ id, source, target, data, selected }: EdgePro
           </text>
         )}
       </g>
+      {change && !change.with && <EdgeBadge at={add(mid, scale(perp(dirA), 14))} n={change.n} status={change.status} />}
     </>
+  )
+}
+
+/** The number of a changed line, next to its middle (same look as the badge on an entity). */
+function EdgeBadge({ at, n, status }: { at: Vec; n: number; status: string }) {
+  const w = n >= 10 ? 26 : 20
+  return (
+    <g className="pointer-events-none select-none">
+      <rect x={at.x - w / 2} y={at.y - 10} width={w} height={20} rx={10} fill={`var(--chg-${status})`} stroke="var(--canvas-bg)" strokeWidth={2} />
+      <text x={at.x} y={at.y + 4} textAnchor="middle" fontSize={11} fontWeight={700} fill="var(--canvas-bg)">
+        {n}
+      </text>
+    </g>
   )
 }
 

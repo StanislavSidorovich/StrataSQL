@@ -1,5 +1,6 @@
 import type { Inheritance, InheritanceGeneration, Model } from '../../core/metamodel'
 import { addInheritanceChild, ancestorsOf, removeInheritance, removeInheritanceChild, updateInheritance } from '../../core/ops'
+import { ElementChange } from '../changes/ChangesPanel'
 import { ElementIssues } from '../lint/IssuesPanel'
 import { useEditor } from '../store'
 import { Check, Field, IconButton, Section, Select, TextArea, TextInput } from './fields'
@@ -22,6 +23,7 @@ export function InheritancePanel({ inh, model }: { inh: Inheritance; model: Mode
   return (
     <div>
       <ElementIssues kind="inheritance" id={id} />
+      <ElementChange kind="inheritance" id={id} />
       <Section title="Inheritance" help="inheritance">
         <Field label="Name">
           <TextInput value={inh.name} onChange={(v) => apply((m) => updateInheritance(m, id, { name: v }), { coalesce: `hn:${id}` })} />

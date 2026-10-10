@@ -1,5 +1,6 @@
 import { produce } from 'immer'
 import { create } from 'zustand'
+import { changeOf, diffModels, type Change, type ChangeKind, type ModelChanges } from '../core/changes'
 import { generatePdm } from '../core/cdm2pdm'
 import { lintModel, type LintIssue } from '../core/lint'
 import { emptyModel, type Id, type Model } from '../core/metamodel'
@@ -23,6 +24,8 @@ const COALESCE_MS = 1000
 const STORAGE_KEY = 'stratasql.model'
 /** The trainer's working model, kept apart so a task never overwrites the user's own model. */
 export const TRAINER_MODEL_KEY = 'stratasql.trainer.model'
+/** The earlier version the user's own model is compared with. */
+const BASE_KEY = 'stratasql.changes.base'
 
 interface ApplyOptions {
   /** Consecutive edits with the same key within 1 s form one undo step (typing in a field). */
@@ -55,6 +58,10 @@ interface EditorState {
   doc: number
   /** When autosave last wrote the model to the browser (0 = not in this visit); shown as “Saved”. */
   savedAt: number
+  /** The earlier version the model is compared with (File → Compare with…); null: no comparison. */
+  changesBase: Model | null
+  /** The changes are marked on the canvas (numbers, colours). */
+  showChanges: boolean
 
   /** Runs an edit operation on a draft; on ModelError the model is untouched and the message is shown. */
   apply: (edit: (m: Model) => void, opts?: ApplyOptions) => boolean
@@ -70,6 +77,8 @@ interface EditorState {
   closeHelp: () => void
   setIssuesOpen: (open: boolean) => void
   focusIssue: (issue: LintIssue | null) => void
+  /** Compare the model with an earlier version (null stops comparing). */
+  setChangesBase: (base: Model | null) => void
 }
 
 export const useEditor = create<EditorState>()((set, get) => ({
@@ -90,6 +99,8 @@ export const useEditor = create<EditorState>()((set, get) => ({
   focusedIssue: null,
   trainerBackup: null,
   walkthrough: null,
+  changesBase: loadStoredModel(BASE_KEY),
+  showChanges: true,
 
   apply(edit, opts = {}) {
     const { model, past, lastEdit } = get()
@@ -156,6 +167,8 @@ export const useEditor = create<EditorState>()((set, get) => ({
       tableSelection: null,
       lastEdit: null,
       error: null,
+      // Another document: its own comparison, if any, is set by whoever loads it.
+      changesBase: null,
     })
   },
 
@@ -168,6 +181,7 @@ export const useEditor = create<EditorState>()((set, get) => ({
   closeHelp: () => set({ help: null }),
   setIssuesOpen: (issuesOpen) => set({ issuesOpen }),
   focusIssue: (focusedIssue) => set({ focusedIssue }),
+  setChangesBase: (changesBase) => set({ changesBase, showChanges: true }),
 }))
 
 function validSelection(m: Model, s: Selection): Selection {
@@ -198,13 +212,18 @@ function saveNow() {
       localStorage.setItem(STORAGE_KEY, serializeModel(trainerBackup))
       localStorage.setItem(TRAINER_MODEL_KEY, serializeModel(model))
     } else localStorage.setItem(STORAGE_KEY, serializeModel(model))
+    const { changesBase } = useEditor.getState()
+    if (!trainerBackup) {
+      if (changesBase) localStorage.setItem(BASE_KEY, serializeModel(changesBase))
+      else localStorage.removeItem(BASE_KEY)
+    }
     useEditor.setState({ savedAt: Date.now() })
   } catch {
     // Storage full or unavailable: the file save still works.
   }
 }
 useEditor.subscribe((state, prev) => {
-  if (state.model === prev.model && state.trainerBackup === prev.trainerBackup) return
+  if (state.model === prev.model && state.trainerBackup === prev.trainerBackup && state.changesBase === prev.changesBase) return
   if (state.focusedIssue) useEditor.setState({ focusedIssue: null })
   clearTimeout(saveTimer)
   saveTimer = setTimeout(saveNow, 300)
@@ -249,6 +268,27 @@ export function useLint(): LintIssue[] {
   return muted ? NO_ISSUES : lintFor(model)
 }
 const NO_ISSUES: LintIssue[] = []
+
+const changesCache = new WeakMap<Model, WeakMap<Model, ModelChanges>>()
+
+/** Changes of the current model against its earlier version, or null when it is not compared. */
+export function useChanges(): ModelChanges | null {
+  const model = useModel()
+  const base = useEditor((s) => s.changesBase)
+  if (!base) return null
+  let byBase = changesCache.get(model)
+  if (!byBase) changesCache.set(model, (byBase = new WeakMap()))
+  let c = byBase.get(base)
+  if (!c) byBase.set(base, (c = diffModels(base, model)))
+  return c
+}
+
+/** The change of an element while the changes are shown on the canvas. */
+export function useShownChange(kind: ChangeKind, id: Id | undefined): Change | undefined {
+  const c = useChanges()
+  const on = useEditor((s) => s.showChanges && s.trainerBackup === null)
+  return on && c && id ? changeOf(c, kind, id) : undefined
+}
 
 /** Is the element new in the current walkthrough step? */
 export function useSpotlight(id: Id | undefined): boolean {

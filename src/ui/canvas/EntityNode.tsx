@@ -2,7 +2,8 @@ import { Handle, Position, useConnection, type Node, type NodeProps } from '@xyf
 import { formatDataType } from '../../core/metamodel'
 import { issueTouches } from '../../core/lint'
 import { worstSeverity } from '../lint/IssuesPanel'
-import { useEditor, useLint, useSpotlight } from '../store'
+import { ChangeBadge } from '../changes/ChangesPanel'
+import { useEditor, useLint, useShownChange, useSpotlight } from '../store'
 
 export type EntityNodeType = Node<{ entityId: string }, 'entity'>
 
@@ -21,6 +22,7 @@ export function EntityNode({ id, data, selected }: NodeProps<EntityNodeType>) {
   const issues = useLint()
   const focused = useEditor((s) => (s.focusedIssue ? issueTouches(s.focusedIssue, 'entity', data.entityId) : false))
   const isNew = useSpotlight(data.entityId)
+  const change = useShownChange('entity', data.entityId)
   if (!entity) return null
   const severity = worstSeverity(issues, 'entity', entity.id)
   const pi = entity.identifiers.find((i) => i.isPrimary)
@@ -29,10 +31,11 @@ export function EntityNode({ id, data, selected }: NodeProps<EntityNodeType>) {
 
   return (
     <div
-      className={`entity-node ${selected ? 'is-selected' : ''} ${severity ? `lint-${severity}` : ''} ${focused ? 'lint-focus' : ''} ${isNew ? 'walk-new' : ''}`}
+      className={`entity-node ${selected ? 'is-selected' : ''} ${severity ? `lint-${severity}` : ''} ${focused ? 'lint-focus' : ''} ${isNew ? 'walk-new' : ''} ${change ? `chg-${change.status}` : ''}`}
       data-testid={`entity-${entity.name}`}
     >
       <HiddenTarget />
+      {change && <ChangeBadge change={change} className="on-node" />}
       <Handle type="source" position={Position.Right} className="link-handle" title="Drag to another entity to link" />
       {linkingFromHere && (
         <div className="self-drop" title="Drop here: the entity is linked to itself (reflexive)">

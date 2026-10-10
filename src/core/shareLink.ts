@@ -6,6 +6,8 @@ import { parseModel, serializeModel } from './serialize'
 
 /** The fragment key: `https://model.quaera.app/#m=<data>`. */
 export const SHARE_PARAM = 'm'
+/** The earlier version the model is compared with, when there is one: `#m=<data>&b=<data>`. */
+export const BASE_PARAM = 'b'
 
 async function pipe(bytes: Uint8Array, stream: CompressionStream | DecompressionStream): Promise<Uint8Array> {
   const out = new Blob([bytes as BlobPart]).stream().pipeThrough(stream)
@@ -83,9 +85,9 @@ export function shareDataFromHash(hash: string): string | null {
 }
 
 /** The full link for a model, based on the current page address (without its query and fragment). */
-export async function shareUrl(m: Model, base: string): Promise<string> {
+export async function shareUrl(m: Model, base: string, comparedWith?: Model | null): Promise<string> {
   const url = new URL(base)
   url.search = ''
-  url.hash = `${SHARE_PARAM}=${await encodeShare(m)}`
+  url.hash = `${SHARE_PARAM}=${await encodeShare(m)}` + (comparedWith ? `&${BASE_PARAM}=${await encodeShare(comparedWith)}` : '')
   return url.toString()
 }

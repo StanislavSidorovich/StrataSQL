@@ -46,6 +46,13 @@
   --walk-new: #0d9488;
   --ok: #0f7a5a;
   --ok-soft: #e1f5ec;
+  /* Changes against an earlier version: not amber, which the linter's warnings already use. */
+  --chg-new: #15803d;
+  --chg-new-soft: #e3f6e9;
+  --chg-changed: #7c3aed;
+  --chg-changed-soft: #efe7fd;
+  --chg-removed: #6b7385;
+  --chg-removed-soft: #eef0f3;
 
   color-scheme: light;
 }
@@ -94,6 +101,12 @@
   --walk-new: #2dd4bf;
   --ok: #4fd1a5;
   --ok-soft: #143329;
+  --chg-new: #4ade80;
+  --chg-new-soft: #15301f;
+  --chg-changed: #b99cff;
+  --chg-changed-soft: #2c2347;
+  --chg-removed: #98a0b3;
+  --chg-removed-soft: #262b35;
 
   color-scheme: dark;
 }
@@ -2548,4 +2561,163 @@ body {
   color: var(--accent);
   text-decoration: underline;
   text-underline-offset: 2px;
+}
+
+/* ---------------------------------------------------------------- changes against an earlier version */
+.entity-node.chg-new {
+  box-shadow: 0 0 0 3px var(--chg-new);
+}
+.entity-node.chg-changed {
+  box-shadow: 0 0 0 3px var(--chg-changed);
+}
+.entity-node,
+.inheritance-node {
+  position: relative;
+}
+.chg-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  color: #fff;
+  background: var(--chg-changed);
+  flex: none;
+}
+.chg-badge.chg-new {
+  background: var(--chg-new);
+}
+.chg-badge.chg-removed {
+  background: var(--chg-removed);
+}
+.dark .chg-badge {
+  color: #111;
+}
+/* On the diagram: a number in the top-left corner of the entity, outside its border. */
+.chg-badge.on-node {
+  position: absolute;
+  top: -12px;
+  left: -12px;
+  z-index: 2;
+  box-shadow: 0 0 0 2px var(--canvas-bg);
+}
+.changes-dock .issues-bar {
+  cursor: default;
+}
+.chg-bar-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  padding: 0;
+}
+.chg-caret {
+  border: 0;
+  background: none;
+  cursor: pointer;
+  font: inherit;
+}
+.chg-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.chg-word-new {
+  color: var(--chg-new);
+}
+.chg-word-changed {
+  color: var(--chg-changed);
+}
+.chg-word-removed {
+  color: var(--chg-removed);
+}
+.chg-word {
+  font-size: 11px;
+  font-weight: 600;
+}
+.chg-row {
+  border-radius: 6px;
+  border-left: 3px solid var(--chg-changed);
+  background: var(--chg-changed-soft);
+}
+.chg-row-new {
+  border-left-color: var(--chg-new);
+  background: var(--chg-new-soft);
+}
+.chg-row-removed {
+  border-left-color: var(--chg-removed);
+  background: var(--chg-removed-soft);
+}
+.chg-row.is-part {
+  margin-left: 22px;
+}
+.chg-row.is-focused {
+  outline: 2px solid var(--accent);
+}
+.chg-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+  padding: 5px 8px;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+.chg-main:disabled {
+  cursor: default;
+}
+.chg-row-removed .chg-label {
+  text-decoration: line-through;
+  text-decoration-color: var(--chg-removed);
+}
+.chg-part {
+  width: 20px;
+  text-align: center;
+  color: var(--muted);
+  flex: none;
+}
+.chg-label {
+  font-weight: 600;
+}
+.chg-details {
+  margin: 2px 0 0;
+  padding-left: 16px;
+  list-style: disc;
+}
+.chg-note {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+.element-change {
+  margin: 10px 10px 0;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  border-left: 3px solid var(--chg-changed);
+  background: var(--chg-changed-soft);
+}
+.element-change.chg-row-new {
+  border-left-color: var(--chg-new);
+  background: var(--chg-new-soft);
 }

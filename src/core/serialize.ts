@@ -33,11 +33,26 @@ export interface SavedTask {
   level: number
 }
 
-/** Canonical JSON: fixed key order, so save → load → save is byte-identical. `task` is written last. */
-export function serializeModel(m: Model, task?: SavedTask): string {
+/**
+ * Canonical JSON: fixed key order, so save → load → save is byte-identical. `task` is written last,
+ * then `base`: the earlier version the model is compared with (File → Compare with…), so whoever
+ * opens the file sees the same changes.
+ */
+export function serializeModel(m: Model, task?: SavedTask, base?: Model | null): string {
   const out: Record<string, unknown> = { ...buildModel(m) }
   if (task) out.task = { id: task.id, level: task.level }
+  if (base) out.base = buildModel(base)
   return JSON.stringify(out, null, 2) + '\n'
+}
+
+/** The earlier version stored in a model file, if any (a malformed one is ignored: the model still opens). */
+export function readSavedBase(input: string): Model | null {
+  try {
+    const b = (JSON.parse(input) as { base?: unknown }).base
+    return b ? parseModel(b) : null
+  } catch {
+    return null
+  }
 }
 
 /** The task stored in a model file, if any (a malformed one is ignored: the model still opens). */
