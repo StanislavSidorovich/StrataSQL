@@ -27,3 +27,5 @@ practise.mjs pins the canvas with CSS (`.react-flow__viewport` transform !import
 
 `hotel-ref.json` is the Hotel reference CDM (from the walkthrough's last step); practise.mjs injects its other entities
 for the ⏩ beat. If the case changes, refresh it from localStorage `stratasql.trainer.model` at walkthrough step 10.
+
+**Story videos (#30):** `node record-story.mjs <story.strata-story.json> <out.mp4> [url]` records a story in Present mode (1920×1080, reading pauses from the word count; `TARGET=133` for about 2:15, `CRF=24` for a smaller file). Full screen is switched off in the headless browser: it would shrink the page to 800×600.
