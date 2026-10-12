@@ -3,6 +3,7 @@ import { formatCardinality, type Cardinality } from '../../core/metamodel'
 import { issueTouches } from '../../core/lint'
 import { worstSeverity } from '../lint/IssuesPanel'
 import { useEditor, useLint, useShownChange, useSpotlight } from '../store'
+import { useStoryDraw, useStoryLook } from '../story/storyStore'
 import { add, edgeEnds, perp, scale, sub, unit, type Rect, type Vec } from './geometry'
 
 export type RelationshipEdgeData = { relationshipId: string; offset: number }
@@ -22,11 +23,18 @@ export function RelationshipEdge({ id, source, target, data, selected }: EdgePro
   const focused = useEditor((s) => (s.focusedIssue ? issueTouches(s.focusedIssue, 'relationship', data?.relationshipId ?? '') : false))
   const isNew = useSpotlight(data?.relationshipId)
   const change = useShownChange('relationship', data?.relationshipId)
+  const drawFrom = useStoryDraw(data?.relationshipId)
+  // A story dims the lines of earlier beats along with their entities.
+  const lookA = useStoryLook(source)
+  const lookB = useStoryLook(target)
+  const storyDim = lookA.includes('story-dim') || lookB.includes('story-dim')
   if (!rel || !a || !b) return null
 
   const stroke = selected
     ? 'var(--edge-selected)'
-    : isNew
+    : drawFrom
+      ? 'var(--story)'
+      : isNew
       ? 'var(--walk-new)'
       : change
         ? `var(--chg-${change.status})`
@@ -39,7 +47,8 @@ export function RelationshipEdge({ id, source, target, data, selected }: EdgePro
   if (source === target) return <ReflexiveEdge id={id} rect={a} rel={rel} stroke={stroke} />
 
   const { from, to } = edgeEnds(a, b, data?.offset ?? 0)
-  const path = `M ${from.x} ${from.y} L ${to.x} ${to.y}`
+  // A story draws a new line from the entity that was there first (CSS: .story-draw).
+  const path = drawFrom === 'B' ? `M ${to.x} ${to.y} L ${from.x} ${from.y}` : `M ${from.x} ${from.y} L ${to.x} ${to.y}`
   const mid = scale(add(from, to), 0.5)
   const dirA = unit(sub(to, from))
   const dirB = scale(dirA, -1)
@@ -48,8 +57,15 @@ export function RelationshipEdge({ id, source, target, data, selected }: EdgePro
   const nameAt = outer ? add(mid, scale(perp(dirA), outer * 8)) : { x: mid.x, y: mid.y - 6 }
 
   return (
-    <>
-      <BaseEdge id={id} path={path} interactionWidth={16} style={{ stroke, strokeWidth: selected || focused || isNew || change ? 2.4 : 1.4 }} />
+    <g className={drawFrom ? 'story-drawn' : storyDim ? 'story-dim' : undefined}>
+      <BaseEdge
+        id={id}
+        path={path}
+        interactionWidth={16}
+        pathLength={drawFrom ? 1 : undefined}
+        className={drawFrom ? 'story-draw' : undefined}
+        style={{ stroke, strokeWidth: selected || focused || isNew || change || drawFrom ? 2.4 : 1.4 }}
+      />
       <g className="pointer-events-none" stroke={stroke} fill="none" strokeWidth={1.4}>
         <EndMarker at={from} dir={dirA} card={rel.cardinalityA} dependent={rel.dependentSide === 'A'} stroke={stroke} />
         <EndMarker at={to} dir={dirB} card={rel.cardinalityB} dependent={rel.dependentSide === 'B'} stroke={stroke} />
@@ -65,7 +81,7 @@ export function RelationshipEdge({ id, source, target, data, selected }: EdgePro
       </g>
       {/* A third of the way from A: the middle holds the line's name. */}
       {change && !change.with && <EdgeBadge at={add(from, scale(sub(to, from), 0.33))} n={change.n} status={change.status} />}
-    </>
+    </g>
   )
 }
 

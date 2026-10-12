@@ -146,6 +146,33 @@ Cases live in `cases/<id>.md` (human-readable source) and later `cases/<id>.json
 7. Rules that cannot be represented in the model (business rules, part II)
 8. Hints (per level) and synonyms
 
+### 10.1 Story files (`*.strata-story.json`)
+
+A model told as a story, to present a design to a group (#30). **File → Open** starts it; ← → / Space step through it, **⛶ Present** hides everything but the diagram (for showing or recording). Elements are named, not referenced by id. Checked on open (`src/data/story.ts`): an unknown name fails with the beat it is in.
+
+```json
+{
+  "format": "strata-story", "version": 1,
+  "title": "Vet clinic: the model as one visit",
+  "model": { "...": "a strata-cdm model; leave it out to tell the story over the open model" },
+  "beats": [
+    { "title": "One visit, step by step", "text": "Intro: an empty canvas, the card in the middle." },
+    { "title": "They register their pets", "show": ["Pet"],
+      "quote": "Register their pets by providing species, breed…", "text": "One owner, one or more pets (`1,n`)." },
+    { "title": "A vet confirms", "links": ["assigned_to"], "focus": "Appointment",
+      "status": { "values": ["Requested", "Scheduled", "Completed"], "now": 1 } },
+    { "title": "Not in the model yet", "ghosts": [{ "name": "Vaccination", "attributes": ["Next_due"], "links": ["Pet"], "position": { "x": 1660, "y": 800 } }],
+      "ghostRows": [{ "entity": "Appointment", "rows": ["Priority (urgent / routine)"] }] },
+    { "title": "The whole model", "overview": true }
+  ]
+}
+```
+
+- `show`: entities that appear in the beat. A relationship appears in the first beat where both its entities are on screen and is drawn **from the entity that was there first**; between two new ones, from the one listed first. `links` holds a relationship back until its beat (both ends already there: drawn towards the beat's `focus`). An inheritance appears with its last entity.
+- `focus`: the entity or ghost the comment card points at (default: the first shown entity or ghost; none: the card stands top right, or in the middle of an empty canvas). Earlier beats are dimmed; `overview` shows everything and fits the whole diagram.
+- `quote` / `text`: a text or a list of texts; `text` takes `**bold**`, `*italic*`, `` `code` ``.
+- `ghosts`: dashed boxes for what the task asks for and the model does not hold yet, with dashed lines to their `links`; without `position` a ghost goes to the right of its first link. `ghostRows`: dashed planned rows inside an existing entity. Ghosts never enter the model, the PDM or the SQL.
+
 ## 11. Tech stack
 
 - **React + TypeScript + Vite**

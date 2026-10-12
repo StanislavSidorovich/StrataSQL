@@ -4,6 +4,7 @@ import { issueTouches } from '../../core/lint'
 import { worstSeverity } from '../lint/IssuesPanel'
 import { ChangeBadge } from '../changes/ChangesPanel'
 import { useEditor, useFromBase, useLint, useShownChange, useSpotlight } from '../store'
+import { useGhostRows, useStoryLook } from '../story/storyStore'
 
 export type EntityNodeType = Node<{ entityId: string }, 'entity'>
 
@@ -24,6 +25,8 @@ export function EntityNode({ id, data, selected }: NodeProps<EntityNodeType>) {
   const isNew = useSpotlight(data.entityId)
   const change = useShownChange('entity', data.entityId)
   const fromBase = useFromBase(data.entityId)
+  const storyLook = useStoryLook(data.entityId)
+  const ghostRows = useGhostRows(data.entityId)
   if (!entity) return null
   const severity = worstSeverity(issues, 'entity', entity.id)
   const pi = entity.identifiers.find((i) => i.isPrimary)
@@ -32,7 +35,7 @@ export function EntityNode({ id, data, selected }: NodeProps<EntityNodeType>) {
 
   return (
     <div
-      className={`entity-node ${selected ? 'is-selected' : ''} ${severity ? `lint-${severity}` : ''} ${focused ? 'lint-focus' : ''} ${isNew ? 'walk-new' : ''} ${change ? `chg-${change.status}` : ''} ${fromBase ? 'chg-from-base' : ''}`}
+      className={`entity-node ${selected ? 'is-selected' : ''} ${severity ? `lint-${severity}` : ''} ${focused ? 'lint-focus' : ''} ${isNew ? 'walk-new' : ''} ${change ? `chg-${change.status}` : ''} ${fromBase ? 'chg-from-base' : ''} ${storyLook}`}
       data-testid={`entity-${entity.name}`}
     >
       <HiddenTarget />
@@ -74,6 +77,11 @@ export function EntityNode({ id, data, selected }: NodeProps<EntityNodeType>) {
             </div>
           )
         })}
+        {ghostRows?.map((row) => (
+          <div key={`ghost:${row}`} className="entity-attr ghost-row" title="Asked for by the task, not in the model yet">
+            <span>{row}</span>
+          </div>
+        ))}
         {change?.attributes?.removed.map((name) => (
           <div key={`removed:${name}`} className="entity-attr chg-attr-removed" title="Removed since the earlier version">
             <span>{name}</span>

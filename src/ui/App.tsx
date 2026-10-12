@@ -38,6 +38,9 @@ import { LESSONS } from '../data/lessons'
 import { MyTaskDialog, openMyTask } from './trainer/MyTask'
 import { confirmDiscardTask, continueTask, isVeiled, leaveTrainer, openCaseFile, savedTaskLabel, useTrainer } from './trainer/trainerStore'
 import { isCaseFile } from '../data/caseFile'
+import { isStoryFile } from '../data/story'
+import { openStoryFile, useStory } from './story/storyStore'
+import { PresenterBar, StoryPane, useStoryKeys } from './story/StoryPane'
 
 /** The trainer cases, easiest first: their reference models are the examples. */
 const EXAMPLES = CASES.map((c) => ({ id: c.id, label: `${c.title} ${'★'.repeat(c.difficulty)}`, build: c.build }))
@@ -126,8 +129,17 @@ function deleteSelection() {
   })
 }
 
+/** Before New / Open / an example: a running story and trainer task close first. False = cancelled. */
+function leaveModes(): boolean {
+  if (useStory.getState().story) useStory.getState().exit()
+  return leaveTrainer()
+}
+
 function Editor() {
   const [dark, toggleTheme] = useTheme()
+  const storyOn = useStory((s) => s.story !== null)
+  const presenting = useStory((s) => s.presenting)
+  useStoryKeys()
   const updateReady = useUpdateReady()
   const model = useEditor((s) => s.model)
   const selection = useEditor((s) => s.selection)
@@ -172,7 +184,7 @@ function Editor() {
   const fit = () => setTimeout(() => flow.fitView({ ...CDM_FIT, duration: 300 }), 50)
 
   const openExample = (build: () => ReturnType<typeof emptyModel>) => {
-    if (!leaveTrainer()) return
+    if (!leaveModes()) return
     setView('cdm')
     load(build())
     fit()
@@ -215,7 +227,7 @@ function Editor() {
       try {
         const shared = await decodeShare(data)
         const sharedBase = baseData ? await decodeShare(baseData) : null
-        if (!leaveTrainer()) return
+        if (!leaveModes()) return
         const hadModel = useEditor.getState().model.entities.length > 0
         useOnboarding.setState({ welcome: false })
         setView('cdm')
@@ -296,7 +308,7 @@ function Editor() {
   const openFile = async (file: File) => {
     try {
       const text = await file.text()
-      if (!leaveTrainer()) return
+      if (!leaveModes()) return
       if (/\.(cdm|cdb|pdm|pdb)$/i.test(file.name)) {
         const { model: imported, warnings } = importPowerDesigner(text, file.name)
         setView('cdm')
@@ -305,6 +317,10 @@ function Editor() {
           `Imported ${imported.entities.length} entities and ${imported.relationships.length} relationships from ${file.name}.` +
             (warnings.length ? `\n${warnings.join('\n')}` : ''),
         )
+      } else if (isStoryFile(text)) {
+        const story = openStoryFile(text)
+        if (story) setNotice(`Opened the story “${story.title}”: → / Space for the next beat, ⛶ Present for full screen.`)
+        return
       } else if (isCaseFile(text)) {
         const c = openCaseFile(text)
         setNotice(`Opened the case ${c.title}: watch it built step by step (→ / ←).`)
@@ -340,6 +356,7 @@ Cancel: open it as an ordinary model.`)) {
       let base: Model
       if (/\.(cdm|cdb|pdm|pdb)$/i.test(file.name)) base = importPowerDesigner(text, file.name).model
       else if (isCaseFile(text)) throw new Error('a case file holds a task, not a model to compare with')
+      else if (isStoryFile(text)) throw new Error('a story file tells a model, it is not a version to compare with')
       else base = parseModel(text)
       const { model: m, setChangesBase } = useEditor.getState()
       setChangesBase(base)
@@ -365,6 +382,10 @@ Cancel: open it as an ordinary model.`)) {
         e.preventDefault()
         save(e.shiftKey)
       } else if (typing) {
+        return
+      } else if (useStory.getState().story) {
+        // A story is watched, not edited: its keys are in useStoryKeys.
+        if (e.key === '?') useOnboarding.getState().showShortcuts(true)
         return
       } else if (mod && k === 'z' && !e.shiftKey) {
         e.preventDefault()
@@ -408,7 +429,7 @@ Cancel: open it as an ordinary model.`)) {
   const inh = selection?.kind === 'inheritance' ? model.inheritances.find((i) => i.id === selection.id) : undefined
 
   return (
-    <div className="app-root flex flex-col">
+    <div className={`app-root flex flex-col ${presenting ? 'is-presenting' : ''}`}>
       <header className="toolbar" ref={toolbar}>
         <div className="toolbar-row">
         <div className="toolbar-side toolbar-left">
@@ -420,7 +441,7 @@ Cancel: open it as an ordinary model.`)) {
             label="File"
             tour="file"
             items={[
-              { label: 'New model', icon: <FilePlus size={ICON} />, onSelect: () => leaveTrainer() && load(emptyModel()) },
+              { label: 'New model', icon: <FilePlus size={ICON} />, onSelect: () => leaveModes() && load(emptyModel()) },
               { label: 'Open…', icon: <FolderOpen size={ICON} />, hint: `${FILE_EXTENSION}, .cdm`, onSelect: () => fileInput.current?.click() },
               { label: 'Save', icon: <Save size={ICON} />, hint: 'Ctrl+S', onSelect: () => save(false) },
               { label: 'Save as…', icon: <SaveAll size={ICON} />, hint: 'Ctrl+Shift+S', onSelect: () => save(true) },
@@ -509,7 +530,10 @@ Cancel: open it as an ordinary model.`)) {
           type="button"
           data-tour="trainer"
           className={`btn btn-icon keep-label ${trainerOn ? 'btn-primary' : 'btn-accent'}`}
-          onClick={() => useTrainer.getState().openPicker(!useTrainer.getState().pickerOpen)}
+          onClick={() => {
+            if (storyOn) useStory.getState().exit()
+            useTrainer.getState().openPicker(!useTrainer.getState().pickerOpen)
+          }}
           title="Practise on the course cases: watch it built, worked example, text tagging, complete the model, build it yourself with hints"
         >
           <GraduationCap size={ICON} aria-hidden />
@@ -526,7 +550,7 @@ Cancel: open it as an ordinary model.`)) {
           ))}
         </div>
         {docked && (
-          <div className={view === 'cdm' && !veiled ? '' : 'invisible'}>
+          <div className={view === 'cdm' && !veiled && !storyOn ? '' : 'invisible'}>
             <DrawTools onAddEntity={addEntityAtCenter} docked onDock={setDrawDocked} canDock={barWide} />
           </div>
         )}
@@ -534,7 +558,7 @@ Cancel: open it as an ordinary model.`)) {
         <div className="toolbar-side toolbar-right">
         <SavedState
           name={model.name}
-          onClose={model.entities.length > 0 ? () => leaveTrainer() && load(emptyModel()) : undefined}
+          onClose={model.entities.length > 0 ? () => leaveModes() && load(emptyModel()) : undefined}
         />
         <div className="toolbar-group">
           {updateReady && (
@@ -586,19 +610,25 @@ Cancel: open it as an ordinary model.`)) {
         </>
       ) : (
       <div className="relative flex min-h-0 flex-1">
-        {trainerOn && (
-          <SideDock side="left" name="trainer" defaultWidth={380} revealKey={trainerKey}>
-            <TrainerPane />
+        {storyOn ? (
+          <SideDock side="left" name="story" defaultWidth={380}>
+            <StoryPane />
           </SideDock>
+        ) : (
+          trainerOn && (
+            <SideDock side="left" name="trainer" defaultWidth={380} revealKey={trainerKey}>
+              <TrainerPane />
+            </SideDock>
+          )
         )}
         <NameSuggestionLists />
         <main className="relative flex min-w-0 flex-1 flex-col">
           <div className="canvas-area relative min-h-0 flex-1" data-tour="canvas">
           {view === 'cdm' && <Canvas dark={dark} />}
-          {view === 'cdm' && !veiled && !docked && <DrawTools onAddEntity={addEntityAtCenter} docked={false} onDock={setDrawDocked} canDock={barWide} />}
+          {view === 'cdm' && !veiled && !docked && !storyOn && <DrawTools onAddEntity={addEntityAtCenter} docked={false} onDock={setDrawDocked} canDock={barWide} />}
           {view === 'pdm' && <PdmCanvas dark={dark} />}
           {view === 'sql' && <SqlView />}
-          {model.entities.length === 0 && view !== 'sql' && (
+          {model.entities.length === 0 && view !== 'sql' && !storyOn && (
             <div className="empty-state">
               <h2>{pickerOnly ? 'Pick a case on the left' : 'Start a conceptual model'}</h2>
               <p>
@@ -640,6 +670,7 @@ Cancel: open it as an ordinary model.`)) {
               {error}
             </div>
           )}
+          <PresenterBar />
           </div>
           {view === 'cdm' && comparing && !walkOn && <ChangesDock open={changesOpen} onToggle={() => setChangesOpen(!changesOpen)} />}
           {view === 'cdm' && model.entities.length > 0 && !walkOn && <IssuesDock />}

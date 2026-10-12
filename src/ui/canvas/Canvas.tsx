@@ -20,12 +20,14 @@ import { InheritanceEdge, type InheritanceEdgeType } from './InheritanceEdge'
 import { InheritanceNode, type InheritanceNodeType } from './InheritanceNode'
 import { RelationshipEdge, type RelationshipEdgeType } from './RelationshipEdge'
 import { KeepOnScreen } from './KeepOnScreen'
+import { GhostEdge, GhostNode, ghostEdges, ghostNodes, StoryCallout, StoryCamera, type GhostNodeType } from '../story/StoryCanvas'
+import { useFrame } from '../story/storyStore'
 
 // `table` / `fk` too: see PdmCanvas (shared React Flow store across views).
-const nodeTypes = { entity: EntityNode, inheritance: InheritanceNode, table: TableNode }
-const edgeTypes = { relationship: RelationshipEdge, inheritance: InheritanceEdge, fk: FkEdge }
+const nodeTypes = { entity: EntityNode, inheritance: InheritanceNode, table: TableNode, ghost: GhostNode }
+const edgeTypes = { relationship: RelationshipEdge, inheritance: InheritanceEdge, fk: FkEdge, ghost: GhostEdge }
 
-type AnyNode = EntityNodeType | InheritanceNodeType
+type AnyNode = EntityNodeType | InheritanceNodeType | GhostNodeType
 const PARALLEL_GAP = 26
 
 function buildNodes(m: Model, sel: Selection): AnyNode[] {
@@ -102,28 +104,31 @@ export function Canvas({ dark }: { dark: boolean }) {
   const apply = useEditor((s) => s.apply)
   const select = useEditor((s) => s.select)
   const flow = useReactFlow()
+  // A story is watched, not edited: no dragging, linking or adding; its ghosts join the diagram.
+  const frame = useFrame()
+  const story = frame !== null
 
   const [nodes, setNodes, onNodesChange] = useNodesState<AnyNode>(buildNodes(model, selection))
   useEffect(() => {
     // Keep measured sizes of existing nodes, otherwise React Flow hides them until re-measured.
     setNodes((prev) => {
       const byId = new Map(prev.map((n) => [n.id, n]))
-      return buildNodes(model, selection).map((n) => {
+      return [...buildNodes(model, selection), ...(frame ? ghostNodes(frame) : [])].map((n) => {
         const p = byId.get(n.id)
         return p ? ({ ...p, ...n, measured: p.measured } as AnyNode) : n
       })
     })
-  }, [model, selection, setNodes])
-  const edges = useMemo(() => buildEdges(model, selection), [model, selection])
+  }, [model, selection, setNodes, frame])
+  const edges = useMemo(() => [...buildEdges(model, selection), ...(frame ? ghostEdges(frame) : [])], [model, selection, frame])
 
   // A self-link ends on the node it started from, so the browser also sends that node a click: it must not replace the new link's selection.
   const selfLinkedAt = useRef(0)
   const onNodeClick: NodeMouseHandler<AnyNode> = useCallback(
     (_, node) => {
-      if (Date.now() - selfLinkedAt.current < 400) return
+      if (story || node.type === 'ghost' || Date.now() - selfLinkedAt.current < 400) return
       select(node.type === 'entity' ? { kind: 'entity', id: node.id } : { kind: 'inheritance', id: node.id })
     },
-    [select],
+    [select, story],
   )
 
   const onNodeDragStop = useCallback(
@@ -141,10 +146,11 @@ export function Canvas({ dark }: { dark: boolean }) {
 
   const onEdgeClick = useCallback(
     (_: ReactMouseEvent, edge: Edge) => {
+      if (story || edge.type === 'ghost') return
       if (edge.type === 'relationship') select({ kind: 'relationship', id: edge.id })
       else select({ kind: 'inheritance', id: (edge.data as { inheritanceId: string }).inheritanceId })
     },
-    [select],
+    [select, story],
   )
 
   // Links are created by dragging from an entity's handle and dropping anywhere on another entity.
@@ -200,9 +206,9 @@ export function Canvas({ dark }: { dark: boolean }) {
   const onDoubleClick = useCallback(
     (event: ReactMouseEvent) => {
       // Some browsers still send dblclick after a double tap: the tap already added the entity.
-      if (onPane(event.target) && event.timeStamp - (tap.current.added ?? -1e9) > 600) addEntityAt(event.clientX, event.clientY)
+      if (!story && onPane(event.target) && event.timeStamp - (tap.current.added ?? -1e9) > 600) addEntityAt(event.clientX, event.clientY)
     },
-    [addEntityAt],
+    [addEntityAt, story],
   )
 
   const onPointerDown = (e: ReactPointerEvent) => {
@@ -213,6 +219,7 @@ export function Canvas({ dark }: { dark: boolean }) {
     tap.current.down = undefined
     if (!down || !e.isPrimary || e.timeStamp - down.t > 300 || Math.hypot(e.clientX - down.x, e.clientY - down.y) > 10) return
     const now = { x: e.clientX, y: e.clientY, t: e.timeStamp }
+    if (story) return
     if (last && now.t - last.t < 400 && Math.hypot(now.x - last.x, now.y - last.y) < 30) {
       tap.current.last = undefined
       tap.current.added = now.t
@@ -234,6 +241,9 @@ export function Canvas({ dark }: { dark: boolean }) {
         onPaneClick={() => select(null)}
         onConnectStart={onConnectStart}
         onConnectEnd={onConnectEnd}
+        nodesDraggable={!story}
+        nodesConnectable={!story}
+        elementsSelectable={!story}
         zoomOnDoubleClick={false}
         deleteKeyCode={null}
         selectionKeyCode={null}
@@ -245,8 +255,10 @@ export function Canvas({ dark }: { dark: boolean }) {
       >
         <Background gap={20} />
         <KeepOnScreen />
-        <CanvasControls fit={CDM_FIT} history />
-        {nodes.length >= MINIMAP_FROM && <MiniMap pannable zoomable className="!bg-[var(--panel-bg)]" />}
+        <CanvasControls fit={CDM_FIT} history={!story} />
+        {story && <StoryCamera />}
+        {story && <StoryCallout />}
+        {nodes.length >= MINIMAP_FROM && !story && <MiniMap pannable zoomable className="!bg-[var(--panel-bg)]" />}
       </ReactFlow>
     </div>
   )

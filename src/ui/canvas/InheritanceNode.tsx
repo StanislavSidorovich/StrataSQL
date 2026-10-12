@@ -2,6 +2,7 @@ import { Handle, Position, type Node, type NodeProps } from '@xyflow/react'
 import { ChangeBadge } from '../changes/ChangesPanel'
 import { useEditor, useShownChange, useSpotlight } from '../store'
 import { HiddenTarget } from './EntityNode'
+import { useStoryLook } from '../story/storyStore'
 
 export type InheritanceNodeType = Node<{ inheritanceId: string }, 'inheritance'>
 
@@ -10,11 +11,12 @@ export function InheritanceNode({ data, selected }: NodeProps<InheritanceNodeTyp
   const inh = useEditor((s) => s.model.inheritances.find((i) => i.id === data.inheritanceId))
   const isNew = useSpotlight(data.inheritanceId)
   const change = useShownChange('inheritance', data.inheritanceId)
+  const storyLook = useStoryLook(data.inheritanceId)
   if (!inh) return null
   const stroke = selected ? 'var(--edge-selected)' : isNew ? 'var(--walk-new)' : change ? `var(--chg-${change.status})` : 'var(--edge)'
   const title = `${inh.name}: ${inh.mutuallyExclusive ? 'exclusive' : 'overlapping'}, ${inh.complete ? 'complete' : 'incomplete'}, generate ${inh.generation}`
   return (
-    <div className="inheritance-node" title={title}>
+    <div className={`inheritance-node ${storyLook}`} title={title}>
       <HiddenTarget />
       {change && <ChangeBadge change={change} className="on-node" />}
       <Handle type="source" position={Position.Bottom} className="hidden-handle" isConnectable={false} />
