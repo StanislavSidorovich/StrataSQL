@@ -44,6 +44,16 @@ describe('PostgreSQL dialect', () => {
     expect(Number(res.rows[0][0])).toBe(pdm.tables.length)
     expect(generatePostgres(pdm)).not.toMatch(/\bGO\b|\[/)
   })
+
+  it.each(EXAMPLES.map((b) => [b().name, b] as const))('%s script with DROP re-runs on the same database', async (_, build) => {
+    const pdm = generatePdm(build())
+    await resetDatabase(engine, pdm)
+    const script = generatePostgres(pdm, { drop: true })
+    await engine.run(script)
+    await engine.run(script)
+    const [res] = await engine.run(`SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public'`)
+    expect(Number(res.rows[0][0])).toBe(pdm.tables.length)
+  })
 })
 
 describe('statements from the grid', () => {

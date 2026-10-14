@@ -919,6 +919,13 @@ body {
   font: 12.5px/1.5 'Cascadia Code', Consolas, 'SFMono-Regular', Menlo, monospace;
   tab-size: 3;
 }
+.sql-code:focus {
+  outline: none;
+}
+.sql-code:focus-visible {
+  outline: 2px solid var(--accent, #2563eb);
+  outline-offset: -2px;
+}
 .sql-line {
   white-space: pre;
   min-height: 1.5em;
