@@ -4,6 +4,7 @@
 import { create } from 'zustand'
 import { generatePostgres } from '../../core/ddl/postgres'
 import { createPgliteEngine } from '../../core/engine-pglite'
+import type { SqlApplyReport } from '../../core/import/sql-reverse'
 import type { Pdm } from '../../core/pdm'
 import { resetDatabase, run, touchedTable, type RunOutcome, type SqlEngine } from '../../core/sandbox'
 import type { Scenario } from '../../data/scenarios'
@@ -24,6 +25,18 @@ export interface Executed {
   prediction?: Prediction
 }
 
+/**
+ * CREATE / ALTER TABLE typed in the console: the tables come from the model, so the console offers
+ * to add them to the model instead of running them.
+ */
+export interface SchemaProposal {
+  sql: string
+  /** What adding it would do (worked out on a copy of the model). */
+  report: SqlApplyReport
+  /** Set once it was added: the entities created, to show them on the diagram. */
+  added?: string[]
+}
+
 interface SandboxState {
   status: EngineStatus
   statusMessage: string | null
@@ -39,12 +52,14 @@ interface SandboxState {
   /** Results of the steps of the open scenario, by index. */
   steps: Executed[]
   console: string
+  proposal: SchemaProposal | null
   /** Scenario steps ask “will the database accept this?” before they run. */
   predictFirst: boolean
   setPredictFirst: (on: boolean) => void
   setTable: (name: string | null) => void
   setDraft: (table: string, column: string, value: string) => void
   setConsole: (sql: string) => void
+  setProposal: (proposal: SchemaProposal | null) => void
 }
 
 export const useSandbox = create<SandboxState>()((set) => ({
@@ -58,6 +73,7 @@ export const useSandbox = create<SandboxState>()((set) => ({
   scenarioId: null,
   steps: [],
   console: '',
+  proposal: null,
   predictFirst: readPredictFirst(),
   setPredictFirst: (predictFirst) => {
     set({ predictFirst })
@@ -70,6 +86,7 @@ export const useSandbox = create<SandboxState>()((set) => ({
   setTable: (table) => set({ table }),
   setDraft: (table, column, value) => set((s) => ({ drafts: { ...s.drafts, [table]: { ...s.drafts[table], [column]: value } } })),
   setConsole: (console) => set({ console }),
+  setProposal: (proposal) => set({ proposal }),
 }))
 
 function readPredictFirst(): boolean {

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { emptyModel, type Model } from '../core/metamodel'
 import { addEntity, removeEntity, removeInheritance, removeRelationship } from '../core/ops'
 import { importPowerDesigner } from '../core/import/powerdesigner'
+import { modelFromSqlFile } from './sqlImport'
 import { FILE_EXTENSION, parseModel, readSavedBase, readSavedTask } from '../core/serialize'
 import { BASE_PARAM, decodeShare, SHARE_PARAM, shareDataFromHash, shareUrl } from '../core/shareLink'
 import { diffModels } from '../core/changes'
@@ -309,7 +310,12 @@ function Editor() {
     try {
       const text = await file.text()
       if (!leaveModes()) return
-      if (/\.(cdm|cdb|pdm|pdb)$/i.test(file.name)) {
+      if (/\.sql$/i.test(file.name)) {
+        const { model: imported, notice } = modelFromSqlFile(text, file.name)
+        setView('cdm')
+        load(imported)
+        setNotice(notice)
+      } else if (/\.(cdm|cdb|pdm|pdb)$/i.test(file.name)) {
         const { model: imported, warnings } = importPowerDesigner(text, file.name)
         setView('cdm')
         load(imported)
@@ -442,7 +448,7 @@ Cancel: open it as an ordinary model.`)) {
             tour="file"
             items={[
               { label: 'New model', icon: <FilePlus size={ICON} />, onSelect: () => leaveModes() && load(emptyModel()) },
-              { label: 'Open…', icon: <FolderOpen size={ICON} />, hint: `${FILE_EXTENSION}, .cdm`, onSelect: () => fileInput.current?.click() },
+              { label: 'Open…', icon: <FolderOpen size={ICON} />, hint: `${FILE_EXTENSION}, .cdm, .sql`, onSelect: () => fileInput.current?.click() },
               { label: 'Save', icon: <Save size={ICON} />, hint: 'Ctrl+S', onSelect: () => save(false) },
               { label: 'Save as…', icon: <SaveAll size={ICON} />, hint: 'Ctrl+Shift+S', onSelect: () => save(true) },
               {
@@ -517,7 +523,7 @@ Cancel: open it as an ordinary model.`)) {
           <input
             ref={fileInput}
             type="file"
-            accept=".json,application/json,.cdm,.cdb,.pdm,.pdb"
+            accept=".json,application/json,.cdm,.cdb,.pdm,.pdb,.sql"
             className="hidden"
             onChange={(e) => {
               const f = e.target.files?.[0]

@@ -1,15 +1,19 @@
 // SQL sandbox (stage 2.5): the generated schema runs in PostgreSQL inside the browser (PGlite).
 // Insert rows per table, run free SQL, or follow a "try this" scenario — every rejection names the
-// constraint and links back to the CDM element that produced it.
+// constraint and links back to the CDM element that produced it. CREATE / ALTER TABLE in the console
+// is not run: the tables come from the model, so the console offers to add them to the model.
 
 import { useEffect, useState } from 'react'
 import { pgIdent } from '../../core/ddl/postgres'
+import { changesSchema, readSqlScript } from '../../core/import/sql-reader'
+import { applySqlScript } from '../../core/import/sql-reverse'
 import { columnFlags, findTable, type Pdm, type PdmTable } from '../../core/pdm'
 import { cellHint, deleteStatement, insertStatement, selectStatement, type SqlResult } from '../../core/sandbox'
 import { asksPrediction, scenariosFor, type Scenario } from '../../data/scenarios'
 import { SourceLink } from '../pdm/PdmPanel'
 import { Section } from '../panels/fields'
-import { usePdm, useModel } from '../store'
+import { useEditor, usePdm, useModel } from '../store'
+import { sqlReportSummary } from '../sqlImport'
 import { ensureSchema, execute, openScenario, predictionScore, query, resetData, runStep, useSandbox, type Executed, type Prediction } from './sandboxStore'
 import { SideDock } from '../SideDock'
 
@@ -38,13 +42,11 @@ export function SandboxView() {
         </div>
         {statusMessage && <div className={`sandbox-status ${status === 'failed' ? 'is-error' : ''}`}>{statusMessage}</div>}
         {pdm.tables.length === 0 ? (
-          <div className="sandbox-empty">No tables yet — build a conceptual model first, or open an example.</div>
+          <div className="sandbox-empty">No tables yet: build a conceptual model, open an example, or write CREATE TABLE in the console below.</div>
         ) : (
-          <>
-            <TableBrowser pdm={pdm} />
-            <SqlConsole pdm={pdm} />
-          </>
+          <TableBrowser pdm={pdm} />
         )}
+        <SqlConsole pdm={pdm} />
       </main>
       <SideDock side="right" name="scenarios" defaultWidth={390}>
         <aside className="panel" aria-label="Sandbox">
@@ -190,13 +192,23 @@ function SqlConsole({ pdm }: { pdm: Pdm }) {
   const sql = useSandbox((s) => s.console)
   const setConsole = useSandbox((s) => s.setConsole)
   const status = useSandbox((s) => s.status)
-  const first = pdm.tables[0]?.name ?? 'table'
-  const go = () => sql.trim() && void execute(pdm, sql)
+  const model = useModel()
+  const setProposal = useSandbox((s) => s.setProposal)
+  const first = pdm.tables[0]?.name
+  const go = () => {
+    if (!sql.trim()) return
+    if (changesSchema(sql)) {
+      // Worked out on a copy: nothing changes until the student says Add.
+      const preview = structuredClone(model)
+      setProposal({ sql, report: applySqlScript(preview, readSqlScript(sql)) })
+    } else void execute(pdm, sql)
+  }
+  const canRun = status === 'ready' || (!!sql.trim() && changesSchema(sql))
   return (
     <section className="sandbox-console">
       <div className="panel-section-header">
         <h3>SQL console</h3>
-        <button type="button" className="btn btn-primary btn-small" disabled={status !== 'ready' || !sql.trim()} onClick={go} title="Run (Ctrl+Enter)">
+        <button type="button" className="btn btn-primary btn-small" disabled={!canRun || !sql.trim()} onClick={go} title="Run (Ctrl+Enter)">
           Run
         </button>
       </div>
@@ -204,7 +216,7 @@ function SqlConsole({ pdm }: { pdm: Pdm }) {
         className="input console-input"
         spellCheck={false}
         aria-label="SQL console"
-        placeholder={`SELECT * FROM ${first};   — Ctrl+Enter runs`}
+        placeholder={first ? `SELECT * FROM ${first};   Ctrl+Enter runs · CREATE TABLE adds to the model` : 'CREATE TABLE … adds a table to the model   Ctrl+Enter'}
         value={sql}
         onChange={(e) => setConsole(e.target.value)}
         onKeyDown={(e) => {
@@ -214,7 +226,94 @@ function SqlConsole({ pdm }: { pdm: Pdm }) {
           }
         }}
       />
+      <SchemaProposalCard />
     </section>
+  )
+}
+
+/** CREATE / ALTER TABLE from the console: what adding it to the model would do, then Add or Cancel. */
+function SchemaProposalCard() {
+  const proposal = useSandbox((s) => s.proposal)
+  const setProposal = useSandbox((s) => s.setProposal)
+  if (!proposal) return null
+  const { report, added } = proposal
+  const nothing = report.changes.length === 0
+
+  const add = () => {
+    let ids: string[] = []
+    const ok = useEditor.getState().apply((m) => {
+      ids = applySqlScript(m, readSqlScript(proposal.sql)).entityIds
+    })
+    if (ok) {
+      setProposal({ ...proposal, added: ids })
+      useSandbox.getState().setConsole('')
+    }
+  }
+  const show = () => {
+    const { setView, select } = useEditor.getState()
+    setView('cdm')
+    if (added?.[0]) select({ kind: 'entity', id: added[0] })
+    setProposal(null)
+  }
+
+  return (
+    <div className={`outcome schema-proposal ${added ? 'outcome-ok' : ''}`} data-testid="schema-proposal" role="status">
+      {added ? (
+        <>
+          <strong>✓ Added to the model: {sqlReportSummary(report)}</strong>
+          <p>The Sandbox rebuilt its tables from the model (they start empty). Ctrl+Z on the diagram takes it back.</p>
+        </>
+      ) : nothing ? (
+        <>
+          <strong>Nothing new to add</strong>
+          <p>In StrataSQL the tables come from the conceptual model, and the Sandbox already built all of them.</p>
+        </>
+      ) : (
+        <>
+          <strong>Add this to the model?</strong>
+          <p>
+            In StrataSQL the tables come from the conceptual model, so the console does not run CREATE or ALTER TABLE. It can add them to the model instead: tables
+            become entities, foreign keys become relationships. The Sandbox then rebuilds its tables (empty).
+          </p>
+          <ul className="proposal-list">
+            {report.changes.map((c, i) => (
+              <li key={i}>{c}</li>
+            ))}
+          </ul>
+        </>
+      )}
+      {report.warnings.length > 0 && !added && (
+        <ul className="proposal-list proposal-warnings">
+          {report.warnings.map((w, i) => (
+            <li key={i}>{w}</li>
+          ))}
+        </ul>
+      )}
+      {!added && !nothing && <p className="muted">Only CREATE TABLE and ALTER TABLE … ADD are read: run INSERTs and queries after adding.</p>}
+      <div className="flex gap-2">
+        {added ? (
+          <>
+            <button type="button" className="btn btn-primary btn-small" onClick={show}>
+              Show on the diagram
+            </button>
+            <button type="button" className="btn btn-small" onClick={() => setProposal(null)}>
+              Close
+            </button>
+          </>
+        ) : (
+          <>
+            {!nothing && (
+              <button type="button" className="btn btn-primary btn-small" onClick={add}>
+                Add to the model
+              </button>
+            )}
+            <button type="button" className="btn btn-small" onClick={() => setProposal(null)}>
+              {nothing ? 'Close' : 'Cancel'}
+            </button>
+          </>
+        )}
+      </div>
+    </div>
   )
 }
 
