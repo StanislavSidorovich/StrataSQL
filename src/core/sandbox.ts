@@ -60,8 +60,31 @@ export async function run(engine: SqlEngine, pdm: Pdm, sql: string): Promise<Run
   try {
     return { ok: true, results: await engine.run(sql) }
   } catch (e) {
-    return { ok: false, violation: explainError(pdm, toDbError(e)) }
+    const err = toDbError(e)
+    return { ok: false, violation: explainScriptError(pdm, sql, err) ?? explainError(pdm, err) }
   }
+}
+
+const SANDBOX_HAS_SCHEMA = (pdm: Pdm) =>
+  `You don't need to create the tables here: the Sandbox already built all ${pdm.tables.length} tables of your model, keys and foreign keys included. ` +
+  'Insert rows instead, or try a scenario under Try this.'
+
+/** A pasted DDL script (often the SQL Server one from the SQL tab): say what went wrong in plain words. */
+export function explainScriptError(pdm: Pdm, sql: string, err: DbError): Violation | undefined {
+  const engineMessage = err.detail ? `${err.message}\n${err.detail}` : err.message
+  if (/^\s*GO\s*;?\s*$/im.test(sql))
+    return {
+      kind: 'other',
+      columns: [],
+      engineMessage,
+      title: 'This is a SQL Server script',
+      explanation:
+        `The Sandbox runs PostgreSQL, and GO exists only in SQL Server (it separates batches in SSMS). ${SANDBOX_HAS_SCHEMA(pdm)} ` +
+        'For pgAdmin or psql, switch the SQL tab to PostgreSQL.',
+    }
+  if ((err.code === '42P07' || err.code === '42710') && /\b(CREATE\s+TABLE|ADD\s+CONSTRAINT)\b/i.test(sql))
+    return { kind: 'other', columns: [], engineMessage, title: 'These tables already exist', explanation: SANDBOX_HAS_SCHEMA(pdm) }
+  return undefined
 }
 
 export function toDbError(e: unknown): DbError {

@@ -1,6 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest'
 import { generatePdm } from '../src/core/cdm2pdm'
 import { generatePostgres, pgIdent, postgresType } from '../src/core/ddl/postgres'
+import { generateSqlServer } from '../src/core/ddl/sqlserver'
 import { createPgliteEngine } from '../src/core/engine-pglite'
 import { findTable } from '../src/core/pdm'
 import { deleteStatement, insertStatement, resetDatabase, run, sqlLiteral, touchedTable, type SqlEngine } from '../src/core/sandbox'
@@ -53,6 +54,24 @@ describe('PostgreSQL dialect', () => {
     await engine.run(script)
     const [res] = await engine.run(`SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public'`)
     expect(Number(res.rows[0][0])).toBe(pdm.tables.length)
+  })
+})
+
+describe('pasted DDL scripts', () => {
+  const pdm = generatePdm(buildTvShows())
+
+  it('a SQL Server script (GO) is named as such', async () => {
+    await resetDatabase(engine, pdm)
+    const out = await run(engine, pdm, generateSqlServer(pdm))
+    expect(out.ok).toBe(false)
+    if (!out.ok) expect(out.violation.title).toBe('This is a SQL Server script')
+  })
+
+  it('the PostgreSQL script says the tables already exist', async () => {
+    await resetDatabase(engine, pdm)
+    const out = await run(engine, pdm, generatePostgres(pdm))
+    expect(out.ok).toBe(false)
+    if (!out.ok) expect(out.violation.title).toBe('These tables already exist')
   })
 })
 
