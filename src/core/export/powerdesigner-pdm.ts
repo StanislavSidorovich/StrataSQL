@@ -32,7 +32,7 @@ const sameColumns = (a: string[], b: string[]) => a.length === b.length && a.eve
 export function exportPowerDesignerPdm(model: Model, opts: { guid?: () => string; now?: number; user?: string } = {}): ExportResult {
   const guid = opts.guid ?? randomGuid
   const now = opts.now ?? Math.floor(Date.now() / 1000)
-  const user = esc(opts.user ?? 'StrataSQL')
+  const user = esc(opts.user ?? 'Quaera Model')
   const pdm = generatePdm(model)
   const warnings: string[] = pdm.notes.filter((n) => n.level === 'warning').map((n) => n.message)
   let next = 1

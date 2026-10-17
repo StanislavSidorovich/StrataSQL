@@ -82,7 +82,7 @@ export function importPowerDesigner(src: string, fileName = ''): ImportResult {
     throw new Error('This PowerDesigner file is saved in the binary format. In PowerDesigner use File → Save As… and choose the XML type, then import that file.')
   }
   const signature = /signature="([^"]+)"/.exec(text.slice(0, 2000))?.[1]
-  if (signature?.startsWith('PDM')) throw new Error('This is a physical model (.pdm). Import the conceptual model (.cdm) instead — StrataSQL generates the physical model from it.')
+  if (signature?.startsWith('PDM')) throw new Error('This is a physical model (.pdm). Import the conceptual model (.cdm) instead — Quaera Model generates the physical model from it.')
   if (signature && !signature.startsWith('CDM')) throw new Error(`Not a PowerDesigner conceptual model (${signature}).`)
 
   const doc = parseXml(text)

@@ -13,7 +13,7 @@ export const MORE_CASES: TrainerCase[] = [
   {
     id: 'hotel',
     title: 'Hotel',
-    source: 'Own case (StrataSQL)',
+    source: 'Own case (Quaera Model)',
     difficulty: 1,
     concepts: ['lookup entity instead of a repeated value', 'alternate identifier', 'intermediate entity without own id', 'optional attribute'],
     build: buildHotel,
@@ -84,7 +84,7 @@ export const MORE_CASES: TrainerCase[] = [
   {
     id: 'online-shop',
     title: 'Online Shop',
-    source: 'Own case (StrataSQL)',
+    source: 'Own case (Quaera Model)',
     difficulty: 2,
     concepts: ['dependent entity with a line number', 'reflexive relationship with roles', 'one-to-one', 'history vs derived data'],
     build: buildOnlineShop,
@@ -162,7 +162,7 @@ export const MORE_CASES: TrainerCase[] = [
   {
     id: 'hospital',
     title: 'Hospital',
-    source: 'Own case (StrataSQL)',
+    source: 'Own case (Quaera Model)',
     difficulty: 2,
     concepts: ['inheritance with own data and own links', 'plain many-to-many', 'dependent entity numbered in its parent', 'history with own id'],
     build: buildHospital,
@@ -243,7 +243,7 @@ export const MORE_CASES: TrainerCase[] = [
   {
     id: 'football',
     title: 'Football League',
-    source: 'Own case (StrataSQL)',
+    source: 'Own case (Quaera Model)',
     difficulty: 3,
     concepts: ['two links to the same entity (roles)', 'history with own id', 'dependent entity numbered in its parent', 'derived data', 'rule as a key over migrated columns', 'a cycle that is accepted'],
     build: buildFootball,
@@ -322,7 +322,7 @@ export const MORE_CASES: TrainerCase[] = [
   {
     id: 'scooter-sharing',
     title: 'Scooter Sharing',
-    source: 'Own case (StrataSQL)',
+    source: 'Own case (Quaera Model)',
     difficulty: 2,
     concepts: ['intermediate entity over time (own id)', 'optional relationship (nullable FK)', 'dependent 1:1', 'dependent entity with order', 'history vs derived data'],
     build: buildScooterSharing,

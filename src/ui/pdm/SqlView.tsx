@@ -143,9 +143,9 @@ export function SqlView() {
           href={labLink ?? undefined}
           target="stratalab"
           aria-disabled={!labLink}
-          title="Create these tables, empty and with their keys, in StrataLab (lab.quaera.app): a SQL workbench in your browser where you can fill and query them. The PostgreSQL script travels in the link; nothing is uploaded."
+          title="Create these tables, empty and with their keys, in Quaera Lab (lab.quaera.app): a SQL workbench in your browser where you can fill and query them. The PostgreSQL script travels in the link; nothing is uploaded."
         >
-          Open in StrataLab ↗
+          Open in Quaera Lab ↗
         </a>
         <span className="muted">{pdm.tables.length} tables</span>
         <Check checked={drop} onChange={setDrop} label="DROP old tables first" title="Lets you re-run the script on the same database" />

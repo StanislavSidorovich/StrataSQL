@@ -57,7 +57,7 @@ export function MyTaskDialog() {
       <div className="modal mytask-dialog" onClick={(e) => e.stopPropagation()}>
         <h2>My task</h2>
         <p className="muted text-sm">
-          Paste the text of your own task (homework, a project, an idea) or load a <b>.txt</b> / <b>.md</b> file. It stays in this browser. There is no reference answer: you tag the phrases yourself, StrataSQL asks about phrases it noticed (Compare my tagging) and shows what is not in your model yet.
+          Paste the text of your own task (homework, a project, an idea) or load a <b>.txt</b> / <b>.md</b> file. It stays in this browser. There is no reference answer: you tag the phrases yourself, Quaera Model asks about phrases it noticed (Compare my tagging) and shows what is not in your model yet.
         </p>
         <label className="field">
           <span className="field-label">Title</span>
@@ -303,14 +303,14 @@ export function MyTaskText() {
         >
           Compare my tagging
         </button>
-        <label className="text-xs mytask-hints-toggle" title="Dotted lines under phrases StrataSQL noticed and you have not tagged">
+        <label className="text-xs mytask-hints-toggle" title="Dotted lines under phrases Quaera Model noticed and you have not tagged">
           <input type="checkbox" checked={showHints} onChange={(e) => setShowHints(e.target.checked)} /> Show hints in the text
         </label>
       </div>
       {compared && (
         <div className="mytask-questions">
           {questions.length === 0 ? (
-            <p className="trainer-done">✓ Your tags cover everything StrataSQL noticed in the text.</p>
+            <p className="trainer-done">✓ Your tags cover everything Quaera Model noticed in the text.</p>
           ) : (
             <>
               <p className="text-xs font-semibold">{questions.length} question(s) about your tagging</p>
@@ -331,7 +331,7 @@ export function MyTaskText() {
               )}
             </>
           )}
-          <p className="muted text-xs">StrataSQL reads the text with simple word patterns, no AI, so a question can be wrong. Your judgement wins: a question you disagree with can stay.</p>
+          <p className="muted text-xs">Quaera Model reads the text with simple word patterns, no AI, so a question can be wrong. Your judgement wins: a question you disagree with can stay.</p>
         </div>
       )}
     </>

@@ -21,7 +21,7 @@ describe('serialization', () => {
 
   it('rejects non-JSON, foreign formats and unknown versions', () => {
     expect(() => parseModel('{oops')).toThrow(ModelFormatError)
-    expect(() => parseModel({ format: 'other' })).toThrow(/Not a StrataSQL model/)
+    expect(() => parseModel({ format: 'other' })).toThrow(/Not a Quaera Model file/)
     expect(() => parseModel({ ...emptyModel(), version: 99 })).toThrow(/version/)
   })
 

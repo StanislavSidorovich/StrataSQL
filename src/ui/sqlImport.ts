@@ -37,5 +37,5 @@ export function modelFromSqlFile(text: string, fileName: string): { model: Model
 
 /** “Show as model” in StrataLab (`#sql=…&name=…`): the tables of a dataset or the student's own. */
 export function modelFromStrataLab(text: string, name: string): { model: Model; notice: string } {
-  return modelFromSql(text, name, `the tables of “${name}” in StrataLab`)
+  return modelFromSql(text, name, `the tables of “${name}” in Quaera Lab`)
 }

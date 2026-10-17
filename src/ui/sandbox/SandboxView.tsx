@@ -266,13 +266,13 @@ function SchemaProposalCard() {
       ) : nothing ? (
         <>
           <strong>Nothing new to add</strong>
-          <p>In StrataSQL the tables come from the conceptual model, and the Sandbox already built all of them.</p>
+          <p>In Quaera Model the tables come from the conceptual model, and the Sandbox already built all of them.</p>
         </>
       ) : (
         <>
           <strong>Add this to the model?</strong>
           <p>
-            In StrataSQL the tables come from the conceptual model, so the console does not run CREATE or ALTER TABLE. It can add them to the model instead: tables
+            In Quaera Model the tables come from the conceptual model, so the console does not run CREATE or ALTER TABLE. It can add them to the model instead: tables
             become entities, foreign keys become relationships. The Sandbox then rebuilds its tables (empty).
           </p>
           <ul className="proposal-list">

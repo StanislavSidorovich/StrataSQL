@@ -76,7 +76,7 @@ export async function saveModelAs(): Promise<string | null> {
   try {
     file = await show({
       suggestedName: `${fileBaseName(model.name)}${FILE_EXTENSION}`,
-      types: [{ description: 'StrataSQL model', accept: { 'application/json': [FILE_EXTENSION, '.json'] } }],
+      types: [{ description: 'Quaera Model model', accept: { 'application/json': [FILE_EXTENSION, '.json'] } }],
     })
   } catch (e) {
     if ((e as Error).name === 'AbortError') return null

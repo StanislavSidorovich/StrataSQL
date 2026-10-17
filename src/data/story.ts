@@ -129,7 +129,7 @@ export function parseStory(text: string, current?: Model): Story {
   } catch (e) {
     return fail(`Not valid JSON: ${(e as Error).message}`)
   }
-  if (raw.format !== STORY_FORMAT) fail(`Not a StrataSQL story (format = ${String(raw.format)})`)
+  if (raw.format !== STORY_FORMAT) fail(`Not a Quaera Model story (format = ${String(raw.format)})`)
   if (raw.version !== STORY_VERSION) fail(`Unsupported story version ${String(raw.version)}`)
   if (typeof raw.title !== 'string' || !raw.title) fail('title is missing')
   if (!Array.isArray(raw.beats) || !raw.beats.length) fail('beats must be a non-empty list')

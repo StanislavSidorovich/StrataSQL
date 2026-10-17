@@ -1,6 +1,6 @@
 {
-  "name": "StrataSQL — CDM → PDM → SQL",
-  "short_name": "StrataSQL",
+  "name": "Quaera Model — CDM → PDM → SQL",
+  "short_name": "Quaera Model",
   "description": "Learn data modeling: conceptual model, generated tables and SQL Server DDL, linter, help cards and an in-browser SQL sandbox.",
   "id": "./",
   "start_url": "./",

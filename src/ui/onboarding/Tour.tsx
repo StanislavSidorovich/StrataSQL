@@ -176,7 +176,7 @@ function Welcome(props: OnboardingProps) {
           Welcome to Strata<span>SQL</span>
         </h2>
         <p>
-          Draw a <b>conceptual model</b> (entities, attributes, relationships) the way database courses teach it with PowerDesigner. StrataSQL turns it into <b>tables</b> and a <b>SQL Server script</b>, checks the model and explains every concept.
+          Draw a <b>conceptual model</b> (entities, attributes, relationships) the way database courses teach it with PowerDesigner. Quaera Model turns it into <b>tables</b> and a <b>SQL Server script</b>, checks the model and explains every concept.
         </p>
         {narrow && (
           <p className="welcome-narrow">
@@ -225,7 +225,7 @@ function Welcome(props: OnboardingProps) {
         </div>
         {touch && !narrow && (
           <p className="welcome-narrow">
-            On a tablet: <b>Help → Install as app</b> puts StrataSQL on the home screen, and it then works in class without Wi-Fi.
+            On a tablet: <b>Help → Install as app</b> puts Quaera Model on the home screen, and it then works in class without Wi-Fi.
           </p>
         )}
         <div className="welcome-foot">
@@ -307,9 +307,9 @@ function About() {
   }, [open])
   if (!open) return null
   return (
-    <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label="About StrataSQL" onClick={close}>
+    <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label="About Quaera Model" onClick={close}>
       <div className="modal about" onClick={(e) => e.stopPropagation()}>
-        <h2>About StrataSQL</h2>
+        <h2>About Quaera Model</h2>
         <p>
           Draw a conceptual model and get the physical model and a SQL Server script, following the conventions of the
           NOVA IMS DBMS course (PowerDesigner, IE notation, intermediate entities).
@@ -352,7 +352,7 @@ function About() {
           )}
         </p>
         <p className="about-small">
-          PowerDesigner is a trademark of SAP SE and SQL Server of Microsoft; StrataSQL is not affiliated with either.
+          PowerDesigner is a trademark of SAP SE and SQL Server of Microsoft; Quaera Model is not affiliated with either.
         </p>
         <div className="welcome-foot">
           <span />

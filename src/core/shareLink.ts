@@ -156,5 +156,5 @@ export async function unpackText(data: string, limit = MAX_SQL_BYTES): Promise<s
 export function sqlLinkFromHash(hash: string): { data: string; name: string } | null {
   const p = new URLSearchParams(hash.replace(/^#/, ''))
   const data = p.get(SQL_PARAM)
-  return data ? { data, name: (p.get(NAME_PARAM) || '').trim().slice(0, 80) || 'From StrataLab' } : null
+  return data ? { data, name: (p.get(NAME_PARAM) || '').trim().slice(0, 80) || 'From Quaera Lab' } : null
 }

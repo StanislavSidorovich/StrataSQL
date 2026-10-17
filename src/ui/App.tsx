@@ -237,7 +237,7 @@ function Editor() {
         const [first, ...more] = notice.split('\n')
         setNotice([first + (hadModel ? ' Your previous model is one Undo away.' : ''), ...more].join('\n'))
       } catch (e) {
-        showError(`Could not open the tables from StrataLab: ${(e as Error).message}`)
+        showError(`Could not open the tables from Quaera Lab: ${(e as Error).message}`)
       }
     }
     const openShared = async () => {
@@ -465,9 +465,9 @@ Cancel: open it as an ordinary model.`)) {
       <header className="toolbar" ref={toolbar}>
         <div className="toolbar-row">
         <div className="toolbar-side toolbar-left">
-        <div className="brand">
-          Strata<span>SQL</span>
-        </div>
+        <a className="brand" href="https://quaera.app" title="Part of Quaera: all the tools at quaera.app">
+          Quaera <span>Model</span>
+        </a>
         <div className="toolbar-group">
           <Menu
             label="File"
@@ -594,7 +594,7 @@ Cancel: open it as an ordinary model.`)) {
         />
         <div className="toolbar-group">
           {updateReady && (
-            <button type="button" className="btn btn-primary" onClick={applyUpdate} title="A new version of StrataSQL is ready. Your model is kept.">
+            <button type="button" className="btn btn-primary" onClick={applyUpdate} title="A new version of Quaera Model is ready. Your model is kept.">
               Update
             </button>
           )}
@@ -620,7 +620,7 @@ Cancel: open it as an ordinary model.`)) {
               ...(FEEDBACK_URL
                 ? [{ label: 'Send feedback…', icon: <MessageSquare size={ICON} />, onSelect: () => window.open(FEEDBACK_URL, '_blank', 'noopener') }]
                 : []),
-              { label: 'About StrataSQL', onSelect: () => useOnboarding.getState().showAbout(true) },
+              { label: 'About Quaera Model', onSelect: () => useOnboarding.getState().showAbout(true) },
               'separator',
               { label: 'Quaera: SQL & analytics trainer ↗', hint: 'quaera.app', onSelect: () => window.open('https://quaera.app', '_blank', 'noopener') },
             ]}

@@ -82,7 +82,7 @@ export function parseModel(input: string | unknown): Model {
 
 function buildModel(raw: unknown): Model {
   const o = obj(raw, 'model')
-  if (o.format !== MODEL_FORMAT) throw new ModelFormatError(`Not a StrataSQL model (format = ${String(o.format)})`)
+  if (o.format !== MODEL_FORMAT) throw new ModelFormatError(`Not a Quaera Model file (format = ${String(o.format)})`)
   if (o.version !== MODEL_VERSION) throw new ModelFormatError(`Unsupported model version ${String(o.version)}`)
   return {
     format: MODEL_FORMAT,

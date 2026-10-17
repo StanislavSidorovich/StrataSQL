@@ -90,7 +90,7 @@ function entitySize(e: Entity): { w: number; h: number } {
 export function exportPowerDesigner(model: Model, opts: { guid?: () => string; now?: number; user?: string } = {}): ExportResult {
   const guid = opts.guid ?? randomGuid
   const now = opts.now ?? Math.floor(Date.now() / 1000)
-  const user = esc(opts.user ?? 'StrataSQL')
+  const user = esc(opts.user ?? 'Quaera Model')
   const warnings: string[] = []
   let next = 1
   const id = () => `o${next++}`
@@ -256,7 +256,7 @@ ${named(a.name, unique)}${comment(a.comment)}${typeXml(dom ?? a)}${dom ? `<c:Dom
     // Our roles are FK column prefixes; PD roles are verb phrases that do not name columns. Keep ours in the comment.
     const roles = [r.roleA && `${nameOf(r.entityA)}: ${r.roleA}`, r.roleB && `${nameOf(r.entityB)}: ${r.roleB}`].filter(Boolean).join(', ')
     if (roles) warnings.push(`${r.name}: the role names (${roles}) are kept only in the comment; PowerDesigner names the foreign key columns itself.`)
-    const relComment = [r.comment, roles && `StrataSQL roles (FK prefixes): ${roles}`].filter(Boolean).join('\n')
+    const relComment = [r.comment, roles && `Quaera Model roles (FK prefixes): ${roles}`].filter(Boolean).join('\n')
     return (
       `<o:Relationship Id="${relIds.get(r.id)}">\n${named(r.name, relCode(pdCode(r.name)))}${comment(relComment)}` +
       (r.dependentSide ? `<a:DependentRole>${r.dependentSide}</a:DependentRole>\n` : '') +

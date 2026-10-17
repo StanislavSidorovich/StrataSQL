@@ -70,13 +70,13 @@ export const runsAsApp = () => matchMedia('(display-mode: standalone)').matches 
 
 /** Opens the browser's install dialog when it has one; otherwise returns what to do by hand. */
 export async function installApp(): Promise<string | null> {
-  if (runsAsApp()) return 'StrataSQL is already installed: this window is the app. It works without Wi-Fi once opened online.'
+  if (runsAsApp()) return 'Quaera Model is already installed: this window is the app. It works without Wi-Fi once opened online.'
   if (installPrompt) {
     const p = installPrompt
     installPrompt = null
     await p.prompt()
     const { outcome } = await p.userChoice
-    return outcome === 'accepted' ? 'Installed. Open StrataSQL from the home screen or the app list — it works without Wi-Fi.' : null
+    return outcome === 'accepted' ? 'Installed. Open Quaera Model from the home screen or the app list — it works without Wi-Fi.' : null
   }
   const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
   return ios

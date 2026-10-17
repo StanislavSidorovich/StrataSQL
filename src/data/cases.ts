@@ -79,7 +79,7 @@ const ALL: TrainerCase[] = [
   {
     id: 'library',
     title: 'Library',
-    source: 'Starter case (StrataSQL)',
+    source: 'Starter case (Quaera Model)',
     difficulty: 1,
     concepts: ['entity and attributes', 'primary vs alternate identifier', 'one-to-many', 'many-to-many → join table', 'intermediate entity with own id'],
     build: buildLibrary,

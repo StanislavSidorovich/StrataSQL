@@ -37,7 +37,7 @@ export function parseCaseFile(text: string): TrainerCase {
   } catch (e) {
     return fail(`Not valid JSON: ${(e as Error).message}`)
   }
-  if (raw.format !== CASE_FORMAT) fail(`Not a StrataSQL case (format = ${String(raw.format)})`)
+  if (raw.format !== CASE_FORMAT) fail(`Not a Quaera Model case (format = ${String(raw.format)})`)
   if (raw.version !== CASE_VERSION) fail(`Unsupported case version ${String(raw.version)}`)
   const model = parseModel({ format: MODEL_FORMAT, ...(raw.model as object) })
   const o = (raw.case ?? fail('case is missing')) as Record<string, unknown>

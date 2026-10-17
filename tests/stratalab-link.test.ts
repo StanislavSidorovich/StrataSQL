@@ -16,7 +16,7 @@ describe('tables from StrataLab', () => {
     expect(link?.name).toBe('Kaiyo Trading (Quaera)')
     expect(await unpackText(link!.data)).toBe(sql)
     expect(sqlLinkFromHash('#m=abc')).toBeNull()
-    expect(sqlLinkFromHash('#sql=abc')?.name).toBe('From StrataLab')
+    expect(sqlLinkFromHash('#sql=abc')?.name).toBe('From Quaera Lab')
   })
 
   it('refuses a damaged or oversized link', async () => {
@@ -39,7 +39,7 @@ describe('tables from StrataLab', () => {
     expect(model.name).toBe(id)
     expect(model.entities).toHaveLength(entities)
     expect(model.relationships).toHaveLength(relationships)
-    expect(notice).toMatch(new RegExp(`^Built the conceptual model from the tables of “${id}” in StrataLab`))
+    expect(notice).toMatch(new RegExp(`^Built the conceptual model from the tables of “${id}” in Quaera Lab`))
   })
 
   it('keeps names with spaces (Northwind: Order Details)', () => {
