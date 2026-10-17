@@ -110,3 +110,51 @@ export async function labUrl(ddl: string, base: string = LAB_URL): Promise<strin
   url.hash = `${DDL_PARAM}=${await packText(ddl)}`
   return url.toString()
 }
+
+/**
+ * The way back (StrataLab stage 2c): StrataLab's “Show as model” sends CREATE TABLE statements
+ * in `#sql=<packed>&name=<label>`, packed like {@link packText}; they open as a new model
+ * (SQL → model, #32). StrataLab's src/core/modelLink.ts writes them and must stay in step.
+ */
+export const SQL_PARAM = 'sql'
+export const NAME_PARAM = 'name'
+/** A script that inflates past this many bytes is refused (a crafted link could inflate without end). */
+export const MAX_SQL_BYTES = 5_000_000
+
+/** Text back from {@link packText}, inflated chunk by chunk up to `limit` bytes. */
+export async function unpackText(data: string, limit = MAX_SQL_BYTES): Promise<string> {
+  let reader: ReadableStreamDefaultReader<Uint8Array>
+  try {
+    reader = new Blob([fromBase64Url(data) as BlobPart]).stream().pipeThrough(new DecompressionStream('deflate-raw')).getReader()
+  } catch {
+    throw new Error('The link is damaged or incomplete (it may have been cut when it was copied).')
+  }
+  const parts: Uint8Array[] = []
+  let size = 0
+  try {
+    for (;;) {
+      const { done, value } = await reader.read()
+      if (done) break
+      size += value.length
+      if (size > limit) {
+        await reader.cancel()
+        throw new RangeError()
+      }
+      parts.push(value)
+    }
+    const all = new Uint8Array(size)
+    let at = 0
+    for (const p of parts) all.set(p, (at += p.length) - p.length)
+    return new TextDecoder('utf-8', { fatal: true }).decode(all)
+  } catch (e) {
+    if (e instanceof RangeError) throw new Error('The tables in the link are too many to open.')
+    throw new Error('The link is damaged or incomplete (it may have been cut when it was copied).')
+  }
+}
+
+/** `#sql=…&name=…` in a URL fragment, or null when the fragment holds none. */
+export function sqlLinkFromHash(hash: string): { data: string; name: string } | null {
+  const p = new URLSearchParams(hash.replace(/^#/, ''))
+  const data = p.get(SQL_PARAM)
+  return data ? { data, name: (p.get(NAME_PARAM) || '').trim().slice(0, 80) || 'From StrataLab' } : null
+}

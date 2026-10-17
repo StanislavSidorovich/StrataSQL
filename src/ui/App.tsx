@@ -4,9 +4,9 @@ import { useEffect, useRef, useState } from 'react'
 import { emptyModel, type Model } from '../core/metamodel'
 import { addEntity, removeEntity, removeInheritance, removeRelationship } from '../core/ops'
 import { importPowerDesigner } from '../core/import/powerdesigner'
-import { modelFromSqlFile } from './sqlImport'
+import { modelFromSqlFile, modelFromStrataLab } from './sqlImport'
 import { FILE_EXTENSION, parseModel, readSavedBase, readSavedTask } from '../core/serialize'
-import { BASE_PARAM, decodeShare, SHARE_PARAM, shareDataFromHash, shareUrl } from '../core/shareLink'
+import { BASE_PARAM, decodeShare, NAME_PARAM, SHARE_PARAM, shareDataFromHash, shareUrl, SQL_PARAM, sqlLinkFromHash, unpackText } from '../core/shareLink'
 import { diffModels } from '../core/changes'
 import { ChangesDock } from './changes/ChangesPanel'
 import { FEEDBACK_URL } from './AuthorLinks'
@@ -216,7 +216,33 @@ function Editor() {
   // Opened from a share link (`#m=…`): load the model it carries, then drop the fragment so a
   // reload keeps the reader's own edits. Also when a link is pasted into an open tab (hashchange).
   useEffect(() => {
+    // StrataLab's “Show as model” opens its window under this name, so its next click lands here.
+    if (!window.name) window.name = 'stratasql'
+    // `#sql=…&name=…` from StrataLab: its tables become a new model (SQL → model, #32).
+    const openFromLab = async (link: { data: string; name: string }) => {
+      const params = new URLSearchParams(window.location.hash.slice(1))
+      params.delete(SQL_PARAM)
+      params.delete(NAME_PARAM)
+      const rest = params.toString()
+      history.replaceState(null, '', window.location.pathname + window.location.search + (rest ? `#${rest}` : ''))
+      try {
+        const text = await unpackText(link.data)
+        if (!leaveModes()) return
+        const hadModel = useEditor.getState().model.entities.length > 0
+        const { model: imported, notice } = modelFromStrataLab(text, link.name)
+        useOnboarding.setState({ welcome: false })
+        setView('cdm')
+        load(imported)
+        fit()
+        const [first, ...more] = notice.split('\n')
+        setNotice([first + (hadModel ? ' Your previous model is one Undo away.' : ''), ...more].join('\n'))
+      } catch (e) {
+        showError(`Could not open the tables from StrataLab: ${(e as Error).message}`)
+      }
+    }
     const openShared = async () => {
+      const link = sqlLinkFromHash(window.location.hash)
+      if (link) return openFromLab(link)
       const data = shareDataFromHash(window.location.hash)
       if (!data) return
       const params = new URLSearchParams(window.location.hash.slice(1))

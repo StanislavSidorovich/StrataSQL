@@ -17,15 +17,25 @@ export function sqlReportSummary(r: SqlApplyReport): string {
   return parts.join(', ') || 'nothing new'
 }
 
-/** File → Open of a .sql script: a new model from its tables. */
-export function modelFromSqlFile(text: string, fileName: string): { model: Model; notice: string } {
+/** A new model from a script's tables; `source` says where the script came from, in the notice and comment. */
+export function modelFromSql(text: string, name: string, source: string): { model: Model; notice: string } {
   const script = readSqlScript(text)
   if (!script.tables.length) throw new Error('there is no CREATE TABLE in it')
-  const model = emptyModel(fileName.replace(/\.sql$/i, '') || 'From SQL')
-  model.comment = `Built from the SQL script ${fileName}: tables became entities, foreign keys became relationships.`
+  const model = emptyModel(name || 'From SQL')
+  model.comment = `Built from ${source}: tables became entities, foreign keys became relationships.`
   const report = applySqlScript(model, script)
   const notice =
-    `Built the conceptual model from ${fileName}: ${sqlReportSummary(report)}. Check the cardinalities against your text.` +
+    `Built the conceptual model from ${source}: ${sqlReportSummary(report)}. Check the cardinalities against your text.` +
     (report.warnings.length ? `\n${report.warnings.join('\n')}` : '')
   return { model, notice }
+}
+
+/** File → Open of a .sql script: a new model from its tables. */
+export function modelFromSqlFile(text: string, fileName: string): { model: Model; notice: string } {
+  return modelFromSql(text, fileName.replace(/\.sql$/i, ''), `the SQL script ${fileName}`)
+}
+
+/** “Show as model” in StrataLab (`#sql=…&name=…`): the tables of a dataset or the student's own. */
+export function modelFromStrataLab(text: string, name: string): { model: Model; notice: string } {
+  return modelFromSql(text, name, `the tables of “${name}” in StrataLab`)
 }
