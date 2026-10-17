@@ -61,10 +61,14 @@ export function withShortIds(m: Model): Model {
   return copy
 }
 
+/** Text as a URL-safe string: UTF-8, deflate-raw, base64url without padding. */
+export async function packText(text: string): Promise<string> {
+  return toBase64Url(await pipe(new TextEncoder().encode(text), new CompressionStream('deflate-raw')))
+}
+
 /** The model as a URL-safe string (short ids, compact JSON, deflate, base64url). */
 export async function encodeShare(m: Model): Promise<string> {
-  const json = JSON.stringify(withShortIds(m))
-  return toBase64Url(await pipe(new TextEncoder().encode(json), new CompressionStream('deflate-raw')))
+  return packText(JSON.stringify(withShortIds(m)))
 }
 
 /** The model back from {@link encodeShare}; a damaged link throws a readable error. */
@@ -89,5 +93,20 @@ export async function shareUrl(m: Model, base: string, comparedWith?: Model | nu
   const url = new URL(base)
   url.search = ''
   url.hash = `${SHARE_PARAM}=${await encodeShare(m)}` + (comparedWith ? `&${BASE_PARAM}=${await encodeShare(comparedWith)}` : '')
+  return url.toString()
+}
+
+/** StrataLab, the SQL workbench of the Quaera family (DuckDB in the browser). */
+export const LAB_URL = 'https://lab.quaera.app/'
+/** StrataLab's fragment key for CREATE TABLE statements to run on open (its SPEC §5). */
+export const DDL_PARAM = 'ddl'
+
+/**
+ * A link that opens the tables in StrataLab: `#ddl=<packed DDL>`, packed like the share links.
+ * StrataLab's src/core/ddlLink.ts decodes it and must stay in step with {@link packText}.
+ */
+export async function labUrl(ddl: string, base: string = LAB_URL): Promise<string> {
+  const url = new URL(base)
+  url.hash = `${DDL_PARAM}=${await packText(ddl)}`
   return url.toString()
 }

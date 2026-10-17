@@ -5,7 +5,8 @@ import { generatePdm } from '../src/core/cdm2pdm'
 import { generateSqlServer } from '../src/core/ddl/sqlserver'
 import { emptyModel } from '../src/core/metamodel'
 import { addAttribute, addEntity, addInheritance, addRelationship } from '../src/core/ops'
-import { decodeShare, encodeShare, shareDataFromHash, shareUrl, withShortIds } from '../src/core/shareLink'
+import { decodeShare, encodeShare, labUrl, shareDataFromHash, shareUrl, withShortIds } from '../src/core/shareLink'
+import { generatePostgres } from '../src/core/ddl/postgres'
 
 describe('share link', () => {
   it('round-trips every case model through the link (ids shortened, the same SQL)', async () => {
@@ -60,5 +61,33 @@ describe('share link', () => {
     const data = await encodeShare(CASES[0].build())
     await expect(decodeShare(data.slice(0, data.length / 2))).rejects.toThrow(/damaged|incomplete|JSON/)
     await expect(decodeShare('not-a-model')).rejects.toThrow(/damaged/)
+  })
+})
+
+describe('Open in StrataLab link', () => {
+  // StrataLab decodes `#ddl=` exactly like this (its src/core/ddlLink.ts).
+  const unpack = async (data: string) => {
+    const bytes = Uint8Array.from(atob(data.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0))
+    const out = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'))
+    return new TextDecoder().decode(await new Response(out).arrayBuffer())
+  }
+
+  it('packs the PostgreSQL DDL of every case into #ddl= on lab.quaera.app', async () => {
+    for (const c of CASES) {
+      const ddl = generatePostgres(generatePdm(c.build()))
+      const url = new URL(await labUrl(ddl))
+      expect(url.origin, c.id).toBe('https://lab.quaera.app')
+      const data = new URLSearchParams(url.hash.slice(1)).get('ddl')!
+      expect(data, c.id).toMatch(/^[A-Za-z0-9_-]+$/)
+      expect(await unpack(data), c.id).toBe(ddl)
+      expect(url.toString().length, c.id).toBeLessThan(ddl.length)
+    }
+  })
+
+  it('keeps Cyrillic names', async () => {
+    const ddl = 'CREATE TABLE "клиент" ("имя" varchar(40) NOT NULL);'
+    const url = new URL(await labUrl(ddl, 'http://localhost:5180/'))
+    expect(url.host).toBe('localhost:5180')
+    expect(await unpack(new URLSearchParams(url.hash.slice(1)).get('ddl')!)).toBe(ddl)
   })
 })

@@ -274,6 +274,14 @@ body {
   opacity: 0.45;
   cursor: default;
 }
+a.btn {
+  display: inline-block;
+  text-decoration: none;
+}
+a.btn.disabled {
+  opacity: 0.45;
+  pointer-events: none;
+}
 .btn-primary {
   background: var(--accent);
   border-color: var(--accent);

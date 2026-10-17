@@ -1,11 +1,12 @@
 // Generated DDL (SQL Server for the course, or PostgreSQL for pgAdmin / psql) with copy / download.
 
-import { useMemo, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react'
 import { generatePostgres } from '../../core/ddl/postgres'
 import { generateSqlServer } from '../../core/ddl/sqlserver'
 import { Check } from '../panels/fields'
 import { useEditor, usePdm } from '../store'
 import { saveExport } from '../fileSave'
+import { LAB_URL, labUrl } from '../../core/shareLink'
 
 const KEYWORDS =
   /\b(CREATE|TABLE|ALTER|ADD|CONSTRAINT|PRIMARY|KEY|FOREIGN|REFERENCES|UNIQUE|CHECK|NOT|NULL|GO|DROP|IF|EXISTS|IS|IN|OBJECT_ID)\b/
@@ -87,6 +88,29 @@ const DIALECTS: { id: Dialect; label: string; title: string }[] = [
   { id: 'postgres', label: 'PostgreSQL', title: 'PostgreSQL types, no GO: runs as is in pgAdmin or psql' },
 ]
 
+// On a dev machine the link goes to StrataLab's dev server (its .claude/launch.json, port 5180).
+const LAB = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? 'http://localhost:5180/' : LAB_URL
+
+/**
+ * "Open in StrataLab": the PostgreSQL DDL (whatever dialect is shown) packed into a link, so the
+ * tables appear empty, with their keys, in the SQL workbench. Built ahead so the click is a plain
+ * link: a window opened after an await may be blocked. The named target reuses the StrataLab tab
+ * opened before (it reads a new `#ddl=` without reloading); a second StrataLab tab could not open
+ * the saved database, which only one tab may hold.
+ */
+function useLabLink(pdm: ReturnType<typeof usePdm>): string | null {
+  const [url, setUrl] = useState<string | null>(null)
+  useEffect(() => {
+    let alive = true
+    setUrl(null)
+    if (pdm.tables.length) void labUrl(generatePostgres(pdm), LAB).then((u) => alive && setUrl(u))
+    return () => {
+      alive = false
+    }
+  }, [pdm])
+  return url
+}
+
 export function SqlView() {
   const pdm = usePdm()
   const name = useEditor((s) => s.model.name)
@@ -95,6 +119,7 @@ export function SqlView() {
   const [copied, setCopied] = useState(false)
   const sql = useMemo(() => (dialect === 'postgres' ? generatePostgres(pdm, { drop }) : generateSqlServer(pdm, { drop })), [pdm, dialect, drop])
   const lines = useMemo(() => highlightSql(sql), [sql])
+  const labLink = useLabLink(pdm)
 
   const copy = async () => {
     await navigator.clipboard.writeText(sql)
@@ -113,6 +138,15 @@ export function SqlView() {
             </button>
           ))}
         </div>
+        <a
+          className={`btn${labLink ? '' : ' disabled'}`}
+          href={labLink ?? undefined}
+          target="stratalab"
+          aria-disabled={!labLink}
+          title="Create these tables, empty and with their keys, in StrataLab (lab.quaera.app): a SQL workbench in your browser where you can fill and query them. The PostgreSQL script travels in the link; nothing is uploaded."
+        >
+          Open in StrataLab ↗
+        </a>
         <span className="muted">{pdm.tables.length} tables</span>
         <Check checked={drop} onChange={setDrop} label="DROP old tables first" title="Lets you re-run the script on the same database" />
         <div className="ml-auto flex gap-2">
