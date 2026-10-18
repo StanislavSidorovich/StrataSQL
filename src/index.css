@@ -787,8 +787,8 @@ a.btn.disabled {
   }
 }
 @container toolbar (max-width: 699px) {
-  /* The family switcher has no compact form yet: below this width the toolbar needs the room. */
-  .brand {
+  /* The family switcher keeps only its tile and caret here (same menu): the toolbar needs the room. */
+  .brand quaera-switcher::part(label) {
     display: none;
   }
   .toolbar-model-name {
@@ -807,6 +807,18 @@ a.btn.disabled {
 @container toolbar (max-width: 639px) {
   .toolbar .keep-label > span {
     display: none;
+  }
+}
+@container toolbar (max-width: 479px) {
+  /* Phones: the views take a second row, so the family switcher, File, Examples, Trainer, Help and Aa fit on the first. */
+  .toolbar-row {
+    grid-template-columns: minmax(max-content, 1fr) auto;
+    row-gap: 6px;
+  }
+  .toolbar-center {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-content: center;
   }
 }
 @media (max-width: 1199px) {
