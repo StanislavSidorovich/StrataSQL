@@ -465,9 +465,9 @@ Cancel: open it as an ordinary model.`)) {
       <header className="toolbar" ref={toolbar}>
         <div className="toolbar-row">
         <div className="toolbar-side toolbar-left">
-        <a className="brand" href="https://quaera.app" title="Part of Quaera: all the tools at quaera.app">
-          Quaera <span>Model</span>
-        </a>
+        <div className="brand">
+          <quaera-switcher app="model" />
+        </div>
         <div className="toolbar-group">
           <Menu
             label="File"

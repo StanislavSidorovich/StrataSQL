@@ -135,8 +135,8 @@ export function MiniDiagram({ model }: { model: Model }) {
                 <g key={a.id}>
                   <text x={r.x + 8} y={y} fill="var(--text)" textDecoration={inPi ? 'underline' : undefined}>
                     {a.name}
-                    {inPi && <tspan fill="var(--accent)" fontWeight={600}>{'  <pi>'}</tspan>}
-                    {inAk && <tspan fill="var(--accent)" fontWeight={600}>{'  <ai>'}</tspan>}
+                    {inPi && <tspan fill="var(--identifier)" fontWeight={600}>{'  <pi>'}</tspan>}
+                    {inAk && <tspan fill="var(--identifier)" fontWeight={600}>{'  <ai>'}</tspan>}
                   </text>
                   <text x={r.x + r.width - 8} y={y} textAnchor="end" fill="var(--muted)">
                     {formatDataType(a)}

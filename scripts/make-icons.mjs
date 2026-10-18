@@ -1,35 +1,42 @@
-// Generates the PWA icons in public/ (the same three blue strata as the favicon).
+// Generates the PWA icons in public/ (the Model mark from the family kit, same as the favicon).
 // Pure Node, no dependencies: run `node scripts/make-icons.mjs` after changing the design.
 import { writeFileSync } from 'node:fs'
 import { deflateSync } from 'node:zlib'
 
 const BG = [255, 255, 255]
-const STRATA = [
-  [0x3b, 0x82, 0xf6],
-  [0x60, 0xa5, 0xfa],
-  [0x93, 0xc5, 0xfd],
-]
+const ACCENT = [0xc2, 0x41, 0x0c] // Model's family accent, as in src/family/marks/model.svg
 
-// In a 32-unit box like the favicon; `pad` shrinks the art for maskable icons.
-function pixel(x, y, size, pad) {
+// Rounded rect test: x0..x1, y0..y1, corner radius r.
+function inRound(x, y, x0, y0, x1, y1, r) {
+  const cx = Math.min(Math.max(x, x0 + r), x1 - r)
+  const cy = Math.min(Math.max(y, y0 + r), y1 - r)
+  return x >= x0 && x <= x1 && y >= y0 && y <= y1 && (x - cx) ** 2 + (y - cy) ** 2 <= r * r
+}
+// The white table sign on the 32-unit tile (marks/model.svg): a frame, a filled header, two rules, one divider.
+function inSign(x, y) {
+  if (x >= 8 && x <= 24 && y >= 8 && y <= 14) return true
+  if (inRound(x, y, 6, 6, 26, 26, 4) && !inRound(x, y, 8, 8, 24, 24, 2)) return true
+  if (x >= 7 && x <= 25 && ((y >= 13 && y <= 15) || (y >= 18.5 && y <= 20.5))) return true
+  return x >= 13 && x <= 15 && y >= 14 && y <= 25
+}
+
+// In a 32-unit box like the mark; `pad` shrinks the art; `full` fills the whole square with the tile
+// colour (maskable and Apple icons are masked by the system), otherwise the tile is rounded (rx 7) on white.
+function pixel(x, y, size, pad, full) {
   const u = 32 / (size * (1 - 2 * pad))
   const px = (x + 0.5 - size * pad) * u
   const py = (y + 0.5 - size * pad) * u
-  for (let i = 0; i < 3; i++) {
-    const top = 5 + i * 8
-    // rounded rect x 3..29, y top..top+6, radius 1.5 — coverage by 4×4 supersampling
-    let hit = 0
-    for (let sy = 0; sy < 4; sy++)
-      for (let sx = 0; sx < 4; sx++) {
-        const qx = px + ((sx + 0.5) / 4 - 0.5) * u
-        const qy = py + ((sy + 0.5) / 4 - 0.5) * u
-        const cx = Math.min(Math.max(qx, 4.5), 27.5)
-        const cy = Math.min(Math.max(qy, top + 1.5), top + 4.5)
-        if ((qx - cx) ** 2 + (qy - cy) ** 2 <= 1.5 ** 2) hit++
-      }
-    if (hit) return BG.map((b, k) => Math.round(b + ((STRATA[i][k] - b) * hit) / 16))
-  }
-  return BG
+  let tile = 0
+  let sign = 0
+  for (let sy = 0; sy < 4; sy++)
+    for (let sx = 0; sx < 4; sx++) {
+      const qx = px + ((sx + 0.5) / 4 - 0.5) * u
+      const qy = py + ((sy + 0.5) / 4 - 0.5) * u
+      if (full || inRound(qx, qy, 0, 0, 32, 32, 7)) tile++
+      if (inSign(qx, qy)) sign++
+    }
+  const base = BG.map((b, k) => Math.round(b + ((ACCENT[k] - b) * tile) / 16))
+  return base.map((b, k) => Math.round(b + ((255 - b) * sign) / 16))
 }
 
 const CRC = new Int32Array(256).map((_, n) => {
@@ -50,10 +57,10 @@ function chunk(type, data) {
   crc.writeUInt32BE(crc32(body))
   return Buffer.concat([len, body, crc])
 }
-function png(size, pad) {
+function png(size, pad, full) {
   const raw = Buffer.alloc(size * (size * 3 + 1))
   for (let y = 0; y < size; y++)
-    for (let x = 0; x < size; x++) raw.set(pixel(x, y, size, pad), y * (size * 3 + 1) + 1 + x * 3)
+    for (let x = 0; x < size; x++) raw.set(pixel(x, y, size, pad, full), y * (size * 3 + 1) + 1 + x * 3)
   const ihdr = Buffer.alloc(13)
   ihdr.writeUInt32BE(size, 0)
   ihdr.writeUInt32BE(size, 4)
@@ -67,8 +74,8 @@ function png(size, pad) {
   ])
 }
 
-writeFileSync('public/icon-192.png', png(192, 0.04))
-writeFileSync('public/icon-512.png', png(512, 0.04))
-writeFileSync('public/icon-maskable-512.png', png(512, 0.14)) // safe zone for round/squircle masks
-writeFileSync('public/apple-touch-icon.png', png(180, 0.08))
+writeFileSync('public/icon-192.png', png(192, 0, false))
+writeFileSync('public/icon-512.png', png(512, 0, false))
+writeFileSync('public/icon-maskable-512.png', png(512, 0.14, true)) // safe zone for round/squircle masks
+writeFileSync('public/apple-touch-icon.png', png(180, 0.08, true))
 console.log('icons written to public/')

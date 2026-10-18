@@ -2,14 +2,18 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Neutrals and the accent come from the family kit (src/family/tokens.css, <html data-app="model">);
+   the app's own names stay and point at the shared --q-* ones. Entity, relationship, check and SQL
+   colours below are Model's own and keep their meaning. */
+
 :root {
-  --app-bg: #f6f7f9;
-  --panel-bg: #ffffff;
-  --panel-border: #e3e6eb;
-  --text: #1d2330;
-  --muted: #6b7385;
-  --accent: #2563eb;
-  --accent-soft: #e6eefe;
+  --app-bg: var(--q-bg);
+  --panel-bg: var(--q-surface);
+  --panel-border: var(--q-line);
+  --text: var(--q-text);
+  --muted: var(--q-muted);
+  --accent: var(--q-accent);
+  --accent-soft: color-mix(in srgb, var(--q-accent) 12%, var(--q-surface));
   --danger: #c2321f;
   --input-bg: #ffffff;
   --input-border: #cfd5de;
@@ -19,7 +23,9 @@
   --entity-border: #8a94a6;
   --entity-header: #eef2f8;
   --edge: #4b5568;
-  --edge-selected: #2563eb;
+  --edge-selected: var(--q-accent);
+  /* <pi> / <ai> marks keep the blue they always had: they are a modelling symbol, not frame. */
+  --identifier: #2563eb;
   --edge-label: #1d2330;
   --edge-name: #6b7385;
   --migrated: #0f7a5a;
@@ -64,13 +70,7 @@
 }
 
 :root.dark {
-  --app-bg: #14171d;
-  --panel-bg: #1b1f27;
-  --panel-border: #2c323e;
-  --text: #e4e7ee;
-  --muted: #98a0b3;
-  --accent: #6c9cff;
-  --accent-soft: #233150;
+  --accent-soft: color-mix(in srgb, var(--q-accent) 18%, var(--q-surface));
   --danger: #ff7a66;
   --input-bg: #13161c;
   --input-border: #363d4b;
@@ -80,7 +80,7 @@
   --entity-border: #5d6880;
   --entity-header: #2a3140;
   --edge: #a9b2c6;
-  --edge-selected: #6c9cff;
+  --identifier: #6c9cff;
   --edge-label: #e4e7ee;
   --edge-name: #98a0b3;
   --migrated: #4fd1a5;
@@ -131,7 +131,7 @@ body,
 body {
   background: var(--app-bg);
   color: var(--text);
-  font-family: Inter, 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-family: var(--q-font-sans);
   font-size: 13px;
 }
 
@@ -624,7 +624,7 @@ a.btn.disabled {
 }
 .attr-flags b {
   font-weight: 600;
-  color: var(--accent);
+  color: var(--identifier);
   margin-right: 2px;
 }
 .attr-type {
@@ -647,7 +647,7 @@ a.btn.disabled {
 }
 .entity-idents b {
   font-weight: 600;
-  color: var(--accent);
+  color: var(--identifier);
 }
 .inheritance-node {
   width: 40px;
@@ -779,8 +779,7 @@ a.btn.disabled {
   }
 }
 @container toolbar (max-width: 899px) {
-  .label-long,
-  .brand {
+  .label-long {
     display: none;
   }
   .label-short {
@@ -788,6 +787,10 @@ a.btn.disabled {
   }
 }
 @container toolbar (max-width: 699px) {
+  /* The family switcher has no compact form yet: below this width the toolbar needs the room. */
+  .brand {
+    display: none;
+  }
   .toolbar-model-name {
     max-width: 70px;
   }
@@ -836,7 +839,7 @@ a.btn.disabled {
   color: var(--muted);
 }
 .legend b {
-  color: var(--accent);
+  color: var(--identifier);
   font-weight: 600;
 }
 .note-list {
@@ -924,7 +927,7 @@ a.btn.disabled {
   margin: 0;
   overflow: auto;
   padding: 12px 16px;
-  font: 12.5px/1.5 'Cascadia Code', Consolas, 'SFMono-Regular', Menlo, monospace;
+  font: 12.5px/1.5 var(--q-font-mono);
   tab-size: 3;
 }
 .sql-code:focus {
@@ -991,7 +994,7 @@ a.btn.disabled {
 }
 .table-tabs .chip {
   cursor: pointer;
-  font-family: 'Cascadia Code', Consolas, monospace;
+  font-family: var(--q-font-mono);
   font-size: 11.5px;
 }
 .grid-scroll {
@@ -1002,7 +1005,7 @@ a.btn.disabled {
 }
 .data-grid {
   border-collapse: collapse;
-  font: 12px/1.4 'Cascadia Code', Consolas, 'SFMono-Regular', Menlo, monospace;
+  font: 12px/1.4 var(--q-font-mono);
 }
 .data-grid th,
 .data-grid td {
@@ -1061,7 +1064,7 @@ a.btn.disabled {
 .console-input {
   height: 96px;
   resize: vertical;
-  font: 12.5px/1.5 'Cascadia Code', Consolas, 'SFMono-Regular', Menlo, monospace;
+  font: 12.5px/1.5 var(--q-font-mono);
 }
 .stmt,
 .engine-message {
@@ -1070,7 +1073,7 @@ a.btn.disabled {
   background: var(--code-bg);
   border: 1px solid var(--panel-border);
   border-radius: 5px;
-  font: 11.5px/1.45 'Cascadia Code', Consolas, monospace;
+  font: 11.5px/1.45 var(--q-font-mono);
   white-space: pre-wrap;
   word-break: break-word;
 }
@@ -1242,7 +1245,7 @@ a.btn.disabled {
 .data-grid td.grid-empty {
   white-space: normal;
   color: var(--muted);
-  font-family: system-ui, sans-serif;
+  font-family: var(--q-font-sans);
   padding: 10px 8px;
 }
 
@@ -1349,7 +1352,7 @@ a.btn.disabled {
   margin: 0;
 }
 .help-card code {
-  font-family: ui-monospace, Consolas, monospace;
+  font-family: var(--q-font-mono);
   font-size: 12px;
   background: var(--code-bg);
   border: 1px solid var(--panel-border);
@@ -1584,7 +1587,7 @@ a.btn.disabled {
   margin: 0;
 }
 .trainer-body code {
-  font-family: ui-monospace, Consolas, monospace;
+  font-family: var(--q-font-mono);
   font-size: 12px;
 }
 .trainer-task {
@@ -2119,7 +2122,7 @@ a.btn.disabled {
   border: 1px solid var(--panel-border);
   border-radius: 6px;
   background: var(--code-bg);
-  font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font: 12px/1.5 var(--q-font-mono);
   white-space: pre-wrap;
   word-break: break-word;
 }
@@ -2898,7 +2901,7 @@ a.btn.disabled {
   font-style: italic;
 }
 .story-card code {
-  font-family: ui-monospace, Consolas, monospace;
+  font-family: var(--q-font-mono);
   font-size: 0.9em;
 }
 .story-card-step {
