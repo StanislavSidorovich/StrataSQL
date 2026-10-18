@@ -1,5 +1,5 @@
 import { ReactFlowProvider, useReactFlow } from '@xyflow/react'
-import { BookOpen, Check, FilePen, GitCompare, CircleHelp, Database, Download, FileDown, FilePlus, FolderOpen, GraduationCap, Image as ImageIcon, Info, Keyboard, Link2, MessageSquare, Play, Save, SaveAll, X } from 'lucide-react'
+import { BookOpen, Check, FilePen, GitCompare, CircleHelp, Database, Download, FileDown, FilePlus, FolderOpen, GraduationCap, Image as ImageIcon, Info, Keyboard, Link2, MessageSquare, Play, RefreshCw, Save, SaveAll, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { emptyModel, type Model } from '../core/metamodel'
 import { addEntity, removeEntity, removeInheritance, removeRelationship } from '../core/ops'
@@ -10,7 +10,7 @@ import { BASE_PARAM, decodeShare, NAME_PARAM, SHARE_PARAM, shareDataFromHash, sh
 import { diffModels } from '../core/changes'
 import { ChangesDock } from './changes/ChangesPanel'
 import { FEEDBACK_URL } from './AuthorLinks'
-import { applyUpdate, installApp, useUpdateReady } from '../pwa/register'
+import { applyUpdate, checkForUpdates, DEPLOY_DELAY_NOTE, installApp, updateCheckMessage, useUpdateReady } from '../pwa/register'
 import { Canvas } from './canvas/Canvas'
 import { CDM_FIT, DrawTools, setFitForDock, useDrawDock } from './canvas/CanvasTools'
 import { exportDiagram } from './exportImage'
@@ -42,6 +42,8 @@ import { isCaseFile } from '../data/caseFile'
 import { isStoryFile } from '../data/story'
 import { openStoryFile, useStory } from './story/storyStore'
 import { PresenterBar, StoryPane, useStoryKeys } from './story/StoryPane'
+
+declare const __APP_VERSION__: string
 
 /** The trainer cases, easiest first: their reference models are the examples. */
 const EXAMPLES = CASES.map((c) => ({ id: c.id, label: `${c.title} ${'★'.repeat(c.difficulty)}`, build: c.build }))
@@ -616,6 +618,15 @@ Cancel: open it as an ordinary model.`)) {
               { label: 'Lessons: the basics…', icon: <GraduationCap size={ICON} />, onSelect: () => useTrainer.getState().openPicker(true) },
               { label: 'Watch a model being built…', icon: <Play size={ICON} />, onSelect: () => useTrainer.getState().openPicker(true) },
               { label: 'Keyboard shortcuts', icon: <Keyboard size={ICON} />, hint: '?', onSelect: () => useOnboarding.getState().showShortcuts(true) },
+              {
+                label: 'Check for updates',
+                title: DEPLOY_DELAY_NOTE,
+                icon: <RefreshCw size={ICON} />,
+                onSelect: () => {
+                  setNotice('Checking for updates…')
+                  void checkForUpdates().then((r) => setNotice(updateCheckMessage(r, __APP_VERSION__)))
+                },
+              },
               { label: 'Install as app (works offline)…', icon: <Download size={ICON} />, onSelect: () => void installApp().then((msg) => msg && setNotice(msg)) },
               ...(FEEDBACK_URL
                 ? [{ label: 'Send feedback…', icon: <MessageSquare size={ICON} />, onSelect: () => window.open(FEEDBACK_URL, '_blank', 'noopener') }]

@@ -5,6 +5,7 @@ export interface MenuItem {
   label: string
   icon?: ReactNode
   hint?: string
+  title?: string
   onSelect: () => void
   disabled?: boolean
 }
@@ -58,6 +59,7 @@ export function Menu(props: { label: ReactNode; title?: string; className?: stri
                 role="menuitem"
                 className="menu-item"
                 disabled={it.disabled}
+                title={it.title}
                 onClick={() => {
                   setOpen(false)
                   it.onSelect()

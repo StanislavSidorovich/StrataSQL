@@ -34,6 +34,7 @@ function pwaPlugin(): Plugin {
 
 export default defineConfig({
   base: './',
+  define: { __APP_VERSION__: JSON.stringify(JSON.parse(readFileSync('package.json', 'utf8')).version) },
   plugins: [react(), tailwindcss(), pwaPlugin()],
   // PGlite loads its own .wasm/.data files; pre-bundling would break their URLs.
   optimizeDeps: { exclude: ['@electric-sql/pglite'] },
