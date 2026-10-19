@@ -32,6 +32,8 @@ Stages follow SPEC §12. A stage is done only when its acceptance criteria pass.
 
 **Earlier (2026-10-04, v0.6.0 + UX review):** 8 cases + 5 exercises, PowerDesigner cross-check, live at model.quaera.app. The UX review fixed the first-minute rough edges (gentle hint for a new entity, name focus, wrapping phrases, zoom, minimap, phone note). Then the two top backlog items: the walkthrough now asks before some steps (predict → see), and level 1 hides the model until the text is tagged. Then the owner's requests: default names as grey hints, text size, canvas/panel colours, Save as. Backlog 1–4, name suggestions, text size and author links are done since; the open work is in **Next steps** below. LinkedIn post after the professor answers about the 3 course cases.
 
+- 2026-10-19, v0.10.6: link-preview card (og:image, twitter:image, 1200x630) redrawn in the family look by `quaera/scripts/make-og.mjs` (needs Edge or Chrome; the PNG is committed). og:title without the long dash, absolute URLs, `twitter:card=summary_large_image`.
+
 ## Next steps (by priority, 2026-10-04)
 
 1. ✅ **Export to PowerDesigner `.cdm`** (2026-10-04) — **File → Export for PowerDesigner**; ✅ the owner opened an exported Hotel `.cdm` in PowerDesigner 16 (2026-10-04): entities, data types, M, identifiers, relationships and dependencies all came through. The diagram straddled PD's page delimiters, so the export now centres it on (0, 0) like PD's own files. Still to try: generate the PDM in PD from an exported file
