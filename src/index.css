@@ -1424,6 +1424,19 @@ a.btn.disabled {
   display: flex;
   flex-direction: column;
 }
+.dock-resizer {
+  flex: none;
+  height: 8px;
+  margin: -4px 0 -4px;
+  position: relative;
+  z-index: 2;
+  cursor: row-resize;
+  touch-action: none;
+}
+.dock-resizer:hover,
+.dock-resizer:active {
+  background: var(--accent-soft);
+}
 .issues-bar {
   display: flex;
   align-items: center;

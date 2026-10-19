@@ -3,6 +3,7 @@
 import { issueTouches, RULES, type LintIssue, type Severity } from '../../core/lint'
 import type { Id } from '../../core/metamodel'
 import { referenceModelOf } from '../../data/reference-models'
+import { useDockResize } from '../DockResizer'
 import { HelpButton } from '../panels/fields'
 import { useEditor, useLint, type Selection } from '../store'
 
@@ -59,8 +60,10 @@ export function IssuesDock() {
   const focused = useEditor((s) => s.focusedIssue)
   const setOpen = useEditor((s) => s.setIssuesOpen)
   const c = countBySeverity(issues)
+  const { style, handle } = useDockResize('issues', open)
   return (
-    <div className={`issues-dock ${open ? 'is-open' : ''}`} data-testid="issues-dock" data-tour="issues">
+    <div className={`issues-dock ${open ? 'is-open' : ''}`} data-testid="issues-dock" data-tour="issues" style={style}>
+      {handle}
       <button type="button" className="issues-bar" onClick={() => setOpen(!open)} aria-expanded={open}>
         <b>Model check</b>
         {issues.length === 0 ? (

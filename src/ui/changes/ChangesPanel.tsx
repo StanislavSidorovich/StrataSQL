@@ -3,6 +3,7 @@
 
 import type { Change, ChangeKind, ChangeStatus } from '../../core/changes'
 import type { Id } from '../../core/metamodel'
+import { useDockResize } from '../DockResizer'
 import { useChanges, useEditor } from '../store'
 
 const WORD: Record<ChangeStatus, string> = { new: 'new', changed: 'changed', removed: 'removed' }
@@ -49,10 +50,12 @@ export function ChangesDock({ open, onToggle }: { open: boolean; onToggle: () =>
   const base = useEditor((s) => s.changesBase)
   const show = useEditor((s) => s.showChanges)
   const selection = useEditor((s) => s.selection)
+  const { style, handle } = useDockResize('changes', open)
   if (!changes || !base) return null
   const { counts } = changes
   return (
-    <div className={`issues-dock changes-dock ${open ? 'is-open' : ''}`} data-testid="changes-dock">
+    <div className={`issues-dock changes-dock ${open ? 'is-open' : ''}`} data-testid="changes-dock" style={style}>
+      {handle}
       <div className="issues-bar">
         <button type="button" className="chg-bar-main" onClick={onToggle} aria-expanded={open}>
           <b>Changes</b>

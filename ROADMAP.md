@@ -33,6 +33,7 @@ Stages follow SPEC §12. A stage is done only when its acceptance criteria pass.
 **Earlier (2026-10-04, v0.6.0 + UX review):** 8 cases + 5 exercises, PowerDesigner cross-check, live at model.quaera.app. The UX review fixed the first-minute rough edges (gentle hint for a new entity, name focus, wrapping phrases, zoom, minimap, phone note). Then the two top backlog items: the walkthrough now asks before some steps (predict → see), and level 1 hides the model until the text is tagged. Then the owner's requests: default names as grey hints, text size, canvas/panel colours, Save as. Backlog 1–4, name suggestions, text size and author links are done since; the open work is in **Next steps** below. LinkedIn post after the professor answers about the 3 course cases.
 
 - 2026-10-19, v0.10.6: link-preview card (og:image, twitter:image, 1200x630) redrawn in the family look by `quaera/scripts/make-og.mjs` (needs Edge or Chrome; the PNG is committed). og:title without the long dash, absolute URLs, `twitter:card=summary_large_image`.
+- 2026-10-19, v0.10.7: the docks under the canvas (Changes, Model check) can be resized: drag the thin strip on their top edge, double-click resets; the height is remembered per dock in localStorage (`stratasql.dockHeight.*`, `src/ui/DockResizer.tsx`), clamped to 90 px .. 75 % of the column. Built with: Claude Sonnet 5.5 (Claude Code), effort low.
 
 ## Next steps (by priority, 2026-10-04)
 
