@@ -19,6 +19,11 @@
     <meta property="og:image:height" content="630" />
     <meta property="og:image:alt" content="Quaera Model logo: an orange table sign, with the text Conceptual model → tables → SQL" />
     <meta name="twitter:card" content="summary_large_image" />
+    <script>
+      try {
+        if (localStorage.getItem('stratasql.borders') === 'strong') document.documentElement.setAttribute('data-borders', 'strong')
+      } catch (e) {}
+    </script>
     <!-- Cloudflare Web Analytics: cookieless page-view counts, on the live site only (not local runs). -->
     <script>
       if (location.hostname === 'model.quaera.app') {

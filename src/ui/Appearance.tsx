@@ -5,6 +5,7 @@
 
 import { Moon, Sun } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
+import { applyBorders, readBorders, type Borders } from '../core/borders'
 import { useKeepInView } from './useKeepInView'
 
 const STORAGE_KEY = 'stratasql.look'
@@ -64,6 +65,7 @@ function applyLook(look: Look, theme: Theme) {
 export function AppearanceButton({ dark, onToggleTheme }: { dark: boolean; onToggleTheme: () => void }) {
   const theme: Theme = dark ? 'dark' : 'light'
   const [look, setLook] = useState(readLook)
+  const [borders, setBorders] = useState<Borders>(readBorders)
   const [open, setOpen] = useState(false)
   const root = useRef<HTMLDivElement>(null)
   const panel = useRef<HTMLDivElement>(null)
@@ -77,6 +79,8 @@ export function AppearanceButton({ dark, onToggleTheme }: { dark: boolean; onTog
       /* private mode: the look is not remembered */
     }
   }, [look, theme])
+
+  useEffect(() => applyBorders(borders), [borders])
 
   useEffect(() => {
     if (!open) return
@@ -141,6 +145,16 @@ export function AppearanceButton({ dark, onToggleTheme }: { dark: boolean; onTog
             </div>
           </div>
           <div className="look-row">
+            <div className="look-label">Borders</div>
+            <div className="segmented self-start" role="radiogroup" aria-label="Borders">
+              {(['soft', 'strong'] as const).map((b) => (
+                <button key={b} type="button" role="radio" aria-checked={borders === b} className={borders === b ? 'on' : ''} onClick={() => setBorders(b)}>
+                  {b === 'soft' ? 'Soft' : 'Strong'}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="look-row">
             <div className="look-label">Text size</div>
             <div className="segmented">
               {TEXT_SIZES.map((t) => (
@@ -165,7 +179,10 @@ export function AppearanceButton({ dark, onToggleTheme }: { dark: boolean; onTog
           {colorRow('canvas', 'Canvas')}
           {colorRow('panels', 'Panels (top bar, side columns)')}
           <div className="look-hint">Colours are kept separately for the light and dark theme.</div>
-          <button type="button" className="btn btn-small self-start" onClick={() => setLook({ size: 1, diagram: true, canvas: {}, panels: {} })}>
+          <button type="button" className="btn btn-small self-start" onClick={() => {
+              setLook({ size: 1, diagram: true, canvas: {}, panels: {} })
+              setBorders('soft')
+            }}>
             Reset to default
           </button>
         </div>
