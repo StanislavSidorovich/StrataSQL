@@ -64,11 +64,13 @@ export function sqlTypeOf(type: string): { sqlType: SqlType; known: boolean } {
   const n2 = m[3] !== undefined ? Number(m[3]) : undefined
   const known = (sqlType: SqlType) => ({ sqlType, known: true })
   switch (base) {
+    case 'serial':
+    case 'serial4':
+    case 'int identity':
+      return known({ dataType: 'Serial' })
     case 'int':
     case 'integer':
     case 'int4':
-    case 'serial':
-    case 'serial4':
     case 'mediumint':
       return known({ dataType: 'Integer' })
     case 'smallint':
@@ -429,6 +431,9 @@ function readColumn(c: Cursor, t: SqlTable, warnings: string[]): void {
   const { sqlType, known } = sqlTypeOf(type || 'varchar')
   if (!type) warnings.push(`${t.name}.${name} has no type; read as Variable characters.`)
   const col: SqlColumn = { name, type, sqlType, knownType: known || !type, nullable: true }
+  // IDENTITY(1,1) / AUTO_INCREMENT / GENERATED … AS IDENTITY on an integer column: autonumbering.
+  if (sqlType.dataType === 'Integer' && c.toks.slice(1).some((x) => x.kind === 'word' && /^(IDENTITY|AUTO_INCREMENT|AUTOINCREMENT)$/i.test(x.text)))
+    col.sqlType = { dataType: 'Serial' }
   let constraintName: string | undefined
   while (!c.done()) {
     if (c.accept('NOT', 'NULL')) col.nullable = false

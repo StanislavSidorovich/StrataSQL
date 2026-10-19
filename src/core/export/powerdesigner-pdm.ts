@@ -95,12 +95,15 @@ export function exportPowerDesignerPdm(model: Model, opts: { guid?: () => string
 
   const tables = pdm.tables.map((t) => {
     const cols = t.columns.map((c) => {
-      const type = sqlServerType(c)
+      const full = sqlServerType(c)
+      const identity = / identity$/.test(full)
+      const type = identity ? full.slice(0, -' identity'.length) : full
       const size = /\((\d+)(?:,(\d+))?\)$/.exec(type)
       return (
         `<o:Column Id="${colIds.get(`${t.name}.${c.name}`)}">\n${named(c.name, c.name)}${comment(c.comment)}<a:DataType>${type}</a:DataType>\n` +
         (size ? `<a:Length>${size[1]}</a:Length>\n` : '') +
         (size?.[2] ? `<a:Precision>${size[2]}</a:Precision>\n` : '') +
+        (identity ? '<a:Identity>1</a:Identity>\n' : '') +
         (c.nullable ? '' : '<a:Column.Mandatory>1</a:Column.Mandatory>\n') +
         `</o:Column>`
       )

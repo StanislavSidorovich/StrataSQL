@@ -133,6 +133,8 @@ function migratedColumn(key: PdmColumn, ref: { prefix: string | null; source: Pd
   const via = ref.source.kind === 'relationship' || ref.source.kind === 'inheritance' ? ref.source.id : ''
   return {
     ...key,
+    // A foreign key holds the parent's number but does not count by itself.
+    dataType: key.dataType === 'Serial' ? 'Integer' : key.dataType,
     name: ref.prefix ? `${ref.prefix}_${key.name}` : key.name,
     origin: ref.prefix ? `${via}~${key.origin}` : key.origin,
     nullable,

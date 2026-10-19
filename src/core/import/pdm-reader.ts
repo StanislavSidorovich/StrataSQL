@@ -36,7 +36,7 @@ export function readPdTables(src: string): PdTable[] {
     tableCode.set(t.attrs.Id, code)
     const columns = children(child(t, 'c:Columns'), 'o:Column').map((c) => {
       colCode.set(c.attrs.Id, textOf(c, 'a:Code') ?? '?')
-      return { code: textOf(c, 'a:Code') ?? '?', type: textOf(c, 'a:DataType') ?? '', mandatory: textOf(c, 'a:Column.Mandatory') === '1' }
+      return { code: textOf(c, 'a:Code') ?? '?', type: `${textOf(c, 'a:DataType') ?? ''}${textOf(c, 'a:Identity') === '1' ? ' identity' : ''}`, mandatory: textOf(c, 'a:Column.Mandatory') === '1' }
     })
     for (const k of children(child(t, 'c:Keys'), 'o:Key'))
       keyCols.set(k.attrs.Id, children(child(k, 'c:Key.Columns'), 'o:Column').map((c) => colCode.get(c.attrs.Ref) ?? '?'))

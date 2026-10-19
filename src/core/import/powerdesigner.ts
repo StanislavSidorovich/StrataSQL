@@ -27,6 +27,7 @@ const PD_TYPES: Record<string, DataType> = {
   SI: 'Short integer',
   BT: 'Short integer',
   LI: 'Long integer',
+  SN: 'Serial',
   N: 'Decimal',
   DC: 'Decimal',
   F: 'Float',

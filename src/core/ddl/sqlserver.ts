@@ -17,6 +17,8 @@ export function sqlServerType(c: Pick<PdmColumn, 'dataType' | 'length' | 'precis
       return 'smallint'
     case 'Long integer':
       return 'bigint'
+    case 'Serial':
+      return 'int identity'
     case 'Decimal':
       return c.length !== undefined ? `decimal(${c.length}${c.precision !== undefined ? `,${c.precision}` : ''})` : 'decimal(18,2)'
     case 'Float':

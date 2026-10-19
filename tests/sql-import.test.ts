@@ -28,7 +28,7 @@ describe('SQL types → conceptual types', () => {
   it('reads both dialects', () => {
     expect(sqlTypeOf('int').sqlType).toEqual({ dataType: 'Integer' })
     expect(sqlTypeOf('INTEGER').sqlType).toEqual({ dataType: 'Integer' })
-    expect(sqlTypeOf('serial').sqlType).toEqual({ dataType: 'Integer' })
+    expect(sqlTypeOf('serial').sqlType).toEqual({ dataType: 'Serial' })
     expect(sqlTypeOf('decimal(8,2)').sqlType).toEqual({ dataType: 'Decimal', length: 8, precision: 2 })
     expect(sqlTypeOf('numeric(10)').sqlType).toEqual({ dataType: 'Decimal', length: 10, precision: 0 })
     expect(sqlTypeOf('double precision').sqlType).toEqual({ dataType: 'Float' })
@@ -71,7 +71,7 @@ GO`)
     expect(t.name).toBe('ORDER')
     expect(t.comment).toBe('One purchase.')
     expect(t.columns.map((c) => [c.name, c.sqlType.dataType, c.nullable])).toEqual([
-      ['order_id', 'Integer', false],
+      ['order_id', 'Serial', false],
       ['placed_on', 'Date & time', false],
       ['note', 'Text', true],
       ['customer_id', 'Integer', false],
