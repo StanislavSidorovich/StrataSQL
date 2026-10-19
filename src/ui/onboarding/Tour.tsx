@@ -173,7 +173,7 @@ function Welcome(props: OnboardingProps) {
     <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="welcome-title" onKeyDown={(e) => e.key === 'Escape' && closeWelcome()}>
       <div className="modal welcome">
         <h2 id="welcome-title">
-          Welcome to Strata<span>SQL</span>
+          Welcome to Quaera <span>Model</span>
         </h2>
         <p>
           Draw a <b>conceptual model</b> (entities, attributes, relationships) the way database courses teach it with PowerDesigner. Quaera Model turns it into <b>tables</b> and a <b>SQL Server script</b>, checks the model and explains every concept.
