@@ -80,11 +80,50 @@ export function boundsOf(points: Point[]): Rect {
 
 export const points = (ps: Point[]) => `(${ps.map((p) => `(${p.x},${p.y})`).join(',')})`
 
-/** Approximate size of an entity symbol in PD units, from its longest line and the number of lines. */
-function entitySize(e: Entity): { w: number; h: number } {
-  const lines = [e.name, ...e.attributes.map((a) => `${a.name} <pi> ${pdTypeCode(a)} <M>`), ...e.identifiers.map((i) => `${i.name} <pi>`)]
-  const longest = Math.max(...lines.map((l) => l.length))
-  return { w: Math.max(6000, Math.round(longest * 330 + 1600)), h: 1800 + 900 * Math.max(1, e.attributes.length) + 900 * e.identifiers.length }
+// Arial advance widths, 1/1000 em, for the characters that show up in names and type codes.
+const ARIAL: Record<string, number> = { ' ': 278, '_': 556, '-': 333, '.': 278, ',': 278, '(': 333, ')': 333, '<': 584, '>': 584, i: 222, j: 222, l: 222, f: 278, t: 278, r: 333, I: 278, m: 833, w: 722, M: 833, W: 944 }
+const arialWidth = (t: string) =>
+  [...t].reduce((sum, ch) => sum + (ARIAL[ch] ?? (/[A-Z]/.test(ch) ? 690 : 556)), 0)
+
+/**
+ * Size of an entity symbol in PD units. PD stretches the table to its widest "name  <pi>  type  <M>" row
+ * (Arial 8) and 960 units per row; the line ends stay on the old border, so a table that is too narrow
+ * puts the line ends inside it. Coefficients fitted to the entities of a real PD file (error about 15%),
+ * with some slack on top: too wide is harmless, too narrow is the bug.
+ */
+export function entitySize(e: Entity): { w: number; h: number } {
+  const rows = e.attributes.length
+  const nameW = Math.max(arialWidth(e.name), ...e.attributes.map((a) => arialWidth(a.name)))
+  const typeW = Math.max(0, ...e.attributes.map((a) => arialWidth(pdTypeCode(a))))
+  return { w: Math.max(9000, Math.round(0.9 * nameW + 3.8 * typeW + 3100 + 1500)), h: Math.max(3999, 2819 + 960 * rows) }
+}
+
+/**
+ * Orthogonal route between two symbols, as PD draws it: ends exactly on the rectangle edges.
+ * Overlapping in X: a vertical through the middle of the overlap; in Y: a horizontal through its middle;
+ * otherwise an L of three points (out of a side of `a`, into the top or bottom of `b`).
+ */
+export function routeOrthogonal(a: Rect, b: Rect): Point[] {
+  const ox1 = Math.max(a.x1, b.x1)
+  const ox2 = Math.min(a.x2, b.x2)
+  const oy1 = Math.max(a.y1, b.y1)
+  const oy2 = Math.min(a.y2, b.y2)
+  const apartY = a.y1 >= b.y2 || b.y1 >= a.y2
+  const apartX = a.x2 <= b.x1 || b.x2 <= a.x1
+  if (ox1 < ox2 && apartY) {
+    const x = Math.round((ox1 + ox2) / 2)
+    return a.y1 >= b.y2 ? [{ x, y: a.y1 }, { x, y: b.y2 }] : [{ x, y: a.y2 }, { x, y: b.y1 }]
+  }
+  if (oy1 < oy2 && apartX) {
+    const y = Math.round((oy1 + oy2) / 2)
+    return a.x2 <= b.x1 ? [{ x: a.x2, y }, { x: b.x1, y }] : [{ x: a.x1, y }, { x: b.x2, y }]
+  }
+  // L route (rectangles apart on both axes; overlapping ones, which the layout never produces, get the same shape).
+  const ca = center(a)
+  const cb = center(b)
+  const sideX = cb.x >= ca.x ? a.x2 : a.x1
+  const edgeY = cb.y >= ca.y ? b.y1 : b.y2
+  return [{ x: sideX, y: ca.y }, { x: cb.x, y: ca.y }, { x: cb.x, y: edgeY }]
 }
 
 export function exportPowerDesigner(model: Model, opts: { guid?: () => string; now?: number; user?: string } = {}): ExportResult {
@@ -176,7 +215,7 @@ export function exportPowerDesigner(model: Model, opts: { guid?: () => string; n
       // Reflexive: a loop out of the right side and back over the top.
       const out = { x: ra.x2, y: center(ra).y }
       path = [out, { x: ra.x2 + 2000, y: out.y }, { x: ra.x2 + 2000, y: ra.y2 + 2000 }, { x: center(ra).x, y: ra.y2 + 2000 }, { x: center(ra).x, y: ra.y2 }]
-    } else path = [border(ra, center(rb)), border(rb, center(ra))]
+    } else path = routeOrthogonal(ra, rb)
     symbols.push(
       `<o:RelationshipSymbol Id="${id()}">\n<a:CreationDate>${now}</a:CreationDate>\n<a:ModificationDate>${now}</a:ModificationDate>\n<a:Rect>${rectText(boundsOf(path))}</a:Rect>\n<a:ListOfPoints>${points(path)}</a:ListOfPoints>\n<a:CornerStyle>1</a:CornerStyle>\n<a:LineColor>11184640</a:LineColor>\n<a:ShadowColor>12632256</a:ShadowColor>\n<c:SourceSymbol>\n<o:EntitySymbol Ref="${entitySymIds.get(r.entityA)}"/>\n</c:SourceSymbol>\n<c:DestinationSymbol>\n<o:EntitySymbol Ref="${entitySymIds.get(r.entityB)}"/>\n</c:DestinationSymbol>\n<c:Object>\n<o:Relationship Ref="${relIds.get(r.id)}"/>\n</c:Object>\n</o:RelationshipSymbol>`,
     )
@@ -191,13 +230,13 @@ export function exportPowerDesigner(model: Model, opts: { guid?: () => string; n
       `<o:InheritanceSymbol Id="${symId}">\n<a:CreationDate>${now}</a:CreationDate>\n<a:ModificationDate>${now}</a:ModificationDate>\n<a:IconMode>-1</a:IconMode>\n<a:Rect>${rectText(sym)}</a:Rect>\n<a:LineColor>16744576</a:LineColor>\n<a:FillColor>16777136</a:FillColor>\n<a:ShadowColor>12632256</a:ShadowColor>\n<a:BrushStyle>6</a:BrushStyle>\n<a:GradientFillMode>65</a:GradientFillMode>\n<a:GradientEndColor>16777215</a:GradientEndColor>\n<a:KeepSize>1</a:KeepSize>\n<c:Object>\n<o:Inheritance Ref="${inhIds.get(inh.id)}"/>\n</c:Object>\n</o:InheritanceSymbol>`,
     )
     const parent = rects.get(inh.parentId)!
-    const up = [border(sym, center(parent)), border(parent, center(sym))]
+    const up = routeOrthogonal(sym, parent)
     symbols.push(
       `<o:InheritanceRootLinkSymbol Id="${id()}">\n<a:CreationDate>${now}</a:CreationDate>\n<a:ModificationDate>${now}</a:ModificationDate>\n<a:Rect>${rectText(boundsOf(up))}</a:Rect>\n<a:ListOfPoints>${points(up)}</a:ListOfPoints>\n<a:CornerStyle>1</a:CornerStyle>\n<a:ArrowStyle>1</a:ArrowStyle>\n<a:LineColor>16744576</a:LineColor>\n<a:ShadowColor>12632256</a:ShadowColor>\n<c:SourceSymbol>\n<o:InheritanceSymbol Ref="${symId}"/>\n</c:SourceSymbol>\n<c:DestinationSymbol>\n<o:EntitySymbol Ref="${entitySymIds.get(inh.parentId)}"/>\n</c:DestinationSymbol>\n<c:Object>\n<o:Inheritance Ref="${inhIds.get(inh.id)}"/>\n</c:Object>\n</o:InheritanceRootLinkSymbol>`,
     )
     for (const c of inh.childIds) {
       const kid = rects.get(c)!
-      const down = [border(kid, center(sym)), border(sym, center(kid))]
+      const down = routeOrthogonal(kid, sym)
       symbols.push(
         `<o:InheritanceLinkSymbol Id="${id()}">\n<a:CreationDate>${now}</a:CreationDate>\n<a:ModificationDate>${now}</a:ModificationDate>\n<a:Rect>${rectText(boundsOf(down))}</a:Rect>\n<a:ListOfPoints>${points(down)}</a:ListOfPoints>\n<a:CornerStyle>1</a:CornerStyle>\n<a:ArrowStyle>0</a:ArrowStyle>\n<a:LineColor>16744576</a:LineColor>\n<a:ShadowColor>12632256</a:ShadowColor>\n<c:SourceSymbol>\n<o:EntitySymbol Ref="${entitySymIds.get(c)}"/>\n</c:SourceSymbol>\n<c:DestinationSymbol>\n<o:InheritanceSymbol Ref="${symId}"/>\n</c:DestinationSymbol>\n<c:Object>\n<o:InheritanceLink Ref="${linkIds.get(`${inh.id}:${c}`)}"/>\n</c:Object>\n</o:InheritanceLinkSymbol>`,
       )

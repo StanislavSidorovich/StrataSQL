@@ -78,3 +78,44 @@ it('centres the diagram on (0, 0), where PowerDesigner lays out its pages', () =
     expect(Math.abs(Math.min(...ys) + Math.max(...ys))).toBeLessThan(1500)
   }
 })
+
+describe('PowerDesigner .cdm export: diagram geometry', () => {
+  type R = { x1: number; y1: number; x2: number; y2: number }
+  const nums = (t: string) => (t.match(/-?\d+/g) ?? []).map(Number)
+  const onEdge = (p: { x: number; y: number }, r: R) =>
+    p.x >= r.x1 && p.x <= r.x2 && p.y >= r.y1 && p.y <= r.y2 && (p.x === r.x1 || p.x === r.x2 || p.y === r.y1 || p.y === r.y2)
+
+  for (const [name, build] of [
+    ...CASES.map((c) => [c.title, c.build] as [string, () => Model]),
+    ['TV Show.cdm', () => importPowerDesigner(fixture('tv-show.cdm')).model],
+  ] as [string, () => Model][]) {
+    it(`line ends lie on symbol edges and every segment is horizontal or vertical: ${name}`, () => {
+      const { xml } = exportPowerDesigner(build())
+      const rects = new Map<string, R>()
+      for (const m of xml.matchAll(/<o:(EntitySymbol|InheritanceSymbol) Id="(o\d+)">[\s\S]*?<a:Rect>(.*?)<\/a:Rect>/g)) {
+        const [x1, y1, x2, y2] = nums(m[3])
+        rects.set(m[2], { x1, y1, x2, y2 })
+      }
+      let links = 0
+      for (const m of xml.matchAll(/<o:(RelationshipSymbol|InheritanceRootLinkSymbol|InheritanceLinkSymbol) Id="o\d+">[\s\S]*?<\/o:\1>/g)) {
+        const body = m[0]
+        const ps = nums(body.match(/<a:ListOfPoints>(.*?)<\/a:ListOfPoints>/)![1])
+        const pts = Array.from({ length: ps.length / 2 }, (_, i) => ({ x: ps[2 * i], y: ps[2 * i + 1] }))
+        const src = rects.get(body.match(/<c:SourceSymbol>\s*<o:\w+ Ref="(o\d+)"/)![1])!
+        const dst = rects.get(body.match(/<c:DestinationSymbol>\s*<o:\w+ Ref="(o\d+)"/)![1])!
+        expect(onEdge(pts[0], src)).toBe(true)
+        expect(onEdge(pts[pts.length - 1], dst)).toBe(true)
+        for (let i = 1; i < pts.length; i++) expect(pts[i].x === pts[i - 1].x || pts[i].y === pts[i - 1].y).toBe(true)
+        links++
+      }
+      expect(links).toBeGreaterThan(0)
+    })
+  }
+
+  it('sizes a table like PD: 960 units per row and wide enough for its longest row', () => {
+    const m = CASES[0].build()
+    const { xml } = exportPowerDesigner(m)
+    const first = nums(xml.match(/<o:EntitySymbol Id="o\d+">[\s\S]*?<a:Rect>(.*?)<\/a:Rect>/)![1])
+    expect(first[3] - first[1]).toBe(Math.max(3999, 2819 + 960 * m.entities[0].attributes.length))
+  })
+})
