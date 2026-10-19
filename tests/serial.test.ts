@@ -34,9 +34,9 @@ describe('Serial (autonumbering)', () => {
     const m = build()
     expect(parseModel(serializeModel(m)).entities[0].attributes[0].dataType).toBe('Serial')
     const cdm = exportPowerDesigner(m).xml
-    expect(cdm).toContain('<a:DataType>SN</a:DataType>')
+    expect(cdm).toContain('<a:DataType>NO</a:DataType>')
     expect(importPowerDesigner(cdm, 'x.cdm').model.entities.find((e) => e.name === 'Customer')!.attributes[0].dataType).toBe('Serial')
-    expect(parsePdType('SN')).toEqual({ dataType: 'Serial' })
+    expect(parsePdType('NO')).toEqual({ dataType: 'Serial' })
     const pdm = exportPowerDesignerPdm(m).xml
     expect(pdm).toContain('<a:Identity>1</a:Identity>')
     const cols = readPdTables(pdm).find((t) => t.code.toUpperCase() === 'CUSTOMER')!.columns

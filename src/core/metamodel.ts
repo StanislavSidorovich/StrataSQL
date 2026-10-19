@@ -37,7 +37,7 @@ export const DATA_TYPE_CODES: Record<DataType, string> = {
   Integer: 'I',
   'Short integer': 'SI',
   'Long integer': 'LI',
-  Serial: 'SN',
+  Serial: 'NO',
   Decimal: 'DC',
   Float: 'F',
   Money: 'MN',

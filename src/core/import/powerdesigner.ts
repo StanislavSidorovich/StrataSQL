@@ -23,11 +23,11 @@ export const POWERDESIGNER_EXTENSIONS = ['.cdm', '.cdb', '.pdm', '.pdb'] as cons
 /** PD type code prefix → conceptual type. */
 const PD_TYPES: Record<string, DataType> = {
   I: 'Integer',
-  NO: 'Integer',
   SI: 'Short integer',
   BT: 'Short integer',
   LI: 'Long integer',
-  SN: 'Serial',
+  NO: 'Serial', // PowerDesigner's own code for Serial
+  SN: 'Serial', // written by v0.10.8 only
   N: 'Decimal',
   DC: 'Decimal',
   F: 'Float',
