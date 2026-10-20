@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { generatePdm } from '../src/core/cdm2pdm'
 import { generateSqlServer } from '../src/core/ddl/sqlserver'
-import { arrowStyle, exportPowerDesigner, pdCode, pdTypeCode } from '../src/core/export/powerdesigner'
+import { arrowStyle, crossed, exportPowerDesigner, pdCode, pdTypeCode, routeAround, routeOrthogonal } from '../src/core/export/powerdesigner'
 import { importPowerDesigner } from '../src/core/import/powerdesigner'
 import { parseXml } from '../src/core/import/xml'
 import type { Model } from '../src/core/metamodel'
@@ -111,6 +111,56 @@ describe('PowerDesigner .cdm export: diagram geometry', () => {
       expect(links).toBeGreaterThan(0)
     })
   }
+
+  for (const [name, build] of [
+    ...CASES.map((c) => [c.title, c.build] as [string, () => Model]),
+    ['TV Show.cdm', () => importPowerDesigner(fixture('tv-show.cdm')).model],
+    ['University.cdm', () => importPowerDesigner(fixture('university.cdm')).model],
+  ] as [string, () => Model][]) {
+    it(`no segment of any line runs through a symbol other than its own two: ${name}`, () => {
+      const { xml, warnings } = exportPowerDesigner(build())
+      const rects = new Map<string, R>()
+      for (const m of xml.matchAll(/<o:(EntitySymbol|InheritanceSymbol) Id="(o\d+)">[\s\S]*?<a:Rect>(.*?)<\/a:Rect>/g)) {
+        const [x1, y1, x2, y2] = nums(m[3])
+        rects.set(m[2], { x1, y1, x2, y2 })
+      }
+      const through: string[] = []
+      for (const m of xml.matchAll(/<o:(RelationshipSymbol|InheritanceRootLinkSymbol|InheritanceLinkSymbol) Id="(o\d+)">[\s\S]*?<\/o:\1>/g)) {
+        const body = m[0]
+        const ps = nums(body.match(/<a:ListOfPoints>(.*?)<\/a:ListOfPoints>/)![1])
+        const pts = Array.from({ length: ps.length / 2 }, (_, i) => ({ x: ps[2 * i], y: ps[2 * i + 1] }))
+        const own = [body.match(/<c:SourceSymbol>\s*<o:\w+ Ref="(o\d+)"/)![1], body.match(/<c:DestinationSymbol>\s*<o:\w+ Ref="(o\d+)"/)![1]]
+        for (const [sid, r] of rects) {
+          if (own.includes(sid)) continue
+          for (let i = 1; i < pts.length; i++) {
+            const [p, q] = [pts[i - 1], pts[i]]
+            if (Math.min(p.x, q.x) < r.x2 && Math.max(p.x, q.x) > r.x1 && Math.min(p.y, q.y) < r.y2 && Math.max(p.y, q.y) > r.y1) through.push(`${m[2]} through ${sid}`)
+          }
+        }
+      }
+      expect(through).toEqual([])
+      expect(warnings.filter((w) => /crosses/.test(w))).toEqual([])
+    })
+  }
+
+  it('goes around a table that sits between the two it joins, and says so when it cannot', () => {
+    const a = { x1: 0, y1: 0, x2: 9000, y2: 4000 }
+    const b = { x1: 30000, y1: 0, x2: 39000, y2: 4000 }
+    const wall = { x1: 15000, y1: -2000, x2: 24000, y2: 6000 }
+    const path = routeAround(a, b, [wall])
+    expect(routeOrthogonal(a, b)).toHaveLength(2)
+    expect(crossed(routeOrthogonal(a, b), [wall])).toEqual([0])
+    expect(crossed(path, [wall])).toEqual([])
+    expect(path.length).toBe(4)
+    // Boxed in on every side: the route crosses as few symbols as it can and the export can warn.
+    const box = [
+      { x1: -3000, y1: -3000, x2: 12000, y2: -1000 },
+      { x1: -3000, y1: 5000, x2: 12000, y2: 7000 },
+      { x1: -3000, y1: -1000, x2: -1000, y2: 5000 },
+      { x1: 11000, y1: -1000, x2: 13000, y2: 5000 },
+    ]
+    expect(crossed(routeAround(a, b, box), box)).toHaveLength(1)
+  })
 
   it('sizes a table like PD: 960 units per row and wide enough for its longest row', () => {
     const m = CASES[0].build()

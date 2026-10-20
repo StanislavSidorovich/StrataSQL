@@ -149,6 +149,138 @@ export function routeOrthogonal(a: Rect, b: Rect): Point[] {
   return [{ x: sideX, y: ca.y }, { x: cb.x, y: ca.y }, { x: cb.x, y: edgeY }]
 }
 
+/** Clearance kept between a line and the edges of other symbols, and between a line end and a corner. */
+const MARGIN = 400
+/** Shortest first and last segment that leaves room for the end marks (crow's foot, circle, bar). */
+const MIN_END = 1200
+
+/**
+ * Does the segment p–q run through r? With `touch`, running along or touching its edge counts too
+ * (right for another symbol: a line on its border reads as joined to it); without, only the inside.
+ */
+export function hitsRect(p: Point, q: Point, r: Rect, touch = true): boolean {
+  if (touch) return Math.min(p.x, q.x) <= r.x2 && Math.max(p.x, q.x) >= r.x1 && Math.min(p.y, q.y) <= r.y2 && Math.max(p.y, q.y) >= r.y1
+  return Math.min(p.x, q.x) < r.x2 && Math.max(p.x, q.x) > r.x1 && Math.min(p.y, q.y) < r.y2 && Math.max(p.y, q.y) > r.y1
+}
+
+/** The rectangles (by index) a path runs through or touches; with `touch` false, only through. */
+export function crossed(path: Point[], rects: Rect[], touch = true): number[] {
+  return rects.flatMap((r, i) => (path.some((p, k) => k > 0 && hitsRect(path[k - 1], p, r, touch)) ? [i] : []))
+}
+
+type Axis = 'x' | 'y'
+/** A side of a rectangle: its normal axis, where it lies on that axis, which way is out, and where a line may attach along it. */
+type Side = { axis: Axis; at: number; dir: 1 | -1; lo: number; hi: number; mid: number }
+const at = (axis: Axis, n: number, t: number): Point => (axis === 'x' ? { x: n, y: t } : { x: t, y: n })
+
+function sides(r: Rect): Side[] {
+  const along = (lo: number, hi: number) => (hi - lo >= 2 * MARGIN ? { lo: lo + MARGIN, hi: hi - MARGIN } : { lo: (lo + hi) / 2, hi: (lo + hi) / 2 })
+  const ys = { ...along(r.y1, r.y2), mid: Math.round((r.y1 + r.y2) / 2) }
+  const xs = { ...along(r.x1, r.x2), mid: Math.round((r.x1 + r.x2) / 2) }
+  return [
+    { axis: 'x', at: r.x2, dir: 1, ...ys },
+    { axis: 'x', at: r.x1, dir: -1, ...ys },
+    { axis: 'y', at: r.y2, dir: 1, ...xs },
+    { axis: 'y', at: r.y1, dir: -1, ...xs },
+  ]
+}
+
+/**
+ * Orthogonal route from a to b that goes around the other symbols, ends exactly on the edges of a and b.
+ * Tried from the simplest shape: a straight line (slid along the overlap to a free place), the two L's
+ * (sideways then up or down, and the other way round), then a Z or U of four points through a free corridor
+ * between the symbols. The first shape that crosses nothing wins; among equals the shorter one, with its ends
+ * near the middle of a side, not too short for the end marks and not lying on a line already drawn (`taken`).
+ * When every route crosses something, the one crossing the fewest symbols is returned: `crossed` tells.
+ */
+export function routeAround(a: Rect, b: Rect, obstacles: Rect[], taken: Point[][] = []): Point[] {
+  if (!obstacles.length && !taken.length) return routeOrthogonal(a, b)
+  const near = obstacles.map((o) => ({ x1: o.x1 - MARGIN, y1: o.y1 - MARGIN, x2: o.x2 + MARGIN, y2: o.y2 + MARGIN }))
+  const all = [a, b, ...obstacles]
+  const ext = {
+    x1: Math.min(...all.map((r) => r.x1)) - 3000,
+    x2: Math.max(...all.map((r) => r.x2)) + 3000,
+    y1: Math.min(...all.map((r) => r.y1)) - 3000,
+    y2: Math.max(...all.map((r) => r.y2)) + 3000,
+  }
+  // Places worth trying on one axis inside [lo, hi]: the preferred one, just outside every symbol's margin, and halfway between those.
+  const places = (axis: Axis, lo: number, hi: number, prefer: number, limit: number): number[] => {
+    if (lo > hi) return []
+    const edges = near.flatMap((r) => (axis === 'x' ? [r.x1, r.x2] : [r.y1, r.y2])).filter((v) => v > lo && v < hi)
+    const cuts = [lo, ...edges, hi].sort((p, q) => p - q)
+    const vals = [Math.min(hi, Math.max(lo, prefer)), (lo + hi) / 2, ...edges, ...cuts.slice(1).map((v, i) => (v + cuts[i]) / 2)]
+    return [...new Set(vals.map(Math.round))].filter((v) => v >= lo && v <= hi).sort((p, q) => Math.abs(p - prefer) - Math.abs(q - prefer)).slice(0, limit)
+  }
+  const takenSegs = taken.flatMap((t) => t.slice(1).map((p, i) => [t[i], p] as const))
+  const overlap = (p: Point, q: Point) =>
+    takenSegs.reduce((sum, [s, t]) => {
+      if (p.y === q.y && s.y === t.y && Math.abs(p.y - s.y) < 300) return sum + Math.max(0, Math.min(Math.max(p.x, q.x), Math.max(s.x, t.x)) - Math.max(Math.min(p.x, q.x), Math.min(s.x, t.x)))
+      if (p.x === q.x && s.x === t.x && Math.abs(p.x - s.x) < 300) return sum + Math.max(0, Math.min(Math.max(p.y, q.y), Math.max(s.y, t.y)) - Math.max(Math.min(p.y, q.y), Math.min(s.y, t.y)))
+      return sum
+    }, 0)
+  type Scored = { path: Point[]; key: number[] }
+  const pick: { best: Scored | null } = { best: null }
+  const better = (k: number[], than: number[]) => {
+    const i = k.findIndex((v, j) => v !== than[j])
+    return i >= 0 && k[i] < than[i]
+  }
+  const consider = (path: Point[], offCentre: number) => {
+    for (let i = 1; i < path.length; i++) if (path[i].x === path[i - 1].x && path[i].y === path[i - 1].y) return
+    const hard = crossed(path, obstacles).length + crossed(path, [a, b], false).length * 1000
+    const soft = crossed(path, near).length
+    const segs = path.slice(1).map((p, i) => [path[i], p] as const)
+    const len = segs.reduce((s, [p, q]) => s + Math.abs(p.x - q.x) + Math.abs(p.y - q.y), 0)
+    const ends = segs.length ? [segs[0], segs[segs.length - 1]].filter(([p, q]) => Math.abs(p.x - q.x) + Math.abs(p.y - q.y) < MIN_END).length : 0
+    const cost = len + ends * 4000 + offCentre * 0.5 + segs.reduce((s, [p, q]) => s + overlap(p, q) * 3, 0)
+    const key = [hard, soft, path.length, cost]
+    if (!pick.best || better(key, pick.best.key)) pick.best = { path, key }
+  }
+  const done = () => pick.best !== null && pick.best.key[0] === 0 && pick.best.key[1] === 0
+  const ca = center(a)
+  const cb = center(b)
+  const pairs = sides(a).flatMap((sa) => sides(b).map((sb) => [sa, sb] as const))
+  // Straight lines and L's first; Z's and U's only when those cannot avoid every symbol.
+  for (const [sa, sb] of pairs) {
+    if (sa.axis === sb.axis) {
+      if (sb.dir !== -sa.dir || (sb.at - sa.at) * sa.dir <= 0) continue
+      for (const t of places(sa.axis === 'x' ? 'y' : 'x', Math.max(sa.lo, sb.lo), Math.min(sa.hi, sb.hi), Math.round((Math.max(sa.lo, sb.lo) + Math.min(sa.hi, sb.hi)) / 2), 12))
+        consider([at(sa.axis, sa.at, t), at(sa.axis, sb.at, t)], 0)
+    } else {
+      const ta = sa.axis === 'x' ? 'y' : 'x'
+      for (const t1 of places(ta, sa.lo, sa.hi, sa.mid, 6))
+        for (const t2 of places(sb.axis === 'x' ? 'y' : 'x', sb.lo, sb.hi, sb.mid, 6)) {
+          // Out of a along its normal to t2, then along b's normal into b.
+          if ((t2 - sa.at) * sa.dir <= 0 || (t1 - sb.at) * sb.dir <= 0) continue
+          consider([at(sa.axis, sa.at, t1), at(sa.axis, t2, t1), at(sb.axis, sb.at, t2)], Math.abs(t1 - sa.mid) + Math.abs(t2 - sb.mid))
+        }
+    }
+  }
+  if (done()) return pick.best!.path
+  for (const [sa, sb] of pairs) {
+    if (sa.axis !== sb.axis) continue
+    const axis = sa.axis
+    const other: Axis = axis === 'x' ? 'y' : 'x'
+    // The corridor c lies outside both sides: (c - side) * dir > 0 for each.
+    let lo = axis === 'x' ? ext.x1 : ext.y1
+    let hi = axis === 'x' ? ext.x2 : ext.y2
+    for (const s of [sa, sb]) {
+      if (s.dir > 0) lo = Math.max(lo, s.at + 1)
+      else hi = Math.min(hi, s.at - 1)
+    }
+    const prefer = sa.dir !== sb.dir ? (sa.at + sb.at) / 2 : sa.dir > 0 ? Math.max(sa.at, sb.at) + 1500 : Math.min(sa.at, sb.at) - 1500
+    const corridors = places(axis, lo, hi, Math.round(prefer), 24)
+    const tas = places(other, sa.lo, sa.hi, axis === 'x' ? ca.y : ca.x, 6)
+    const tbs = places(other, sb.lo, sb.hi, axis === 'x' ? cb.y : cb.x, 6)
+    for (const c of corridors)
+      for (const t1 of tas)
+        for (const t2 of tbs) {
+          if (t1 === t2) continue
+          consider([at(axis, sa.at, t1), at(axis, c, t1), at(axis, c, t2), at(axis, sb.at, t2)], Math.abs(t1 - sa.mid) + Math.abs(t2 - sb.mid))
+        }
+  }
+  return pick.best?.path ?? routeOrthogonal(a, b)
+}
+
 export function exportPowerDesigner(model: Model, opts: { guid?: () => string; now?: number; user?: string } = {}): ExportResult {
   const guid = opts.guid ?? randomGuid
   const now = opts.now ?? Math.floor(Date.now() / 1000)
@@ -233,36 +365,51 @@ export function exportPowerDesigner(model: Model, opts: { guid?: () => string; n
       `<o:EntitySymbol Id="${entitySymIds.get(e.id)}">\n<a:CreationDate>${now}</a:CreationDate>\n<a:ModificationDate>${now}</a:ModificationDate>\n<a:IconMode>-1</a:IconMode>\n<a:Rect>${rectText(rects.get(e.id)!)}</a:Rect>\n<a:LineColor>11184640</a:LineColor>\n<a:FillColor>16777136</a:FillColor>\n<a:ShadowColor>12632256</a:ShadowColor>\n${fontList(FONTS.entity)}<a:BrushStyle>6</a:BrushStyle>\n<a:GradientFillMode>65</a:GradientFillMode>\n<a:GradientEndColor>16777215</a:GradientEndColor>\n<c:Object>\n<o:Entity Ref="${entityIds.get(e.id)}"/>\n</c:Object>\n</o:EntitySymbol>`,
     )
   }
+  // Every symbol's rectangle, so each line can go around the ones it does not join.
+  const inhRects = new Map<string, Rect>()
+  for (const inh of model.inheritances) {
+    const at = inhAt(inh.position)
+    const x1 = at.x - mid.x
+    const y2 = at.y - mid.y
+    inhRects.set(inh.id, { x1, y1: y2 - 1000, x2: x1 + 1600, y2 })
+  }
+  const boxes = [...[...rects].map(([k, r]) => ({ k, r, name: model.entities.find((e) => e.id === k)!.name })), ...[...inhRects].map(([k, r]) => ({ k, r, name: 'an inheritance symbol' }))]
+  const taken: Point[][] = []
+  const route = (ka: string, kb: string, label: string) => {
+    const others = boxes.filter((x) => x.k !== ka && x.k !== kb)
+    const ra = rects.get(ka) ?? inhRects.get(ka)!
+    const rb = rects.get(kb) ?? inhRects.get(kb)!
+    const path = routeAround(ra, rb, others.map((x) => x.r), taken)
+    const through = crossed(path, others.map((x) => x.r)).map((i) => others[i].name)
+    if (through.length) warnings.push(`${label}: no free way around, so its line crosses ${through.join(', ')} in the PowerDesigner diagram. Move the tables apart, or route the line by hand in PowerDesigner.`)
+    taken.push(path)
+    return path
+  }
+  const entityName = (id: string) => model.entities.find((e) => e.id === id)?.name ?? id
   for (const r of model.relationships) {
     const ra = rects.get(r.entityA)!
-    const rb = rects.get(r.entityB)!
     let path: Point[]
     if (r.entityA === r.entityB) {
       // Reflexive: a loop out of the right side and back over the top.
       const out = { x: ra.x2, y: center(ra).y }
       path = [out, { x: ra.x2 + 2000, y: out.y }, { x: ra.x2 + 2000, y: ra.y2 + 2000 }, { x: center(ra).x, y: ra.y2 + 2000 }, { x: center(ra).x, y: ra.y2 }]
-    } else path = routeOrthogonal(ra, rb)
+    } else path = route(r.entityA, r.entityB, `Relationship ${r.name || ''} ${entityName(r.entityA)} – ${entityName(r.entityB)}`.replace(/\s+/g, ' '))
     symbols.push(
       `<o:RelationshipSymbol Id="${id()}">\n<a:CreationDate>${now}</a:CreationDate>\n<a:ModificationDate>${now}</a:ModificationDate>\n<a:Rect>${rectText(boundsOf(path))}</a:Rect>\n<a:ListOfPoints>${points(path)}</a:ListOfPoints>\n<a:CornerStyle>1</a:CornerStyle>\n<a:ArrowStyle>${arrowStyle(r)}</a:ArrowStyle>\n<a:LineColor>11184640</a:LineColor>\n<a:ShadowColor>12632256</a:ShadowColor>\n${fontList(FONTS.relationship)}<c:SourceSymbol>\n<o:EntitySymbol Ref="${entitySymIds.get(r.entityA)}"/>\n</c:SourceSymbol>\n<c:DestinationSymbol>\n<o:EntitySymbol Ref="${entitySymIds.get(r.entityB)}"/>\n</c:DestinationSymbol>\n<c:Object>\n<o:Relationship Ref="${relIds.get(r.id)}"/>\n</c:Object>\n</o:RelationshipSymbol>`,
     )
   }
   for (const inh of model.inheritances) {
-    const at = inhAt(inh.position)
-    const x1 = at.x - mid.x
-    const y2 = at.y - mid.y
-    const sym: Rect = { x1, y1: y2 - 1000, x2: x1 + 1600, y2 }
+    const sym = inhRects.get(inh.id)!
     const symId = inhSymIds.get(inh.id)!
     shapes.push(
       `<o:InheritanceSymbol Id="${symId}">\n<a:CreationDate>${now}</a:CreationDate>\n<a:ModificationDate>${now}</a:ModificationDate>\n<a:IconMode>-1</a:IconMode>\n<a:Rect>${rectText(sym)}</a:Rect>\n<a:LineColor>16744576</a:LineColor>\n<a:FillColor>16777136</a:FillColor>\n<a:ShadowColor>12632256</a:ShadowColor>\n${fontList(FONTS.inheritance)}<a:BrushStyle>6</a:BrushStyle>\n<a:GradientFillMode>65</a:GradientFillMode>\n<a:GradientEndColor>16777215</a:GradientEndColor>\n<a:KeepSize>1</a:KeepSize>\n<c:Object>\n<o:Inheritance Ref="${inhIds.get(inh.id)}"/>\n</c:Object>\n</o:InheritanceSymbol>`,
     )
-    const parent = rects.get(inh.parentId)!
-    const up = routeOrthogonal(sym, parent)
+    const up = route(inh.id, inh.parentId, `Inheritance of ${entityName(inh.parentId)}`)
     symbols.push(
       `<o:InheritanceRootLinkSymbol Id="${id()}">\n<a:CreationDate>${now}</a:CreationDate>\n<a:ModificationDate>${now}</a:ModificationDate>\n<a:Rect>${rectText(boundsOf(up))}</a:Rect>\n<a:ListOfPoints>${points(up)}</a:ListOfPoints>\n<a:CornerStyle>1</a:CornerStyle>\n<a:ArrowStyle>1</a:ArrowStyle>\n<a:LineColor>16744576</a:LineColor>\n<a:ShadowColor>12632256</a:ShadowColor>\n${fontList(FONTS.rootLink)}<c:SourceSymbol>\n<o:InheritanceSymbol Ref="${symId}"/>\n</c:SourceSymbol>\n<c:DestinationSymbol>\n<o:EntitySymbol Ref="${entitySymIds.get(inh.parentId)}"/>\n</c:DestinationSymbol>\n<c:Object>\n<o:Inheritance Ref="${inhIds.get(inh.id)}"/>\n</c:Object>\n</o:InheritanceRootLinkSymbol>`,
     )
     for (const c of inh.childIds) {
-      const kid = rects.get(c)!
-      const down = routeOrthogonal(kid, sym)
+      const down = route(c, inh.id, `Inheritance link ${entityName(c)} – ${entityName(inh.parentId)}`)
       symbols.push(
         `<o:InheritanceLinkSymbol Id="${id()}">\n<a:CreationDate>${now}</a:CreationDate>\n<a:ModificationDate>${now}</a:ModificationDate>\n<a:Rect>${rectText(boundsOf(down))}</a:Rect>\n<a:ListOfPoints>${points(down)}</a:ListOfPoints>\n<a:CornerStyle>1</a:CornerStyle>\n<a:ArrowStyle>0</a:ArrowStyle>\n<a:LineColor>16744576</a:LineColor>\n<a:ShadowColor>12632256</a:ShadowColor>\n${fontList(FONTS.link)}<c:SourceSymbol>\n<o:EntitySymbol Ref="${entitySymIds.get(c)}"/>\n</c:SourceSymbol>\n<c:DestinationSymbol>\n<o:InheritanceSymbol Ref="${symId}"/>\n</c:DestinationSymbol>\n<c:Object>\n<o:InheritanceLink Ref="${linkIds.get(`${inh.id}:${c}`)}"/>\n</c:Object>\n</o:InheritanceLinkSymbol>`,
       )
