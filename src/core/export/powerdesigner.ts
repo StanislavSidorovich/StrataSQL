@@ -121,6 +121,51 @@ export function entitySize(e: Entity): { w: number; h: number } {
   return { w: Math.max(9000, Math.round(0.9 * nameW + 3.8 * typeW + 3100 + 1500)), h: Math.max(3999, 2819 + 960 * rows) }
 }
 
+/** A symbol box with its top-left corner, y growing downwards as on our canvas. */
+export interface Box {
+  x: number
+  y: number
+  w: number
+  h: number
+}
+
+/** How the gaps shrink, per axis: gap → min(gap, max(floor, base + slope × gap)); empty space without a neighbour × slope. */
+const SQUEEZE = { x: { base: 4000, slope: 0.3, floor: 3000 }, y: { base: 2400, slope: 0.3, floor: 2500 } }
+
+/**
+ * Pulls the symbols together like a diagram drawn in PD. On our canvas the tables keep room for the
+ * relationship labels, so in PD units the gaps come out 2.5–3.5 times PD's own (about 12 500 across and
+ * 6 000 down in a PD-drawn file). The left (then top) edges are mapped monotonically, so the order stays,
+ * tables aligned on the canvas stay aligned, and two symbols side by side keep at least the floor between
+ * them (or the overlap they already had). Across first, then down with the new x, so that two symbols
+ * pulled into one column across are kept apart down.
+ */
+export function compactLayout(boxes: Box[]): Box[] {
+  const out = boxes.map((b) => ({ ...b }))
+  for (const axis of ['x', 'y'] as const) {
+    const o = axis === 'x' ? 'y' : 'x'
+    const size = axis === 'x' ? 'w' : 'h'
+    const osize = axis === 'x' ? 'h' : 'w'
+    const { base, slope, floor } = SQUEEZE[axis]
+    const side = (a: Box, b: Box) => Math.min(a[o] + a[osize], b[o] + b[osize]) - Math.max(a[o], b[o]) > 0
+    const edges = [...new Set(out.map((b) => b[axis]))].sort((p, q) => p - q)
+    const moved = new Map<number, number>()
+    edges.forEach((v, i) => {
+      let n = i ? moved.get(edges[i - 1])! + slope * (v - edges[i - 1]) : v
+      for (const b of out)
+        if (b[axis] === v)
+          for (const a of out)
+            if (a[axis] < v && side(a, b)) {
+              const gap = v - (a[axis] + a[size])
+              n = Math.max(n, moved.get(a[axis])! + a[size] + Math.min(gap, Math.max(floor, base + slope * gap)))
+            }
+      moved.set(v, n)
+    })
+    for (const b of out) b[axis] = Math.round(moved.get(b[axis])!)
+  }
+  return out
+}
+
 /**
  * Orthogonal route between two symbols, as PD draws it: ends exactly on the rectangle edges.
  * Overlapping in X: a vertical through the middle of the overlap; in Y: a horizontal through its middle;
@@ -153,6 +198,8 @@ export function routeOrthogonal(a: Rect, b: Rect): Point[] {
 const MARGIN = 400
 /** Shortest first and last segment that leaves room for the end marks (crow's foot, circle, bar). */
 const MIN_END = 1200
+/** Two parallel lines closer than this read as one in PD (300 still did); a route along such a line costs extra. */
+const PARALLEL = 800
 
 /**
  * Does the segment p–q run through r? With `touch`, running along or touching its edge counts too
@@ -189,8 +236,8 @@ function sides(r: Rect): Side[] {
  * Orthogonal route from a to b that goes around the other symbols, ends exactly on the edges of a and b.
  * Tried from the simplest shape: a straight line (slid along the overlap to a free place), the two L's
  * (sideways then up or down, and the other way round), then a Z or U of four points through a free corridor
- * between the symbols. The first shape that crosses nothing wins; among equals the shorter one, with its ends
- * near the middle of a side, not too short for the end marks and not lying on a line already drawn (`taken`).
+ * between the symbols. The first shape that crosses nothing and lies along no line already drawn (`taken`, closer
+ * than PARALLEL) wins; among equals the shorter one, with its ends near the middle of a side and not too short for the end marks.
  * When every route crosses something, the one crossing the fewest symbols is returned: `crossed` tells.
  */
 export function routeAround(a: Rect, b: Rect, obstacles: Rect[], taken: Point[][] = []): Point[] {
@@ -203,19 +250,23 @@ export function routeAround(a: Rect, b: Rect, obstacles: Rect[], taken: Point[][
     y1: Math.min(...all.map((r) => r.y1)) - 3000,
     y2: Math.max(...all.map((r) => r.y2)) + 3000,
   }
-  // Places worth trying on one axis inside [lo, hi]: the preferred one, just outside every symbol's margin, and halfway between those.
+  const takenSegs = taken.flatMap((t) => t.slice(1).map((p, i) => [t[i], p] as const))
+  // Beside a line already drawn, far enough apart for PD to show two lines.
+  const beside = (axis: Axis) =>
+    takenSegs.flatMap(([s, u]) => (axis === 'y' ? (s.y === u.y ? [s.y - PARALLEL, s.y + PARALLEL] : []) : s.x === u.x ? [s.x - PARALLEL, s.x + PARALLEL] : []))
+  // Places worth trying on one axis inside [lo, hi]: the preferred one, just outside every symbol's margin, beside the lines
+  // already drawn, and halfway between those.
   const places = (axis: Axis, lo: number, hi: number, prefer: number, limit: number): number[] => {
     if (lo > hi) return []
     const edges = near.flatMap((r) => (axis === 'x' ? [r.x1, r.x2] : [r.y1, r.y2])).filter((v) => v > lo && v < hi)
     const cuts = [lo, ...edges, hi].sort((p, q) => p - q)
-    const vals = [Math.min(hi, Math.max(lo, prefer)), (lo + hi) / 2, ...edges, ...cuts.slice(1).map((v, i) => (v + cuts[i]) / 2)]
+    const vals = [Math.min(hi, Math.max(lo, prefer)), (lo + hi) / 2, ...edges, ...beside(axis), ...cuts.slice(1).map((v, i) => (v + cuts[i]) / 2)]
     return [...new Set(vals.map(Math.round))].filter((v) => v >= lo && v <= hi).sort((p, q) => Math.abs(p - prefer) - Math.abs(q - prefer)).slice(0, limit)
   }
-  const takenSegs = taken.flatMap((t) => t.slice(1).map((p, i) => [t[i], p] as const))
   const overlap = (p: Point, q: Point) =>
     takenSegs.reduce((sum, [s, t]) => {
-      if (p.y === q.y && s.y === t.y && Math.abs(p.y - s.y) < 300) return sum + Math.max(0, Math.min(Math.max(p.x, q.x), Math.max(s.x, t.x)) - Math.max(Math.min(p.x, q.x), Math.min(s.x, t.x)))
-      if (p.x === q.x && s.x === t.x && Math.abs(p.x - s.x) < 300) return sum + Math.max(0, Math.min(Math.max(p.y, q.y), Math.max(s.y, t.y)) - Math.max(Math.min(p.y, q.y), Math.min(s.y, t.y)))
+      if (p.y === q.y && s.y === t.y && Math.abs(p.y - s.y) < PARALLEL) return sum + Math.max(0, Math.min(Math.max(p.x, q.x), Math.max(s.x, t.x)) - Math.max(Math.min(p.x, q.x), Math.min(s.x, t.x)))
+      if (p.x === q.x && s.x === t.x && Math.abs(p.x - s.x) < PARALLEL) return sum + Math.max(0, Math.min(Math.max(p.y, q.y), Math.max(s.y, t.y)) - Math.max(Math.min(p.y, q.y), Math.min(s.y, t.y)))
       return sum
     }, 0)
   type Scored = { path: Point[]; key: number[] }
@@ -231,8 +282,10 @@ export function routeAround(a: Rect, b: Rect, obstacles: Rect[], taken: Point[][
     const segs = path.slice(1).map((p, i) => [path[i], p] as const)
     const len = segs.reduce((s, [p, q]) => s + Math.abs(p.x - q.x) + Math.abs(p.y - q.y), 0)
     const ends = segs.length ? [segs[0], segs[segs.length - 1]].filter(([p, q]) => Math.abs(p.x - q.x) + Math.abs(p.y - q.y) < MIN_END).length : 0
-    const cost = len + ends * 4000 + offCentre * 0.5 + segs.reduce((s, [p, q]) => s + overlap(p, q) * 3, 0)
-    const key = [hard, soft, path.length, cost]
+    const along = segs.reduce((s, [p, q]) => s + overlap(p, q), 0)
+    const cost = len + ends * 4000 + offCentre * 0.5 + along * 3
+    // Lying along another line reads as one line in PD: worse than a bend more, not as bad as crossing a table.
+    const key = [hard, soft, along > 0 ? 1 : 0, path.length, cost]
     if (!pick.best || better(key, pick.best.key)) pick.best = { path, key }
   }
   const done = () => pick.best !== null && pick.best.key[0] === 0 && pick.best.key[1] === 0
@@ -340,17 +393,17 @@ export function exportPowerDesigner(model: Model, opts: { guid?: () => string; n
 
   // Diagram: our y grows downwards, PD's upwards. PD lays its print pages out around (0, 0), and its
   // own files are centred there: a diagram starting at (0, 0) would straddle the page delimiters.
-  const rects = new Map<string, Rect>()
-  for (const e of model.entities) {
-    const { w, h } = entitySize(e)
-    const x1 = Math.round(e.position.x * UNITS)
-    const y2 = -Math.round(e.position.y * UNITS)
-    rects.set(e.id, { x1, y1: y2 - h, x2: x1 + w, y2 })
-  }
-  const inhAt = (p: Point): Point => ({ x: Math.round(p.x * UNITS), y: -Math.round(p.y * UNITS) })
-  const all = [...rects.values()].flatMap((r) => [{ x: r.x1, y: r.y1 }, { x: r.x2, y: r.y2 }]).concat(model.inheritances.map((i) => inhAt(i.position)))
+  // The canvas spacing is pulled together first (compactLayout), so the diagram is as dense as one drawn in PD.
+  const placed = compactLayout([
+    ...model.entities.map((e) => ({ x: Math.round(e.position.x * UNITS), y: Math.round(e.position.y * UNITS), ...entitySize(e) })),
+    ...model.inheritances.map((i) => ({ x: Math.round(i.position.x * UNITS), y: Math.round(i.position.y * UNITS), w: 1600, h: 1000 })),
+  ])
+  const toRect = (b: Box): Rect => ({ x1: b.x, y1: -b.y - b.h, x2: b.x + b.w, y2: -b.y })
+  const rects = new Map<string, Rect>(model.entities.map((e, i) => [e.id, toRect(placed[i])]))
+  const inhRects = new Map<string, Rect>(model.inheritances.map((inh, i) => [inh.id, toRect(placed[model.entities.length + i])]))
+  const all = [...rects.values(), ...inhRects.values()].flatMap((r) => [{ x: r.x1, y: r.y1 }, { x: r.x2, y: r.y2 }])
   const mid = all.length ? center(boundsOf(all)) : { x: 0, y: 0 }
-  for (const r of rects.values()) {
+  for (const r of [...rects.values(), ...inhRects.values()]) {
     r.x1 -= mid.x
     r.x2 -= mid.x
     r.y1 -= mid.y
@@ -366,13 +419,6 @@ export function exportPowerDesigner(model: Model, opts: { guid?: () => string; n
     )
   }
   // Every symbol's rectangle, so each line can go around the ones it does not join.
-  const inhRects = new Map<string, Rect>()
-  for (const inh of model.inheritances) {
-    const at = inhAt(inh.position)
-    const x1 = at.x - mid.x
-    const y2 = at.y - mid.y
-    inhRects.set(inh.id, { x1, y1: y2 - 1000, x2: x1 + 1600, y2 })
-  }
   const boxes = [...[...rects].map(([k, r]) => ({ k, r, name: model.entities.find((e) => e.id === k)!.name })), ...[...inhRects].map(([k, r]) => ({ k, r, name: 'an inheritance symbol' }))]
   const taken: Point[][] = []
   const route = (ka: string, kb: string, label: string) => {
@@ -386,14 +432,17 @@ export function exportPowerDesigner(model: Model, opts: { guid?: () => string; n
     return path
   }
   const entityName = (id: string) => model.entities.find((e) => e.id === id)?.name ?? id
+  // Reflexive: a loop out of the right side and back over the top. Drawn first, so the other lines keep off it.
+  const loop = (ra: Rect): Point[] => {
+    const out = { x: ra.x2, y: center(ra).y }
+    return [out, { x: ra.x2 + 2000, y: out.y }, { x: ra.x2 + 2000, y: ra.y2 + 2000 }, { x: center(ra).x, y: ra.y2 + 2000 }, { x: center(ra).x, y: ra.y2 }]
+  }
+  for (const r of model.relationships) if (r.entityA === r.entityB) taken.push(loop(rects.get(r.entityA)!))
   for (const r of model.relationships) {
     const ra = rects.get(r.entityA)!
     let path: Point[]
-    if (r.entityA === r.entityB) {
-      // Reflexive: a loop out of the right side and back over the top.
-      const out = { x: ra.x2, y: center(ra).y }
-      path = [out, { x: ra.x2 + 2000, y: out.y }, { x: ra.x2 + 2000, y: ra.y2 + 2000 }, { x: center(ra).x, y: ra.y2 + 2000 }, { x: center(ra).x, y: ra.y2 }]
-    } else path = route(r.entityA, r.entityB, `Relationship ${r.name || ''} ${entityName(r.entityA)} – ${entityName(r.entityB)}`.replace(/\s+/g, ' '))
+    if (r.entityA === r.entityB) path = loop(ra)
+    else path = route(r.entityA, r.entityB, `Relationship ${r.name || ''} ${entityName(r.entityA)} – ${entityName(r.entityB)}`.replace(/\s+/g, ' '))
     symbols.push(
       `<o:RelationshipSymbol Id="${id()}">\n<a:CreationDate>${now}</a:CreationDate>\n<a:ModificationDate>${now}</a:ModificationDate>\n<a:Rect>${rectText(boundsOf(path))}</a:Rect>\n<a:ListOfPoints>${points(path)}</a:ListOfPoints>\n<a:CornerStyle>1</a:CornerStyle>\n<a:ArrowStyle>${arrowStyle(r)}</a:ArrowStyle>\n<a:LineColor>11184640</a:LineColor>\n<a:ShadowColor>12632256</a:ShadowColor>\n${fontList(FONTS.relationship)}<c:SourceSymbol>\n<o:EntitySymbol Ref="${entitySymIds.get(r.entityA)}"/>\n</c:SourceSymbol>\n<c:DestinationSymbol>\n<o:EntitySymbol Ref="${entitySymIds.get(r.entityB)}"/>\n</c:DestinationSymbol>\n<c:Object>\n<o:Relationship Ref="${relIds.get(r.id)}"/>\n</c:Object>\n</o:RelationshipSymbol>`,
     )

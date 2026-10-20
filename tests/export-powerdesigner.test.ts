@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { generatePdm } from '../src/core/cdm2pdm'
 import { generateSqlServer } from '../src/core/ddl/sqlserver'
-import { arrowStyle, crossed, exportPowerDesigner, pdCode, pdTypeCode, routeAround, routeOrthogonal } from '../src/core/export/powerdesigner'
+import { arrowStyle, compactLayout, crossed, entitySize, exportPowerDesigner, pdCode, pdTypeCode, routeAround, routeOrthogonal, UNITS } from '../src/core/export/powerdesigner'
 import { importPowerDesigner } from '../src/core/import/powerdesigner'
 import { parseXml } from '../src/core/import/xml'
 import type { Model } from '../src/core/metamodel'
@@ -51,15 +51,20 @@ describe('PowerDesigner .cdm export', () => {
     })
   }
 
-  it('keeps the layout (relative positions)', () => {
-    const m = CASES[0].build()
-    const back = roundTrip(m).model
-    const rel = (mm: Model) => {
-      const x0 = Math.min(...mm.entities.map((e) => e.position.x))
-      const y0 = Math.min(...mm.entities.map((e) => e.position.y))
-      return mm.entities.map((e) => [Math.round((e.position.x - x0) / 5), Math.round((e.position.y - y0) / 5)])
+  it('keeps the layout: the same order across and down, aligned tables stay aligned', () => {
+    for (const c of CASES) {
+      const m = c.build()
+      const back = roundTrip(m).model
+      const pos = new Map(back.entities.map((e) => [e.name, e.position]))
+      for (const a of m.entities)
+        for (const b of m.entities) {
+          const [pa, pb] = [pos.get(a.name)!, pos.get(b.name)!]
+          for (const k of ['x', 'y'] as const) {
+            if (a.position[k] < b.position[k]) expect(pa[k], `${c.title}: ${a.name} ${k} before ${b.name}`).toBeLessThan(pb[k])
+            if (a.position[k] === b.position[k]) expect(Math.abs(pa[k] - pb[k]), `${c.title}: ${a.name} ${k} aligned with ${b.name}`).toBeLessThan(1)
+          }
+        }
     }
-    expect(rel(back)).toEqual(rel(m))
   })
 
   it('warns about what a PD CDM cannot hold', () => {
@@ -143,6 +148,35 @@ describe('PowerDesigner .cdm export: diagram geometry', () => {
     })
   }
 
+  for (const [name, build] of [
+    ...CASES.map((c) => [c.title, c.build] as [string, () => Model]),
+    ['TV Show.cdm', () => importPowerDesigner(fixture('tv-show.cdm')).model],
+    ['University.cdm', () => importPowerDesigner(fixture('university.cdm')).model],
+  ] as [string, () => Model][]) {
+    it(`no two lines run alongside each other closer than 800 units (PD shows them as one): ${name}`, () => {
+      const { xml } = exportPowerDesigner(build())
+      // Lines that meet at one inheritance symbol may run together into it, as in PD.
+      const blocks = [...xml.matchAll(/<o:(RelationshipSymbol|InheritanceRootLinkSymbol|InheritanceLinkSymbol) Id="o\d+">[\s\S]*?<\/o:\1>/g)].map((x) => x[0])
+      const lines = blocks.map((b) => {
+        const n = nums(b.match(/<a:ListOfPoints>(.*?)<\/a:ListOfPoints>/)![1])
+        return Array.from({ length: n.length / 2 }, (_, i) => ({ x: n[2 * i], y: n[2 * i + 1] }))
+      })
+      const inh = blocks.map((b) => b.match(/<o:InheritanceSymbol Ref="(o\d+)"/)?.[1])
+      const segs = lines.flatMap((l, k) => l.slice(1).map((q, i) => ({ k, p: l[i], q })))
+      const close: string[] = []
+      for (const s of segs)
+        for (const u of segs) {
+          if (u.k <= s.k || (inh[s.k] && inh[s.k] === inh[u.k])) continue
+          for (const [n, t] of [['y', 'x'], ['x', 'y']] as const)
+            if (s.p[n] === s.q[n] && u.p[n] === u.q[n] && Math.abs(s.p[n] - u.p[n]) < 800 &&
+              Math.min(Math.max(s.p[t], s.q[t]), Math.max(u.p[t], u.q[t])) > Math.max(Math.min(s.p[t], s.q[t]), Math.min(u.p[t], u.q[t])))
+              close.push(`line ${s.k} and line ${u.k} at ${n} ${s.p[n]} / ${u.p[n]}`)
+        }
+      expect(lines.length).toBeGreaterThan(0)
+      expect(close).toEqual([])
+    })
+  }
+
   it('goes around a table that sits between the two it joins, and says so when it cannot', () => {
     const a = { x1: 0, y1: 0, x2: 9000, y2: 4000 }
     const b = { x1: 30000, y1: 0, x2: 39000, y2: 4000 }
@@ -161,6 +195,55 @@ describe('PowerDesigner .cdm export: diagram geometry', () => {
     ]
     expect(crossed(routeAround(a, b, box), box)).toHaveLength(1)
   })
+
+  it('pulls the canvas spacing together to PD density, keeping room between neighbours', () => {
+    // A 3 × 3 grid with canvas gaps of 400 px across and 250 px down: about 33 000 and 21 000 PD units unpacked.
+    const boxes = Array.from({ length: 9 }, (_, i) => ({ x: (i % 3) * 600 * UNITS, y: Math.floor(i / 3) * 330 * UNITS, w: 16000, h: 6000 }))
+    const out = compactLayout(boxes)
+    const across = out[1].x - (out[0].x + out[0].w)
+    const down = out[3].y - (out[0].y + out[0].h)
+    expect(across).toBeGreaterThan(9000)
+    expect(across).toBeLessThan(15000)
+    expect(down).toBeGreaterThan(4000)
+    expect(down).toBeLessThan(9000)
+    // Rows and columns stay straight.
+    expect(new Set(out.map((b) => b.x)).size).toBe(3)
+    expect(new Set(out.map((b) => b.y)).size).toBe(3)
+    // A gap already tighter than PD's is kept; a diagonal neighbour pulled into the same column is kept apart down.
+    const tight = compactLayout([{ x: 0, y: 0, w: 16000, h: 6000 }, { x: 18000, y: 0, w: 16000, h: 6000 }])
+    expect(tight[1].x - tight[0].w).toBe(2000)
+    const diag = compactLayout([{ x: 0, y: 0, w: 16000, h: 6000 }, { x: 30000, y: 20000, w: 16000, h: 6000 }])
+    const apartX = diag[1].x >= diag[0].x + diag[0].w
+    const apartY = diag[1].y >= diag[0].y + diag[0].h
+    expect(apartX || apartY).toBe(true)
+  })
+
+  for (const [name, build] of [
+    ...CASES.map((c) => [c.title, c.build] as [string, () => Model]),
+    ['TV Show.cdm', () => importPowerDesigner(fixture('tv-show.cdm')).model],
+    ['University.cdm', () => importPowerDesigner(fixture('university.cdm')).model],
+  ] as [string, () => Model][]) {
+    it(`side-by-side tables keep at least 3000 units between them (or the canvas gap, when smaller), no new overlaps: ${name}`, () => {
+      const m = build()
+      const { xml } = exportPowerDesigner(m)
+      const rs = [...xml.matchAll(/<o:EntitySymbol Id="o\d+">[\s\S]*?<a:Rect>(.*?)<\/a:Rect>/g)].map((x) => nums(x[1]))
+      const canvas = m.entities.map((e) => ({ x: e.position.x * UNITS, y: e.position.y * UNITS }))
+      const sizes = m.entities.map(entitySize)
+      for (let i = 0; i < rs.length; i++)
+        for (let j = 0; j < rs.length; j++) {
+          const [a, b] = [rs[i], rs[j]]
+          const overlapY = Math.min(a[3], b[3]) - Math.max(a[1], b[1]) > 0
+          const overlapX = Math.min(a[2], b[2]) - Math.max(a[0], b[0]) > 0
+          if (overlapY && b[0] >= a[0] && i !== j) expect(b[0] - a[2]).toBeGreaterThanOrEqual(Math.min(3000, Math.round(canvas[j].x - canvas[i].x - sizes[i].w) - 1))
+          if (overlapX && b[3] <= a[3] && i !== j) expect(a[1] - b[3]).toBeGreaterThanOrEqual(Math.min(2500, Math.round(canvas[j].y - canvas[i].y - sizes[i].h) - 1))
+          // No new overlap: only tables already too close for their PD width on the canvas may touch.
+          const before =
+            Math.min(canvas[i].x + sizes[i].w, canvas[j].x + sizes[j].w) > Math.max(canvas[i].x, canvas[j].x) &&
+            Math.min(canvas[i].y + sizes[i].h, canvas[j].y + sizes[j].h) > Math.max(canvas[i].y, canvas[j].y)
+          if (i !== j && !before) expect(overlapX && overlapY, `${m.entities[i].name} on ${m.entities[j].name}`).toBe(false)
+        }
+    })
+  }
 
   it('sizes a table like PD: 960 units per row and wide enough for its longest row', () => {
     const m = CASES[0].build()
