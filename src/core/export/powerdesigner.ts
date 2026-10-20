@@ -4,11 +4,13 @@
 // - a relationship stores Entity1 (our A) as <c:Object2> and Entity2 (our B) as <c:Object1>;
 // - `Entity1ToEntity2RoleCardinality` is the cardinality drawn at Entity2's end (our cardinalityB);
 // - each entity attribute points to a data item that holds its name, code and type;
-// - only non-default flags are written; option blocks (model options, display preferences) are left
-//   out, so PowerDesigner uses its defaults;
+// - only non-default flags are written; model options are left out, so PowerDesigner uses its defaults;
+// - the diagram carries PD's default display preferences and every symbol its FontList (Arial 8): without
+//   them PD takes larger fonts, stretches the entities to the text and the line ends fall inside them;
 // - diagram coordinates are in 1/100 mm with the y axis pointing up.
 
-import { DATA_TYPE_CODES, TYPES_WITH_LENGTH, TYPES_WITH_PRECISION, formatCardinality, type Attribute, type DataType, type Entity, type Model, type Point } from '../metamodel'
+import { PD_DISPLAY_PREFERENCES } from './pdDisplayPreferences'
+import { DATA_TYPE_CODES, TYPES_WITH_LENGTH, TYPES_WITH_PRECISION, formatCardinality, type Attribute, type Cardinality, type DataType, type Entity, type Model, type Point } from '../metamodel'
 
 export interface ExportResult {
   xml: string
@@ -76,6 +78,27 @@ export function boundsOf(points: Point[]): Rect {
   const xs = points.map((p) => p.x)
   const ys = points.map((p) => p.y)
   return { x1: Math.min(...xs) - 400, y1: Math.min(...ys) - 400, x2: Math.max(...xs) + 400, y2: Math.max(...ys) + 400 }
+}
+
+/** Font lists of PD symbols (Arial 8), as PD writes them. */
+const FONTS = {
+  entity: 'STRN 0 Arial,8,N\nDISPNAME 0 Arial,8,N\nAttributes 0 Arial,8,N\nEntityPrimaryAttribute 0 Arial,8,U\nIdentifiers 0 Arial,8,N\nLABL 0 Arial,8,N',
+  relationship: 'CENTER 0 Arial,8,N\nSOURCE 0 Arial,8,N\nDESTINATION 0 Arial,8,N',
+  inheritance: 'STRN 0 Arial,8,N\nDISPNAME 0 Arial,8,N',
+  rootLink: 'DISPNAME 0 Arial,8,N',
+  link: 'CENTER 0 Arial,8,N',
+}
+const fontList = (f: string) => `<a:FontList>${f}</a:FontList>\n`
+
+/**
+ * PD's ArrowStyle of a relationship symbol (which end marks to draw), decoded from a PD file:
+ * 0x1010 + (code of the Entity2→Entity1 cardinality, +4 if A is the dependent side) * 256
+ *        + (code of the Entity1→Entity2 cardinality, +4 if B is the dependent side),
+ * codes 0,1 → 1; 1,1 → 2; 0,n → 3; 1,n → 4. Our A is PD's Entity1.
+ */
+export function arrowStyle(r: { cardinalityA: Cardinality; cardinalityB: Cardinality; dependentSide: 'A' | 'B' | null }): number {
+  const code = (c: Cardinality) => (c.max === 'n' ? (c.min === 0 ? 3 : 4) : c.min === 0 ? 1 : 2)
+  return 0x1010 + (code(r.cardinalityA) + (r.dependentSide === 'A' ? 4 : 0)) * 256 + code(r.cardinalityB) + (r.dependentSide === 'B' ? 4 : 0)
 }
 
 export const points = (ps: Point[]) => `(${ps.map((p) => `(${p.x},${p.y})`).join(',')})`
@@ -204,7 +227,7 @@ export function exportPowerDesigner(model: Model, opts: { guid?: () => string; n
   const symbols: string[] = []
   for (const e of model.entities) {
     symbols.push(
-      `<o:EntitySymbol Id="${entitySymIds.get(e.id)}">\n<a:CreationDate>${now}</a:CreationDate>\n<a:ModificationDate>${now}</a:ModificationDate>\n<a:IconMode>-1</a:IconMode>\n<a:Rect>${rectText(rects.get(e.id)!)}</a:Rect>\n<a:LineColor>11184640</a:LineColor>\n<a:FillColor>16777136</a:FillColor>\n<a:ShadowColor>12632256</a:ShadowColor>\n<a:BrushStyle>6</a:BrushStyle>\n<a:GradientFillMode>65</a:GradientFillMode>\n<a:GradientEndColor>16777215</a:GradientEndColor>\n<c:Object>\n<o:Entity Ref="${entityIds.get(e.id)}"/>\n</c:Object>\n</o:EntitySymbol>`,
+      `<o:EntitySymbol Id="${entitySymIds.get(e.id)}">\n<a:CreationDate>${now}</a:CreationDate>\n<a:ModificationDate>${now}</a:ModificationDate>\n<a:IconMode>-1</a:IconMode>\n<a:Rect>${rectText(rects.get(e.id)!)}</a:Rect>\n<a:LineColor>11184640</a:LineColor>\n<a:FillColor>16777136</a:FillColor>\n<a:ShadowColor>12632256</a:ShadowColor>\n${fontList(FONTS.entity)}<a:BrushStyle>6</a:BrushStyle>\n<a:GradientFillMode>65</a:GradientFillMode>\n<a:GradientEndColor>16777215</a:GradientEndColor>\n<c:Object>\n<o:Entity Ref="${entityIds.get(e.id)}"/>\n</c:Object>\n</o:EntitySymbol>`,
     )
   }
   for (const r of model.relationships) {
@@ -217,7 +240,7 @@ export function exportPowerDesigner(model: Model, opts: { guid?: () => string; n
       path = [out, { x: ra.x2 + 2000, y: out.y }, { x: ra.x2 + 2000, y: ra.y2 + 2000 }, { x: center(ra).x, y: ra.y2 + 2000 }, { x: center(ra).x, y: ra.y2 }]
     } else path = routeOrthogonal(ra, rb)
     symbols.push(
-      `<o:RelationshipSymbol Id="${id()}">\n<a:CreationDate>${now}</a:CreationDate>\n<a:ModificationDate>${now}</a:ModificationDate>\n<a:Rect>${rectText(boundsOf(path))}</a:Rect>\n<a:ListOfPoints>${points(path)}</a:ListOfPoints>\n<a:CornerStyle>1</a:CornerStyle>\n<a:LineColor>11184640</a:LineColor>\n<a:ShadowColor>12632256</a:ShadowColor>\n<c:SourceSymbol>\n<o:EntitySymbol Ref="${entitySymIds.get(r.entityA)}"/>\n</c:SourceSymbol>\n<c:DestinationSymbol>\n<o:EntitySymbol Ref="${entitySymIds.get(r.entityB)}"/>\n</c:DestinationSymbol>\n<c:Object>\n<o:Relationship Ref="${relIds.get(r.id)}"/>\n</c:Object>\n</o:RelationshipSymbol>`,
+      `<o:RelationshipSymbol Id="${id()}">\n<a:CreationDate>${now}</a:CreationDate>\n<a:ModificationDate>${now}</a:ModificationDate>\n<a:Rect>${rectText(boundsOf(path))}</a:Rect>\n<a:ListOfPoints>${points(path)}</a:ListOfPoints>\n<a:CornerStyle>1</a:CornerStyle>\n<a:ArrowStyle>${arrowStyle(r)}</a:ArrowStyle>\n<a:LineColor>11184640</a:LineColor>\n<a:ShadowColor>12632256</a:ShadowColor>\n${fontList(FONTS.relationship)}<c:SourceSymbol>\n<o:EntitySymbol Ref="${entitySymIds.get(r.entityA)}"/>\n</c:SourceSymbol>\n<c:DestinationSymbol>\n<o:EntitySymbol Ref="${entitySymIds.get(r.entityB)}"/>\n</c:DestinationSymbol>\n<c:Object>\n<o:Relationship Ref="${relIds.get(r.id)}"/>\n</c:Object>\n</o:RelationshipSymbol>`,
     )
   }
   for (const inh of model.inheritances) {
@@ -227,18 +250,18 @@ export function exportPowerDesigner(model: Model, opts: { guid?: () => string; n
     const sym: Rect = { x1, y1: y2 - 1000, x2: x1 + 1600, y2 }
     const symId = inhSymIds.get(inh.id)!
     symbols.push(
-      `<o:InheritanceSymbol Id="${symId}">\n<a:CreationDate>${now}</a:CreationDate>\n<a:ModificationDate>${now}</a:ModificationDate>\n<a:IconMode>-1</a:IconMode>\n<a:Rect>${rectText(sym)}</a:Rect>\n<a:LineColor>16744576</a:LineColor>\n<a:FillColor>16777136</a:FillColor>\n<a:ShadowColor>12632256</a:ShadowColor>\n<a:BrushStyle>6</a:BrushStyle>\n<a:GradientFillMode>65</a:GradientFillMode>\n<a:GradientEndColor>16777215</a:GradientEndColor>\n<a:KeepSize>1</a:KeepSize>\n<c:Object>\n<o:Inheritance Ref="${inhIds.get(inh.id)}"/>\n</c:Object>\n</o:InheritanceSymbol>`,
+      `<o:InheritanceSymbol Id="${symId}">\n<a:CreationDate>${now}</a:CreationDate>\n<a:ModificationDate>${now}</a:ModificationDate>\n<a:IconMode>-1</a:IconMode>\n<a:Rect>${rectText(sym)}</a:Rect>\n<a:LineColor>16744576</a:LineColor>\n<a:FillColor>16777136</a:FillColor>\n<a:ShadowColor>12632256</a:ShadowColor>\n${fontList(FONTS.inheritance)}<a:BrushStyle>6</a:BrushStyle>\n<a:GradientFillMode>65</a:GradientFillMode>\n<a:GradientEndColor>16777215</a:GradientEndColor>\n<a:KeepSize>1</a:KeepSize>\n<c:Object>\n<o:Inheritance Ref="${inhIds.get(inh.id)}"/>\n</c:Object>\n</o:InheritanceSymbol>`,
     )
     const parent = rects.get(inh.parentId)!
     const up = routeOrthogonal(sym, parent)
     symbols.push(
-      `<o:InheritanceRootLinkSymbol Id="${id()}">\n<a:CreationDate>${now}</a:CreationDate>\n<a:ModificationDate>${now}</a:ModificationDate>\n<a:Rect>${rectText(boundsOf(up))}</a:Rect>\n<a:ListOfPoints>${points(up)}</a:ListOfPoints>\n<a:CornerStyle>1</a:CornerStyle>\n<a:ArrowStyle>1</a:ArrowStyle>\n<a:LineColor>16744576</a:LineColor>\n<a:ShadowColor>12632256</a:ShadowColor>\n<c:SourceSymbol>\n<o:InheritanceSymbol Ref="${symId}"/>\n</c:SourceSymbol>\n<c:DestinationSymbol>\n<o:EntitySymbol Ref="${entitySymIds.get(inh.parentId)}"/>\n</c:DestinationSymbol>\n<c:Object>\n<o:Inheritance Ref="${inhIds.get(inh.id)}"/>\n</c:Object>\n</o:InheritanceRootLinkSymbol>`,
+      `<o:InheritanceRootLinkSymbol Id="${id()}">\n<a:CreationDate>${now}</a:CreationDate>\n<a:ModificationDate>${now}</a:ModificationDate>\n<a:Rect>${rectText(boundsOf(up))}</a:Rect>\n<a:ListOfPoints>${points(up)}</a:ListOfPoints>\n<a:CornerStyle>1</a:CornerStyle>\n<a:ArrowStyle>1</a:ArrowStyle>\n<a:LineColor>16744576</a:LineColor>\n<a:ShadowColor>12632256</a:ShadowColor>\n${fontList(FONTS.rootLink)}<c:SourceSymbol>\n<o:InheritanceSymbol Ref="${symId}"/>\n</c:SourceSymbol>\n<c:DestinationSymbol>\n<o:EntitySymbol Ref="${entitySymIds.get(inh.parentId)}"/>\n</c:DestinationSymbol>\n<c:Object>\n<o:Inheritance Ref="${inhIds.get(inh.id)}"/>\n</c:Object>\n</o:InheritanceRootLinkSymbol>`,
     )
     for (const c of inh.childIds) {
       const kid = rects.get(c)!
       const down = routeOrthogonal(kid, sym)
       symbols.push(
-        `<o:InheritanceLinkSymbol Id="${id()}">\n<a:CreationDate>${now}</a:CreationDate>\n<a:ModificationDate>${now}</a:ModificationDate>\n<a:Rect>${rectText(boundsOf(down))}</a:Rect>\n<a:ListOfPoints>${points(down)}</a:ListOfPoints>\n<a:CornerStyle>1</a:CornerStyle>\n<a:ArrowStyle>0</a:ArrowStyle>\n<a:LineColor>16744576</a:LineColor>\n<a:ShadowColor>12632256</a:ShadowColor>\n<c:SourceSymbol>\n<o:EntitySymbol Ref="${entitySymIds.get(c)}"/>\n</c:SourceSymbol>\n<c:DestinationSymbol>\n<o:InheritanceSymbol Ref="${symId}"/>\n</c:DestinationSymbol>\n<c:Object>\n<o:InheritanceLink Ref="${linkIds.get(`${inh.id}:${c}`)}"/>\n</c:Object>\n</o:InheritanceLinkSymbol>`,
+        `<o:InheritanceLinkSymbol Id="${id()}">\n<a:CreationDate>${now}</a:CreationDate>\n<a:ModificationDate>${now}</a:ModificationDate>\n<a:Rect>${rectText(boundsOf(down))}</a:Rect>\n<a:ListOfPoints>${points(down)}</a:ListOfPoints>\n<a:CornerStyle>1</a:CornerStyle>\n<a:ArrowStyle>0</a:ArrowStyle>\n<a:LineColor>16744576</a:LineColor>\n<a:ShadowColor>12632256</a:ShadowColor>\n${fontList(FONTS.link)}<c:SourceSymbol>\n<o:EntitySymbol Ref="${entitySymIds.get(c)}"/>\n</c:SourceSymbol>\n<c:DestinationSymbol>\n<o:InheritanceSymbol Ref="${symId}"/>\n</c:DestinationSymbol>\n<c:Object>\n<o:InheritanceLink Ref="${linkIds.get(`${inh.id}:${c}`)}"/>\n</c:Object>\n</o:InheritanceLinkSymbol>`,
       )
     }
   }
@@ -326,7 +349,7 @@ ${named(a.name, unique)}${comment(a.comment)}${typeXml(dom ?? a)}${dom ? `<c:Dom
   const modelGuid = guid()
   const body =
     `<o:Model Id="${modelId}">\n<a:ObjectID>${modelGuid}</a:ObjectID>\n<a:Name>${esc(model.name)}</a:Name>\n<a:Code>${pdCode(model.name)}</a:Code>\n${stamp()}${comment(model.comment)}` +
-    `<c:ConceptualDiagrams>\n<o:ConceptualDiagram Id="${diagramId}">\n${named('Diagram_1', 'DIAGRAM_1')}` +
+    `<c:ConceptualDiagrams>\n<o:ConceptualDiagram Id="${diagramId}">\n${named('Diagram_1', 'DIAGRAM_1')}<a:DisplayPreferences>${PD_DISPLAY_PREFERENCES}</a:DisplayPreferences>\n<a:PaperSize>(8268, 11693)</a:PaperSize>\n<a:PageMargins>((315,354), (433,354))</a:PageMargins>\n<a:PageOrientation>1</a:PageOrientation>\n<a:PaperSource>261</a:PaperSource>\n` +
     section('Symbols', symbols) +
     `</o:ConceptualDiagram>\n</c:ConceptualDiagrams>\n<c:DefaultDiagram>\n<o:ConceptualDiagram Ref="${diagramId}"/>\n</c:DefaultDiagram>\n` +
     section('Domains', domains) +

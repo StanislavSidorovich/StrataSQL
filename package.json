@@ -2,7 +2,7 @@
   "name": "stratasql",
   "private": true,
   "license": "Apache-2.0",
-  "version": "0.10.10",
+  "version": "0.10.11",
   "type": "module",
   "scripts": {
     "dev": "vite",

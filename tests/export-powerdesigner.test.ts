@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { generatePdm } from '../src/core/cdm2pdm'
 import { generateSqlServer } from '../src/core/ddl/sqlserver'
-import { exportPowerDesigner, pdCode, pdTypeCode } from '../src/core/export/powerdesigner'
+import { arrowStyle, exportPowerDesigner, pdCode, pdTypeCode } from '../src/core/export/powerdesigner'
 import { importPowerDesigner } from '../src/core/import/powerdesigner'
 import { parseXml } from '../src/core/import/xml'
 import type { Model } from '../src/core/metamodel'
@@ -117,5 +117,51 @@ describe('PowerDesigner .cdm export: diagram geometry', () => {
     const { xml } = exportPowerDesigner(m)
     const first = nums(xml.match(/<o:EntitySymbol Id="o\d+">[\s\S]*?<a:Rect>(.*?)<\/a:Rect>/)![1])
     expect(first[3] - first[1]).toBe(Math.max(3999, 2819 + 960 * m.entities[0].attributes.length))
+  })
+})
+
+describe('PowerDesigner .cdm export: styles', () => {
+  for (const [name, build] of [
+    ...CASES.map((c) => [c.title, c.build] as [string, () => Model]),
+    ['TV Show.cdm', () => importPowerDesigner(fixture('tv-show.cdm')).model],
+  ] as [string, () => Model][]) {
+    it(`diagram has display preferences and page setup, every symbol a FontList, every relationship an ArrowStyle: ${name}`, () => {
+      const { xml } = exportPowerDesigner(build())
+      expect(() => parseXml(xml)).not.toThrow()
+      expect(xml).toMatch(/<a:DisplayPreferences>\[DisplayPreferences\]/)
+      expect(xml).toContain('Adjust to text=Yes')
+      expect(xml).toContain('<a:PaperSize>')
+      expect(xml).toContain('<a:PageMargins>')
+      let symbols = 0
+      for (const m of xml.matchAll(/<o:(\w+Symbol) Id="o\d+">[\s\S]*?<\/o:\1>/g)) {
+        symbols++
+        expect(m[0], m[1]).toContain('<a:FontList>')
+        if (m[1] === 'EntitySymbol') expect(m[0]).toContain('EntityPrimaryAttribute 0 Arial,8,U')
+        if (m[1] === 'RelationshipSymbol') expect(m[0]).toMatch(/<a:ArrowStyle>\d+<\/a:ArrowStyle>/)
+      }
+      expect(symbols).toBeGreaterThan(0)
+    })
+  }
+
+  it('carries no personal data in the display preferences', () => {
+    const { xml } = exportPowerDesigner(CASES[0].build())
+    const prefs = xml.match(/<a:DisplayPreferences>([\s\S]*?)<\/a:DisplayPreferences>/)![1]
+    expect(prefs).not.toMatch(/Users|joana|FPI|[A-Z]:\\/)
+  })
+
+  it('ArrowStyle follows the cardinalities and the dependent side, as in a PD file', () => {
+    const c = (min: 0 | 1, max: 1 | 'n') => ({ min, max })
+    // [cardinalityA = Entity2→Entity1, cardinalityB = Entity1→Entity2, dependentSide] → PD value
+    const cases: [ReturnType<typeof c>, ReturnType<typeof c>, 'A' | 'B' | null, number][] = [
+      [c(1, 1), c(0, 'n'), null, 4627],
+      [c(1, 1), c(0, 1), null, 4625],
+      [c(0, 1), c(0, 'n'), null, 4371],
+      [c(1, 'n'), c(1, 'n'), null, 5140],
+      [c(1, 1), c(0, 'n'), 'B', 4631],
+      [c(1, 1), c(1, 'n'), 'B', 4632],
+      [c(0, 1), c(1, 1), 'A', 5394],
+      [c(0, 'n'), c(1, 1), 'A', 5906],
+    ]
+    for (const [a, b, dep, want] of cases) expect(arrowStyle({ cardinalityA: a, cardinalityB: b, dependentSide: dep })).toBe(want)
   })
 })
