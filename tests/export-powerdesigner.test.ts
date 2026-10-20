@@ -141,6 +141,14 @@ describe('PowerDesigner .cdm export: styles', () => {
       }
       expect(symbols).toBeGreaterThan(0)
     })
+
+    it(`lines come before boxes, so PD paints tables over the ends of the crow's feet: ${name}`, () => {
+      const { xml } = exportPowerDesigner(build())
+      const kinds = [...xml.matchAll(/<o:(\w+Symbol) Id="o\d+">/g)].map((m) => m[1])
+      const lastLine = Math.max(...kinds.map((k, i) => (k.endsWith('LinkSymbol') || k === 'RelationshipSymbol' ? i : -1)))
+      const firstBox = kinds.findIndex((k) => k === 'EntitySymbol' || k === 'InheritanceSymbol')
+      expect(firstBox).toBeGreaterThan(lastLine)
+    })
   }
 
   it('carries no personal data in the display preferences', () => {

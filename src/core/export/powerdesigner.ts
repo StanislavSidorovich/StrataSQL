@@ -224,9 +224,12 @@ export function exportPowerDesigner(model: Model, opts: { guid?: () => string; n
     r.y1 -= mid.y
     r.y2 -= mid.y
   }
+  // Lines first, boxes after: PD paints symbols in file order, and a table drawn over
+  // its lines hides the part of the crow's foot that PD lets run under the edge.
   const symbols: string[] = []
+  const shapes: string[] = []
   for (const e of model.entities) {
-    symbols.push(
+    shapes.push(
       `<o:EntitySymbol Id="${entitySymIds.get(e.id)}">\n<a:CreationDate>${now}</a:CreationDate>\n<a:ModificationDate>${now}</a:ModificationDate>\n<a:IconMode>-1</a:IconMode>\n<a:Rect>${rectText(rects.get(e.id)!)}</a:Rect>\n<a:LineColor>11184640</a:LineColor>\n<a:FillColor>16777136</a:FillColor>\n<a:ShadowColor>12632256</a:ShadowColor>\n${fontList(FONTS.entity)}<a:BrushStyle>6</a:BrushStyle>\n<a:GradientFillMode>65</a:GradientFillMode>\n<a:GradientEndColor>16777215</a:GradientEndColor>\n<c:Object>\n<o:Entity Ref="${entityIds.get(e.id)}"/>\n</c:Object>\n</o:EntitySymbol>`,
     )
   }
@@ -249,7 +252,7 @@ export function exportPowerDesigner(model: Model, opts: { guid?: () => string; n
     const y2 = at.y - mid.y
     const sym: Rect = { x1, y1: y2 - 1000, x2: x1 + 1600, y2 }
     const symId = inhSymIds.get(inh.id)!
-    symbols.push(
+    shapes.push(
       `<o:InheritanceSymbol Id="${symId}">\n<a:CreationDate>${now}</a:CreationDate>\n<a:ModificationDate>${now}</a:ModificationDate>\n<a:IconMode>-1</a:IconMode>\n<a:Rect>${rectText(sym)}</a:Rect>\n<a:LineColor>16744576</a:LineColor>\n<a:FillColor>16777136</a:FillColor>\n<a:ShadowColor>12632256</a:ShadowColor>\n${fontList(FONTS.inheritance)}<a:BrushStyle>6</a:BrushStyle>\n<a:GradientFillMode>65</a:GradientFillMode>\n<a:GradientEndColor>16777215</a:GradientEndColor>\n<a:KeepSize>1</a:KeepSize>\n<c:Object>\n<o:Inheritance Ref="${inhIds.get(inh.id)}"/>\n</c:Object>\n</o:InheritanceSymbol>`,
     )
     const parent = rects.get(inh.parentId)!
@@ -265,6 +268,7 @@ export function exportPowerDesigner(model: Model, opts: { guid?: () => string; n
       )
     }
   }
+  symbols.push(...shapes)
 
   // Entities with their attributes and identifiers.
   const entities = model.entities.map((e) => {
