@@ -160,6 +160,18 @@ describe('domains', () => {
     updateAttribute(m, e.id, a.id, { dataType: 'Characters' })
     expect(a.domainId).toBeUndefined()
   })
+
+  it('switching to a type without a size drops the old length and scale', () => {
+    const m = emptyModel()
+    const e = addEntity(m)
+    const a = addAttribute(m, e.id, { name: 'price', dataType: 'Decimal', length: 10, precision: 2 })
+    updateAttribute(m, e.id, a.id, { dataType: 'Variable characters' })
+    expect(a.length).toBe(10)
+    expect(a.precision).toBeUndefined()
+    updateAttribute(m, e.id, a.id, { dataType: 'Serial' })
+    expect(a.length).toBeUndefined()
+    expect(a.precision).toBeUndefined()
+  })
 })
 
 describe('relationships', () => {

@@ -502,8 +502,8 @@ export function exportPowerDesigner(model: Model, opts: { guid?: () => string; n
 
   const typeXml = (t: { dataType: DataType; length?: number; precision?: number }) =>
     `<a:DataType>${pdTypeCode(t)}</a:DataType>\n` +
-    (t.length !== undefined && t.dataType !== 'Text' ? `<a:Length>${t.length}</a:Length>\n` : '') +
-    (t.precision !== undefined ? `<a:Precision>${t.precision}</a:Precision>\n` : '')
+    (t.length !== undefined && (TYPES_WITH_LENGTH.includes(t.dataType) || TYPES_WITH_PRECISION.includes(t.dataType)) ? `<a:Length>${t.length}</a:Length>\n` : '') +
+    (t.precision !== undefined && TYPES_WITH_PRECISION.includes(t.dataType) ? `<a:Precision>${t.precision}</a:Precision>\n` : '')
 
   const items = itemDefs.map(({ pid, a, e }) => {
     const dom = a.domainId ? model.domains.find((d) => d.id === a.domainId) : undefined

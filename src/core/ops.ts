@@ -4,6 +4,8 @@
 
 import {
   CARD,
+  TYPES_WITH_LENGTH,
+  TYPES_WITH_PRECISION,
   otherSide,
   type Attribute,
   type Cardinality,
@@ -228,6 +230,7 @@ export function updateAttribute(
   }
   if ('length' in patch) a.length = patch.length
   if ('precision' in patch) a.precision = patch.precision
+  if (patch.dataType !== undefined) dropUnusedSize(a)
   if (patch.mandatory !== undefined) {
     if (!patch.mandatory && isInPrimary(e, attrId))
       throw new ModelError(`${a.name} is part of the primary identifier and must be mandatory`)
@@ -399,9 +402,16 @@ export function addDomain(m: Model, input: Partial<Omit<Domain, 'id'>> = {}): Do
 }
 
 /** Updates a domain and re-applies its type to every attribute using it. */
+/** A type without a size (Serial, Date…) keeps no length or scale left over from the previous type. */
+function dropUnusedSize(t: { dataType: DataType; length?: number; precision?: number }): void {
+  if (!TYPES_WITH_LENGTH.includes(t.dataType) && !TYPES_WITH_PRECISION.includes(t.dataType)) delete t.length
+  if (!TYPES_WITH_PRECISION.includes(t.dataType)) delete t.precision
+}
+
 export function updateDomain(m: Model, id: Id, patch: Partial<Omit<Domain, 'id'>>): void {
   const d = getDomain(m, id)
   Object.assign(d, patch)
+  if (patch.dataType !== undefined) dropUnusedSize(d)
   for (const e of m.entities) for (const a of e.attributes) if (a.domainId === id) applyDomain(a, d)
 }
 
