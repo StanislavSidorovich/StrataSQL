@@ -409,6 +409,14 @@ export function exportPowerDesigner(model: Model, opts: { guid?: () => string; n
     r.y1 -= mid.y
     r.y2 -= mid.y
   }
+  for (const inh of model.inheritances) {
+    const s = inhRects.get(inh.id)!
+    const under = model.entities.filter((e) => {
+      const r = rects.get(e.id)!
+      return s.x1 < r.x2 && r.x1 < s.x2 && s.y1 < r.y2 && r.y1 < s.y2
+    })
+    if (under.length) warnings.push(`${inh.name}: the inheritance symbol lies on ${under.map((e) => e.name).join(', ')}, so it is hidden in the PowerDesigner diagram. Drag it out on the canvas before exporting.`)
+  }
   // Lines first, boxes after: PD paints symbols in file order, and a table drawn over
   // its lines hides the part of the crow's foot that PD lets run under the edge.
   const symbols: string[] = []

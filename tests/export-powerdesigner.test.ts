@@ -71,6 +71,15 @@ describe('PowerDesigner .cdm export', () => {
     const withAk = CASES.map((c) => c.build()).find((m) => m.entities.some((e) => e.physicalKeys?.length))
     if (withAk) expect(exportPowerDesigner(withAk).warnings.join(' ')).toMatch(/alternate keys/)
   })
+
+  it('warns when an inheritance symbol lies on an entity', () => {
+    const m = CASES.map((c) => c.build()).find((x) => x.inheritances.length)!
+    expect(exportPowerDesigner(m).warnings.join(' ')).not.toMatch(/inheritance symbol lies/)
+    const inh = m.inheritances[0]
+    const parent = m.entities.find((e) => e.id === inh.parentId)!
+    inh.position = { x: parent.position.x + 10, y: parent.position.y + 10 }
+    expect(exportPowerDesigner(m).warnings.join(' ')).toMatch(new RegExp(`inheritance symbol lies on ${parent.name}`))
+  })
 })
 
 it('centres the diagram on (0, 0), where PowerDesigner lays out its pages', () => {
