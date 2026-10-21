@@ -10,6 +10,7 @@ import {
   type NodeMouseHandler,
 } from '@xyflow/react'
 import { useCallback, useEffect, useMemo, useRef, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react'
+import { inheritanceSpot, type SpotBox } from '../../core/inheritanceSpot'
 import { CARD, type Model } from '../../core/metamodel'
 import { addEntity, addRelationship, linkInheritance, updateEntity, updateInheritance } from '../../core/ops'
 import { FkEdge, TableNode } from '../pdm/PdmCanvas'
@@ -94,16 +95,6 @@ function buildEdges(m: Model, sel: Selection): Edge[] {
   return [...inhs, ...rels]
 }
 
-type Point = { x: number; y: number }
-type Rider = { id: string; parentId: string; from: Point; parentFrom: Point }
-/** Where the inheritance symbols riding with dragged parents are now: moved by their parent's offset. */
-function ridersAt(riders: Rider[], dragged: Node[]) {
-  return riders.map((r) => {
-    const p = dragged.find((n) => n.id === r.parentId)!.position
-    return { id: r.id, position: { x: Math.round(r.from.x + p.x - r.parentFrom.x), y: Math.round(r.from.y + p.y - r.parentFrom.y) } }
-  })
-}
-
 // Readable on open: never zoom past 100 % (one new entity used to fill the screen).
 // A small model fits on screen; the minimap would only hide part of it.
 const MINIMAP_FROM = 10
@@ -141,29 +132,43 @@ export function Canvas({ dark }: { dark: boolean }) {
     [select, story],
   )
 
-  // An inheritance symbol rides along with its parent entity (unless it is dragged itself),
-  // otherwise moving the parent leaves the symbol behind, often inside the parent's box.
-  const riders = useRef<Rider[]>([])
+  // An inheritance symbol follows its family: when its parent or a child is dragged (and the symbol
+  // is not dragged itself), it goes between the parent and the children, just outside the parent.
+  const riders = useRef<{ id: string; parentId: string; childIds: string[] }[]>([])
   const onNodeDragStart = useCallback((_: unknown, __: Node, dragged: Node[]) => {
-    const m = useEditor.getState().model
-    const draggedIds = new Set(dragged.map((n) => n.id))
-    riders.current = m.inheritances.flatMap((i) => {
-      const parent = dragged.find((n) => n.id === i.parentId)
-      return parent && !draggedIds.has(i.id) ? [{ id: i.id, parentId: i.parentId, from: i.position, parentFrom: { ...parent.position } }] : []
-    })
+    const ids = new Set(dragged.map((n) => n.id))
+    riders.current = useEditor
+      .getState()
+      .model.inheritances.filter((i) => !ids.has(i.id) && (ids.has(i.parentId) || i.childIds.some((c) => ids.has(c))))
+      .map((i) => ({ id: i.id, parentId: i.parentId, childIds: i.childIds }))
   }, [])
+  const ridersAt = useCallback(
+    (dragged: Node[]) => {
+      const box = (id: string): SpotBox | undefined => {
+        const n = flow.getNode(id)
+        if (!n) return undefined
+        const p = dragged.find((d) => d.id === id)?.position ?? n.position
+        return { x: p.x, y: p.y, w: n.measured?.width ?? 170, h: n.measured?.height ?? 80 }
+      }
+      return riders.current.flatMap((r) => {
+        const parent = box(r.parentId)
+        return parent ? [{ id: r.id, position: inheritanceSpot(parent, r.childIds.map(box).filter((b): b is SpotBox => !!b)) }] : []
+      })
+    },
+    [flow],
+  )
   const onNodeDrag = useCallback(
     (_: unknown, __: Node, dragged: Node[]) => {
       if (!riders.current.length) return
-      const at = new Map(ridersAt(riders.current, dragged).map((r) => [r.id, r.position]))
+      const at = new Map(ridersAt(dragged).map((r) => [r.id, r.position]))
       setNodes((ns) => ns.map((n) => (at.has(n.id) ? { ...n, position: at.get(n.id)! } : n)))
     },
-    [setNodes],
+    [setNodes, ridersAt],
   )
 
   const onNodeDragStop = useCallback(
     (_: unknown, __: Node, dragged: Node[]) => {
-      const moved = ridersAt(riders.current, dragged)
+      const moved = ridersAt(dragged)
       riders.current = []
       apply((m) => {
         for (const n of dragged) {
@@ -174,7 +179,7 @@ export function Canvas({ dark }: { dark: boolean }) {
         for (const r of moved) updateInheritance(m, r.id, { position: r.position })
       })
     },
-    [apply],
+    [apply, ridersAt],
   )
 
   const onEdgeClick = useCallback(
