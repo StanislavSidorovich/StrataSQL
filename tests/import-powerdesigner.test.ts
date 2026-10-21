@@ -1,7 +1,9 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { generatePdm } from '../src/core/cdm2pdm'
-import { importPowerDesigner, parsePdType } from '../src/core/import/powerdesigner'
+import { canvasSize, importPowerDesigner, parsePdType, spreadLayout } from '../src/core/import/powerdesigner'
+import { exportPowerDesigner } from '../src/core/export/powerdesigner'
+import { CASES } from '../src/data/cases'
 import { parseXml } from '../src/core/import/xml'
 import { formatCardinality, type Model } from '../src/core/metamodel'
 import { integrityProblems } from '../src/core/serialize'
@@ -79,5 +81,34 @@ describe('import .cdm (course files)', () => {
   it('explains binary files and physical models', () => {
     expect(() => importPowerDesigner('\u0000\u0001binary')).toThrow(/XML/)
     expect(() => importPowerDesigner('<?xml version="1.0"?><?PowerDesigner signature="PDM_DATA_MODEL_XML"?><Model/>')).toThrow(/physical/)
+  })
+})
+
+describe('canvas layout after an import', () => {
+  type B = { x: number; y: number; w: number; h: number }
+  const clash = (a: B, b: B) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h
+
+  it('spreads boxes apart, keeping their order and wide gaps', () => {
+    const row = (y: number, h: number): [number, number] => [y, y + h]
+    const boxes = [
+      { x: 0, y: 0, w: 100, h: 50, row: row(0, 50) },
+      { x: 80, y: 0, w: 100, h: 50, row: row(0, 50) }, // overlaps the first across
+      { x: 10, y: 40, w: 100, h: 50, row: row(70, 50) }, // below the first in PD, a little to the right
+      { x: 600, y: 0, w: 100, h: 50, row: row(0, 50) }, // far away
+    ]
+    const out = spreadLayout(boxes, 40)
+    expect(out[1].x).toBe(140)
+    expect(out[2].x).toBe(10) // the column is not scattered sideways
+    expect(out[2].y).toBe(90)
+    expect(out[3].x).toBe(660) // the gap before it is kept, moved along with the row
+    for (const a of out) for (const b of out) if (a !== b) expect(clash(a, b)).toBe(false)
+  })
+
+  it('an exported model opens again with no box on another', () => {
+    for (const c of CASES) {
+      const { model } = importPowerDesigner(exportPowerDesigner(c.build()).xml, 'x.cdm')
+      const boxes = model.entities.map((e) => ({ name: e.name, ...e.position, ...canvasSize(e) }))
+      for (const a of boxes) for (const b of boxes) if (a !== b) expect(clash(a, b), `${c.title}: ${a.name} on ${b.name}`).toBe(false)
+    }
   })
 })

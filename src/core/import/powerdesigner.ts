@@ -8,7 +8,7 @@
 // - attribute names and types live in shared data items, an entity attribute points to one;
 // - diagram coordinates are in 1/100 mm with the y axis pointing up.
 
-import { CARD, emptyModel, parseCardinality, type Cardinality, type DataType, type Model, type Point, type Side } from '../metamodel'
+import { CARD, emptyModel, parseCardinality, type Cardinality, type DataType, type Entity, type Model, type Point, type Side } from '../metamodel'
 import { addAttribute, addDomain, addEntity, addIdentifier, addInheritance, addRelationship, setForeignKeySide } from '../ops'
 import { child, children, descendants, parseXml, textOf, type XmlElement } from './xml'
 
@@ -67,6 +67,59 @@ export function parsePdType(code: string | undefined): { dataType: DataType; len
 /** Scale from PD units (1/100 mm) to canvas pixels. */
 const SCALE = 0.012
 
+/** Clear space kept between canvas boxes after an import: room for a relationship's marks and name. */
+const SPREAD_GAP = 40
+
+/**
+ * Size of an entity box on our canvas, on the large side (measured at the default text size, plus 30 %
+ * for the larger ones). PD draws its boxes smaller than ours, so a dense PD diagram placed as it is
+ * would put our boxes on top of each other.
+ */
+export function canvasSize(e: Entity): { w: number; h: number } {
+  const ids = e.identifiers.length
+  const h = 37 + 17 * e.attributes.length + (ids ? 8 + 16 * ids : 0)
+  const w = Math.max(170, 7.5 * e.name.length + 60, 6.5 * Math.max(0, ...e.attributes.map((a) => a.name.length)) + 95)
+  return { w: Math.round(1.3 * w), h: Math.round(1.3 * h) }
+}
+
+/** A canvas box with its top and bottom in the PD diagram. */
+export interface SpreadBox {
+  x: number
+  y: number
+  w: number
+  h: number
+  row: [number, number]
+}
+
+/**
+ * Moves boxes apart until no two overlap and each pair keeps `gap` between them, the reverse of the
+ * export's compactLayout: left edges, then top edges, are mapped monotonically, so the order and the
+ * alignment of the PD diagram are kept and gaps that are already wide enough stay as they are.
+ * Across, only boxes in one row of the PD diagram (`row`: their top and bottom there) are pushed apart,
+ * so a column whose boxes sit a few pixels off each other is not scattered sideways; down, every box
+ * that still shares a column with another after that.
+ */
+export function spreadLayout(boxes: SpreadBox[], gap = SPREAD_GAP): SpreadBox[] {
+  const out = boxes.map((b) => ({ ...b }))
+  const overlap = (a1: number, a2: number, b1: number, b2: number) => Math.min(a2, b2) - Math.max(a1, b1) > 0
+  for (const axis of ['x', 'y'] as const) {
+    const size = axis === 'x' ? 'w' : 'h'
+    const side = (a: SpreadBox, b: SpreadBox) => (axis === 'x' ? overlap(a.row[0], a.row[1], b.row[0], b.row[1]) : overlap(a.x, a.x + a.w, b.x, b.x + b.w))
+    const edges = [...new Set(out.map((b) => b[axis]))].sort((p, q) => p - q)
+    const moved = new Map<number, number>()
+    edges.forEach((v, i) => {
+      let n = i ? moved.get(edges[i - 1])! + (v - edges[i - 1]) : v
+      for (const b of out)
+        if (b[axis] === v)
+          for (const a of out)
+            if (a[axis] < v && side(a, b) && v - (a[axis] + a[size]) < gap) n = Math.max(n, moved.get(a[axis])! + a[size] + gap)
+      moved.set(v, n)
+    })
+    for (const b of out) b[axis] = Math.round(moved.get(b[axis])!)
+  }
+  return out
+}
+
 function ref(el: XmlElement | undefined): string | undefined {
   return el?.children[0]?.attrs.Ref
 }
@@ -120,10 +173,14 @@ export function importPowerDesigner(src: string, fileName = ''): ImportResult {
   const all = [...rects.values()]
   const minX = Math.min(...all.map((r) => r.x1))
   const maxY = Math.max(...all.map((r) => r.y2))
+  // Each placed position's top and bottom in the PD diagram, in canvas pixels.
+  const pdRow = new Map<Point, [number, number]>()
   const pos = (pdId: string, fallback: Point): Point => {
     const r = rects.get(pdId)
     if (!r) return fallback
-    return { x: Math.round((r.x1 - minX) * SCALE) + 40, y: Math.round((maxY - r.y2) * SCALE) + 40 }
+    const p = { x: Math.round((r.x1 - minX) * SCALE) + 40, y: Math.round((maxY - r.y2) * SCALE) + 40 }
+    pdRow.set(p, [p.y, Math.round((maxY - r.y1) * SCALE) + 40])
+    return p
   }
 
   // Entities with attributes and identifiers.
@@ -229,6 +286,16 @@ export function importPowerDesigner(src: string, fileName = ''): ImportResult {
       warnings.push(`Inheritance ${name}: ${(err as Error).message}`)
     }
   }
+
+  // PD's boxes are smaller than ours: spread the placed symbols so ours do not overlap.
+  const placed = [
+    ...m.entities.map((e) => ({ p: e.position, ...canvasSize(e) })),
+    ...m.inheritances.map((i) => ({ p: i.position, w: 40, h: 24 })),
+  ]
+  spreadLayout(placed.map((b) => ({ x: b.p.x, y: b.p.y, w: b.w, h: b.h, row: pdRow.get(b.p) ?? [b.p.y, b.p.y + b.h] }))).forEach((b, k) => {
+    placed[k].p.x = b.x
+    placed[k].p.y = b.y
+  })
 
   return { model: m, warnings }
 }
