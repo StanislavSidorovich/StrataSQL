@@ -7,7 +7,8 @@
 import { create } from 'zustand'
 import { emptyModel, type Model } from '../core/metamodel'
 import { ModelFormatError, parseModel, readSavedBase, serializeModel } from '../core/serialize'
-import { setSavedFile, takeSavedFile, type SavedFile } from './savedFile'
+import { deleteHandle, getHandle, putHandle } from './handleStore'
+import { onSavedFileChange, setSavedFile, takeSavedFile, type SavedFile } from './savedFile'
 import { useEditor, type View } from './store'
 
 export const DOCS_KEY = 'stratasql.docs'
@@ -208,3 +209,27 @@ useDocs.subscribe((s, prev) => {
   if (typeof localStorage === 'undefined') return
   if (s.tabs !== prev.tabs || s.active !== prev.active || s.parked !== prev.parked) saveDocs()
 })
+
+// ---------------------------------------------------------------- the Save-as files across a reload
+// The handle of every tab's file is kept in IndexedDB under the tab id (the active tab's too) and given back
+// after a reload; the first Save then asks the browser for permission again (savedFile.ts ensureWritable).
+onSavedFileChange((file) => {
+  const id = useDocs.getState().active
+  void (file ? putHandle(id, file) : deleteHandle(id))
+})
+useDocs.subscribe((s, prev) => {
+  // A tab that is gone (closed, or the whole set replaced) takes its handle with it.
+  for (const t of prev.tabs) if (!s.tabs.some((x) => x.id === t.id)) void deleteHandle(t.id)
+})
+
+async function restoreFiles() {
+  if (typeof indexedDB === 'undefined') return
+  const { tabs, active } = useDocs.getState()
+  for (const { id } of tabs) {
+    const file = await getHandle(id)
+    if (!file) continue
+    if (id === active) setSavedFile(file)
+    else if (useDocs.getState().parked[id]) useDocs.setState((s) => ({ parked: { ...s.parked, [id]: { ...s.parked[id], file } } }))
+  }
+}
+void restoreFiles()

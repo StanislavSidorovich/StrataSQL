@@ -9,7 +9,7 @@ import { exportPowerDesignerPdm } from '../core/export/powerdesigner-pdm'
 import { FILE_EXTENSION, serializeModel, type SavedTask } from '../core/serialize'
 import { STORY_EXTENSION } from '../data/story'
 import { fileBaseName } from './pdm/SqlView'
-import { bindSavedFile, savedFileFor, type SavedFile } from './savedFile'
+import { bindSavedFile, ensureWritable, savedFileFor, type SavedFile } from './savedFile'
 import { useEditor } from './store'
 import { currentStoryText, markStorySaved, useStory } from './story/storyStore'
 import { useTrainer } from './trainer/trainerStore'
@@ -77,8 +77,16 @@ export async function saveModel(): Promise<string | null> {
   const { doc } = useEditor.getState()
   const bound = savedFileFor(doc)
   if (bound) {
-    await write(bound)
-    return `Saved to ${bound.name}`
+    // After a reload the browser asks again (needs this click); refused or gone: choose a file anew.
+    if (await ensureWritable(bound)) {
+      try {
+        await write(bound)
+        return `Saved to ${bound.name}`
+      } catch (e) {
+        if (!['NotAllowedError', 'NotFoundError', 'InvalidStateError'].includes((e as Error).name)) throw e
+      }
+    }
+    if (canPickFolder()) return saveModelAs()
   }
   // First save of this model: ask where (Chrome, Edge) so it does not land in Downloads; Ctrl+S then saves there.
   if (canPickFolder()) return saveModelAs()

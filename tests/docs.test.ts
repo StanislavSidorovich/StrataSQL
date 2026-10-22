@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { emptyModel, type Model } from '../src/core/metamodel'
 import { addEntity, renameModel } from '../src/core/ops'
 import { closeTab, locked, MAX_TABS, newModel, openModel, reopenClosed, switchTo, useDocs } from '../src/ui/docs'
-import { bindSavedFile, savedFileFor, type SavedFile } from '../src/ui/savedFile'
+import { bindSavedFile, ensureWritable, savedFileFor, type SavedFile } from '../src/ui/savedFile'
 import { useEditor } from '../src/ui/store'
 
 const drawn = (name: string): Model => {
@@ -146,5 +146,31 @@ describe('tabs', () => {
     } finally {
       delete (globalThis as { localStorage?: unknown }).localStorage
     }
+  })
+})
+
+describe('a Save-as file after a reload', () => {
+  const handle = (query: string, request?: string): SavedFile => ({
+    ...file('x.json'),
+    queryPermission: async () => query,
+    ...(request ? { requestPermission: async () => request } : {}),
+  })
+
+  it('is written at once when the permission is still granted', async () => {
+    expect(await ensureWritable(handle('granted'))).toBe(true)
+  })
+
+  it('asks again when it is in the prompt state, and follows the answer', async () => {
+    expect(await ensureWritable(handle('prompt', 'granted'))).toBe(true)
+    expect(await ensureWritable(handle('prompt', 'denied'))).toBe(false)
+  })
+
+  it('needs no permission call where the browser has none', async () => {
+    expect(await ensureWritable(file('x.json'))).toBe(true)
+  })
+
+  it('is refused, not thrown, when the file is gone', async () => {
+    const gone: SavedFile = { ...file('x.json'), queryPermission: async () => { throw new Error('gone') } }
+    expect(await ensureWritable(gone)).toBe(false)
   })
 })
