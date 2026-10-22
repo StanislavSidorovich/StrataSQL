@@ -9,6 +9,7 @@ import { columnFlags } from '../../core/pdm'
 import { helpCard, searchHelp, type HelpCard } from '../../data/help'
 import { highlightSql } from '../pdm/SqlView'
 import { useEditor } from '../store'
+import { openModel } from '../docs'
 import { MiniDiagram } from './MiniDiagram'
 
 /** `**bold**`, `*italic*` and `code` inline markup. */
@@ -78,9 +79,9 @@ function CardView({ card }: { card: HelpCard }) {
 
   const openAsModel = () => {
     if (!card.miniModel) return
-    const { load, setView } = useEditor.getState()
+    const { setView } = useEditor.getState()
+    openModel(card.miniModel())
     setView('cdm')
-    load(card.miniModel())
     setTimeout(() => flow.fitView({ padding: 0.2, maxZoom: 1, duration: 300 }), 80)
   }
 

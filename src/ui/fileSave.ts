@@ -9,14 +9,12 @@ import { exportPowerDesignerPdm } from '../core/export/powerdesigner-pdm'
 import { FILE_EXTENSION, serializeModel, type SavedTask } from '../core/serialize'
 import { STORY_EXTENSION } from '../data/story'
 import { fileBaseName } from './pdm/SqlView'
+import { bindSavedFile, savedFileFor, type SavedFile } from './savedFile'
 import { useEditor } from './store'
 import { currentStoryText, markStorySaved, useStory } from './story/storyStore'
 import { useTrainer } from './trainer/trainerStore'
 
-interface WritableFile {
-  name: string
-  createWritable: () => Promise<{ write: (data: string | Blob) => Promise<void>; close: () => Promise<void> }>
-}
+type WritableFile = SavedFile
 type SavePicker = (opts: object) => Promise<WritableFile>
 
 /** The running trainer task (not a walkthrough), saved with the model so opening the file can continue it. */
@@ -32,9 +30,6 @@ function comparedWith() {
 }
 
 const picker = (): SavePicker | undefined => (window as unknown as { showSaveFilePicker?: SavePicker }).showSaveFilePicker
-
-/** The file chosen with “Save as”, and the document it belongs to. */
-let current: { file: WritableFile; doc: number } | null = null
 
 export const canPickFolder = () => picker() !== undefined
 
@@ -55,15 +50,18 @@ async function write(file: WritableFile) {
   await out.close()
 }
 
-/** Save: to the “Save as” file of this document if there is one, else a download. Returns a message for the user. */
+/** Save: to the “Save as” file of this document if there is one, else the Save-as dialog (a download where the browser has none). Returns a message for the user. */
 export async function saveModel(): Promise<string | null> {
   const { doc } = useEditor.getState()
-  if (current && current.doc === doc) {
-    await write(current.file)
-    return `Saved to ${current.file.name}`
+  const bound = savedFileFor(doc)
+  if (bound) {
+    await write(bound)
+    return `Saved to ${bound.name}`
   }
-  const name = download()
-  return canPickFolder() ? `Downloaded ${name}. Use File → Save as to pick a folder: Ctrl+S then saves there.` : null
+  // First save of this model: ask where (Chrome, Edge) so it does not land in Downloads; Ctrl+S then saves there.
+  if (canPickFolder()) return saveModelAs()
+  download()
+  return null
 }
 
 /** Save as: pick a folder and a name. Returns a message for the user, or null when cancelled. */
@@ -85,7 +83,7 @@ export async function saveModelAs(): Promise<string | null> {
     throw e
   }
   await write(file)
-  current = { file, doc }
+  bindSavedFile(file, doc)
   return `Saved to ${file.name}. Ctrl+S now saves to this file.`
 }
 

@@ -1,5 +1,5 @@
 import { ReactFlowProvider, useReactFlow } from '@xyflow/react'
-import { BookOpen, Check, FilePen, GitCompare, CircleHelp, Database, Download, FileDown, FilePlus, FolderOpen, GraduationCap, Image as ImageIcon, Info, Keyboard, Link2, MessageSquare, Play, Presentation, RefreshCw, Save, SaveAll, X } from 'lucide-react'
+import { BookOpen, Check, FilePen, GitCompare, CircleHelp, Database, Download, FileDown, FilePlus, FolderOpen, GraduationCap, Image as ImageIcon, Info, Keyboard, Link2, MessageSquare, Play, Presentation, RefreshCw, Save, SaveAll, Undo2, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { emptyModel, type Model } from '../core/metamodel'
 import { addEntity, removeEntity, removeInheritance, removeRelationship } from '../core/ops'
@@ -40,6 +40,8 @@ import { MyTaskDialog, openMyTask } from './trainer/MyTask'
 import { confirmDiscardTask, continueTask, isVeiled, leaveTrainer, openCaseFile, savedTaskLabel, useTrainer } from './trainer/trainerStore'
 import { isCaseFile } from '../data/caseFile'
 import { isStoryFile } from '../data/story'
+import { closeTab, newModel, openModel, reopenClosed, useDocs } from './docs'
+import { Tabs } from './Tabs'
 import { newStoryFromModel, openStoryFile, useStory } from './story/storyStore'
 import { PresenterBar, StoryPane, useStoryKeys } from './story/StoryPane'
 
@@ -72,8 +74,7 @@ function useNarrow(): boolean {
 }
 
 /**
- * The model name with a close button (back to an empty canvas, like File → New model; Ctrl+Z brings
- * the model back) and the autosave state: “Saved” once the browser holds the latest edit.
+ * The model name with a close button (closes its tab; File → Reopen closed model brings it back) and the autosave state: “Saved” once the browser holds the latest edit.
  */
 function SavedState({ name, onClose }: { name: string; onClose?: () => void }) {
   const savedAt = useEditor((s) => s.savedAt)
@@ -84,7 +85,7 @@ function SavedState({ name, onClose }: { name: string; onClose?: () => void }) {
         {name}
       </span>
       {onClose && (
-        <button type="button" className="icon-btn" onClick={onClose} title={`Close “${name}” and start an empty model (Ctrl+Z brings it back)`} aria-label="Close model">
+        <button type="button" className="icon-btn" onClick={onClose} title={`Close “${name}” (File → Reopen closed model brings it back)`} aria-label="Close model">
           <X size={14} aria-hidden />
         </button>
       )}
@@ -145,6 +146,9 @@ function Editor() {
   useStoryKeys()
   const updateReady = useUpdateReady()
   const model = useEditor((s) => s.model)
+  const activeTab = useDocs((s) => s.active)
+  const tabCount = useDocs((s) => s.tabs.length)
+  const closedCount = useDocs((s) => s.closed.length)
   const selection = useEditor((s) => s.selection)
   const error = useEditor((s) => s.error)
   const view = useEditor((s) => s.view)
@@ -157,7 +161,7 @@ function Editor() {
   const portrait = usePortrait()
   // Opening another case, level or the picker shows a hidden trainer column again.
   const trainerKey = useTrainer((s) => `${s.pickerOpen}|${s.session?.caseId}|${s.session?.level}|${s.session?.walk === undefined}`)
-  const { undo, redo, load, apply, select, setLinkKind, setView, showError } = useEditor.getState()
+  const { undo, redo, apply, select, setLinkKind, setView, showError } = useEditor.getState()
   const fileInput = useRef<HTMLInputElement>(null)
   const compareInput = useRef<HTMLInputElement>(null)
   const comparing = useEditor((s) => s.changesBase !== null && s.trainerBackup === null)
@@ -188,15 +192,15 @@ function Editor() {
 
   const openExample = (build: () => ReturnType<typeof emptyModel>) => {
     if (!leaveModes()) return
+    if (!openModel(build())) return
     setView('cdm')
-    load(build())
     fit()
   }
 
   const openReference = (ref: ReferenceModel) => {
     const hadModel = useEditor.getState().model.entities.length > 0
     openExample(ref.build)
-    setNotice(`${ref.title}: the finished model of a real database. ${ref.link.label}: link in the Model panel.` + (hadModel ? ' Your previous model is one Undo away.' : ''))
+    setNotice(`${ref.title}: the finished model of a real database. ${ref.link.label}: link in the Model panel.` + (hadModel ? ' Your previous model stays in its tab.' : ''))
   }
 
   // Opened from a link (quaera.app's Data screen → `?example=quaera`): load that reference model
@@ -233,11 +237,11 @@ function Editor() {
         const hadModel = useEditor.getState().model.entities.length > 0
         const { model: imported, notice } = modelFromStrataLab(text, link.name)
         useOnboarding.setState({ welcome: false })
+        if (!openModel(imported)) return
         setView('cdm')
-        load(imported)
         fit()
         const [first, ...more] = notice.split('\n')
-        setNotice([first + (hadModel ? ' Your previous model is one Undo away.' : ''), ...more].join('\n'))
+        setNotice([first + (hadModel ? ' Your previous model stays in its tab.' : ''), ...more].join('\n'))
       } catch (e) {
         showError(`Could not open the tables from Quaera Lab: ${(e as Error).message}`)
       }
@@ -259,8 +263,8 @@ function Editor() {
         if (!leaveModes()) return
         const hadModel = useEditor.getState().model.entities.length > 0
         useOnboarding.setState({ welcome: false })
+        if (!openModel(shared)) return
         setView('cdm')
-        load(shared)
         if (sharedBase) {
           useEditor.getState().setChangesBase(sharedBase)
           setChangesOpen(true)
@@ -269,7 +273,7 @@ function Editor() {
         setNotice(
           `Opened “${shared.name}” from a shared link: this is your own copy, edits stay in this browser.` +
             (sharedBase ? ` The numbers show what changed since “${sharedBase.name}” (list under the diagram).` : '') +
-            (hadModel ? ' Your previous model is one Undo away.' : ''),
+            (hadModel ? ' Your previous model stays in its tab.' : ''),
         )
       } catch (e) {
         showError(`Could not open the shared model: ${(e as Error).message}`)
@@ -341,13 +345,13 @@ function Editor() {
       if (!leaveModes()) return
       if (/\.sql$/i.test(file.name)) {
         const { model: imported, notice } = modelFromSqlFile(text, file.name)
+        if (!openModel(imported)) return
         setView('cdm')
-        load(imported)
         setNotice(notice)
       } else if (/\.(cdm|cdb|pdm|pdb)$/i.test(file.name)) {
         const { model: imported, warnings } = importPowerDesigner(text, file.name)
+        if (!openModel(imported)) return
         setView('cdm')
-        load(imported)
         setNotice(
           `Imported ${imported.entities.length} entities and ${imported.relationships.length} relationships from ${file.name}.` +
             (warnings.length ? `\n${warnings.join('\n')}` : ''),
@@ -370,7 +374,7 @@ Cancel: open it as an ordinary model.`)) {
           continueTask(task, model)
           setNotice(`Continuing ${label}.`)
         } else {
-          load(model)
+          if (!openModel(model)) return
           const base = readSavedBase(text)
           if (base) {
             useEditor.getState().setChangesBase(base)
@@ -476,7 +480,8 @@ Cancel: open it as an ordinary model.`)) {
             label="File"
             tour="file"
             items={[
-              { label: 'New model', icon: <FilePlus size={ICON} />, onSelect: () => leaveModes() && load(emptyModel()) },
+              { label: 'New model', icon: <FilePlus size={ICON} />, onSelect: () => leaveModes() && newModel() },
+              ...(closedCount > 0 ? [{ label: 'Reopen closed model', icon: <Undo2 size={ICON} />, onSelect: () => void reopenClosed() }] : []),
               { label: 'Open…', icon: <FolderOpen size={ICON} />, hint: `${FILE_EXTENSION}, .cdm, .sql`, onSelect: () => fileInput.current?.click() },
               { label: 'Save', icon: <Save size={ICON} />, hint: 'Ctrl+S', onSelect: () => save(false) },
               { label: 'Save as…', icon: <SaveAll size={ICON} />, hint: 'Ctrl+Shift+S', onSelect: () => save(true) },
@@ -602,7 +607,7 @@ Cancel: open it as an ordinary model.`)) {
         <div className="toolbar-side toolbar-right">
         <SavedState
           name={model.name}
-          onClose={model.entities.length > 0 ? () => leaveModes() && load(emptyModel()) : undefined}
+          onClose={model.entities.length > 0 || tabCount > 1 ? () => leaveModes() && closeTab(activeTab) : undefined}
         />
         <div className="toolbar-group">
           {updateReady && (
@@ -651,6 +656,7 @@ Cancel: open it as an ordinary model.`)) {
         </div>
         </div>
       </header>
+      <Tabs />
 
       {view === 'sandbox' ? (
         <>
