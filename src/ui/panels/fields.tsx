@@ -1,3 +1,4 @@
+import { parseAttributeNames } from '../../core/attributeList'
 import { useEffect, useState, type ReactNode } from 'react'
 import { parseSize } from '../../core/metamodel'
 import { hasLinks, splitLinks } from '../../core/links'
@@ -72,6 +73,7 @@ export function NameInput({
   ariaLabel,
   autoFocus,
   list,
+  onPasteNames,
 }: {
   value: string
   isDefault: (name: string) => boolean
@@ -82,6 +84,8 @@ export function NameInput({
   autoFocus?: boolean
   /** Id of a datalist with suggestions (words of the task text). */
   list?: string
+  /** A paste with several names (commas, lines, bullets) goes here instead of into the field. */
+  onPasteNames?: (names: string[]) => void
 }) {
   // While the user is typing, show exactly what they typed (even if it looks like a default name).
   const [typing, setTyping] = useState(false)
@@ -95,6 +99,13 @@ export function NameInput({
       autoFocus={autoFocus}
       list={list}
       autoComplete="off"
+      onPaste={(e) => {
+        if (!onPasteNames) return
+        const names = parseAttributeNames(e.clipboardData.getData('text'))
+        if (names.length < 2) return
+        e.preventDefault()
+        onPasteNames(names)
+      }}
       onChange={(e) => {
         setTyping(true)
         onChange(e.target.value.trim() === '' ? fallback : e.target.value)

@@ -3213,3 +3213,21 @@ a.btn.disabled {
   white-space: nowrap;
 }
 
+
+/* Paste several attributes (EntityPanel). */
+.attr-bulk {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.attr-bulk textarea {
+  resize: vertical;
+}
+.attr-bulk-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+}

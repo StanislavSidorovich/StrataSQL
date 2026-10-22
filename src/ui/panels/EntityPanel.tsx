@@ -27,6 +27,7 @@ import {
 import { ElementChange } from '../changes/ChangesPanel'
 import { ElementIssues } from '../lint/IssuesPanel'
 import { EntityResult } from '../pdm/PhysicalResult'
+import { addAttributesFromNames, guessAttributeType, parseAttributeNames } from '../../core/attributeList'
 import { duplicateSelectedEntity, useEditor } from '../store'
 import { Check, Field, HelpButton, IconButton, NameInput, NumberInput, Section, Select, SizeInput, TextArea, TextInput } from './fields'
 
@@ -50,6 +51,12 @@ export function EntityPanel({ entity, model }: { entity: Entity; model: Model })
   // A just-added attribute takes the focus, so its name can be typed right away.
   const [newAttr, setNewAttr] = useState<string | null>(null)
   const nameBox = useRef<HTMLDivElement>(null)
+  // Several attributes from pasted text: one undo step; names the entity already has are left out.
+  const [bulk, setBulk] = useState(false)
+  const [bulkText, setBulkText] = useState('')
+  const have = new Set(entity.attributes.map((a) => a.name.toLowerCase()))
+  const bulkNames = parseAttributeNames(bulkText).filter((n) => !have.has(n.toLowerCase()))
+  const addNames = (names: string[]) => apply((m) => void addAttributesFromNames(m, id, names))
   const focusName = useEditor((s) => s.focusName)
   useEffect(() => {
     if (focusName !== id) return
@@ -87,16 +94,40 @@ export function EntityPanel({ entity, model }: { entity: Entity; model: Model })
         title={`Attributes (${entity.attributes.length})`}
         help="attribute"
         actions={
-          <button type="button" className="btn btn-small" onClick={() => {
-              let aid = ''
-              apply((m) => void (aid = addAttribute(m, id).id))
-              setNewAttr(aid)
-            }}
-          >
-            + Attribute
-          </button>
+          <>
+            <button type="button" className="btn btn-small" onClick={() => setBulk((on) => !on)} title="Paste a list of attributes (commas, lines or bullets): one attribute each">
+              Paste several…
+            </button>
+            <button type="button" className="btn btn-small" onClick={() => {
+                let aid = ''
+                apply((m) => void (aid = addAttribute(m, id).id))
+                setNewAttr(aid)
+              }}
+            >
+              + Attribute
+            </button>
+          </>
         }
       >
+        {bulk && (
+          <div className="attr-bulk">
+            <textarea
+              className="input"
+              rows={4}
+              autoFocus
+              value={bulkText}
+              onChange={(e) => setBulkText(e.target.value)}
+              placeholder="Paste names: Status, Priority, RequestedTimeSlot, or one per line or bullet. Values in brackets are skipped."
+              aria-label="Attributes to add"
+            />
+            <div className="attr-bulk-row">
+              <span className="muted">{bulkNames.length ? `${bulkNames.length} attribute${bulkNames.length > 1 ? 's' : ''}: ${bulkNames.join(', ')}` : 'Nothing to add yet'}</span>
+              <button type="button" className="btn btn-small btn-primary" disabled={!bulkNames.length} onClick={() => { addNames(bulkNames); setBulk(false); setBulkText('') }}>
+                Add
+              </button>
+            </div>
+          </div>
+        )}
         {entity.attributes.length > 0 && (
           <div className="attr-grid attr-grid-head">
             <span title="Primary identifier">
@@ -266,6 +297,19 @@ function AttributeRow({
 }) {
   const apply = useEditor((s) => s.apply)
   const aid = attr.id
+  // Several names pasted into the name field: a fresh attribute takes the first, the others are added after.
+  const pasteNames = (pasted: string[]) => {
+    const taken = new Set(model.entities.find((e) => e.id === entityId)!.attributes.filter((x) => x.id !== aid).map((x) => x.name.toLowerCase()))
+    const names = pasted.filter((n) => !taken.has(n.toLowerCase()))
+    if (!names.length) return
+    apply((m) => {
+      if (DEFAULT_ATTRIBUTE.test(attr.name)) {
+        const [first, ...rest] = names
+        updateAttribute(m, entityId, aid, { name: first, ...guessAttributeType(first) })
+        addAttributesFromNames(m, entityId, rest)
+      } else addAttributesFromNames(m, entityId, names)
+    })
+  }
   const typeValue = attr.domainId ? `domain:${attr.domainId}` : attr.dataType
   const typeOptions = [
     ...DATA_TYPES.map((t) => ({ value: t as string, label: t, group: 'Data types' })),
@@ -285,6 +329,7 @@ function AttributeRow({
         value={attr.name}
         isDefault={(n) => DEFAULT_ATTRIBUTE.test(n)}
         list="suggest-attribute"
+        onPasteNames={pasteNames}
         fallback={uniqueName('attribute', model.entities.find((e) => e.id === entityId)!.attributes.filter((x) => x.id !== aid).map((x) => x.name))}
         autoFocus={autoFocus}
         onChange={(v) => apply((m) => updateAttribute(m, entityId, aid, { name: v }), { coalesce: `an:${aid}` })}
