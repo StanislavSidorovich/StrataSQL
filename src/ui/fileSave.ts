@@ -31,6 +31,28 @@ function comparedWith() {
 
 const picker = (): SavePicker | undefined => (window as unknown as { showSaveFilePicker?: SavePicker }).showSaveFilePicker
 
+type OpenPicker = (opts: object) => Promise<Array<SavedFile & { getFile: () => Promise<File> }>>
+const openPicker = (): OpenPicker | undefined => (window as unknown as { showOpenFilePicker?: OpenPicker }).showOpenFilePicker
+
+/**
+ * File → Open where the browser can keep the file's place (Chrome, Edge): the file comes with its handle,
+ * so Ctrl+S writes back to it. Elsewhere returns undefined and the caller uses a plain file input.
+ * null: the user cancelled.
+ */
+export async function pickFileToOpen(): Promise<{ file: File; handle: SavedFile } | null | undefined> {
+  const show = openPicker()
+  if (!show) return undefined
+  try {
+    const [handle] = await show({
+      types: [{ description: 'Models', accept: { 'application/json': ['.json'], 'application/xml': ['.cdm', '.cdb', '.pdm', '.pdb'], 'text/plain': ['.sql'] } }],
+    })
+    return { file: await handle.getFile(), handle }
+  } catch (e) {
+    if ((e as Error).name === 'AbortError') return null
+    throw e
+  }
+}
+
 export const canPickFolder = () => picker() !== undefined
 
 function download(): string {

@@ -25,7 +25,7 @@ import { PdmPanel } from './pdm/PdmPanel'
 import { fileBaseName, SqlView } from './pdm/SqlView'
 import { SandboxView } from './sandbox/SandboxView'
 import { AppearanceButton } from './Appearance'
-import { exportCdm, exportPdm, saveModel, saveModelAs, saveStory } from './fileSave'
+import { exportCdm, exportPdm, saveModel, saveModelAs, saveStory, pickFileToOpen } from './fileSave'
 import { SideDock } from './SideDock'
 import { usePortrait } from './viewport'
 import { duplicateSelectedEntity, useEditor, type View } from './store'
@@ -40,6 +40,7 @@ import { MyTaskDialog, openMyTask } from './trainer/MyTask'
 import { confirmDiscardTask, continueTask, isVeiled, leaveTrainer, openCaseFile, savedTaskLabel, useTrainer } from './trainer/trainerStore'
 import { isCaseFile } from '../data/caseFile'
 import { isStoryFile } from '../data/story'
+import { bindSavedFile, type SavedFile } from './savedFile'
 import { closeTab, newModel, openModel, reopenClosed, useDocs } from './docs'
 import { Tabs } from './Tabs'
 import { newStoryFromModel, openStoryFile, useStory } from './story/storyStore'
@@ -339,7 +340,17 @@ function Editor() {
   const save = (as: boolean) =>
     (useStory.getState().story ? saveStory() : as ? saveModelAs() : saveModel()).then((msg) => msg && setNotice(msg)).catch((err: Error) => showError(`Could not save: ${err.message}`))
 
-  const openFile = async (file: File) => {
+  const openWithPicker = async () => {
+    try {
+      const picked = await pickFileToOpen()
+      if (picked === undefined) fileInput.current?.click()
+      else if (picked) await openFile(picked.file, picked.handle)
+    } catch (e) {
+      showError(`Could not open the file: ${(e as Error).message}`)
+    }
+  }
+
+  const openFile = async (file: File, handle?: SavedFile) => {
     try {
       const text = await file.text()
       if (!leaveModes()) return
@@ -375,6 +386,8 @@ Cancel: open it as an ordinary model.`)) {
           setNotice(`Continuing ${label}.`)
         } else {
           if (!openModel(model)) return
+          // Opened from a folder: Ctrl+S writes back to that file.
+          if (handle) bindSavedFile(handle, useEditor.getState().doc)
           const base = readSavedBase(text)
           if (base) {
             useEditor.getState().setChangesBase(base)
@@ -482,7 +495,7 @@ Cancel: open it as an ordinary model.`)) {
             items={[
               { label: 'New model', icon: <FilePlus size={ICON} />, onSelect: () => leaveModes() && newModel() },
               ...(closedCount > 0 ? [{ label: 'Reopen closed model', icon: <Undo2 size={ICON} />, onSelect: () => void reopenClosed() }] : []),
-              { label: 'Open…', icon: <FolderOpen size={ICON} />, hint: `${FILE_EXTENSION}, .cdm, .sql`, onSelect: () => fileInput.current?.click() },
+              { label: 'Open…', icon: <FolderOpen size={ICON} />, hint: `${FILE_EXTENSION}, .cdm, .sql`, onSelect: () => void openWithPicker() },
               { label: 'Save', icon: <Save size={ICON} />, hint: 'Ctrl+S', onSelect: () => save(false) },
               { label: 'Save as…', icon: <SaveAll size={ICON} />, hint: 'Ctrl+Shift+S', onSelect: () => save(true) },
               {
