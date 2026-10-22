@@ -113,7 +113,26 @@ describe('one-to-one', () => {
     const p = generatePdm(m)
     expect(cols(p, 'PERSON')).toEqual(['person_id', 'passport_id'])
     expect(nullable(p, 'PERSON', 'passport_id')).toBe(true)
-    expect(table(p, 'PERSON').alternateKeys[0].columns).toEqual(['passport_id'])
+  })
+
+  it('gives an optional FK no UNIQUE: SQL Server takes only one NULL in it (Vet: invoice line without a prescription)', () => {
+    const m = emptyModel()
+    const person = ent(m, 'Person')
+    const passport = ent(m, 'Passport')
+    const r = addRelationship(m, person.id, passport.id, { name: 'holds', cardinalityA: CARD.oneOne, cardinalityB: CARD.zeroOne })
+    setForeignKeySide(m, r.id, 'A')
+    const p = generatePdm(m)
+    expect(table(p, 'PERSON').alternateKeys).toEqual([])
+    expect(p.notes).toContainEqual(expect.objectContaining({ level: 'info', table: 'PERSON', message: expect.stringContaining('gets no UNIQUE') }))
+  })
+
+  it('keeps the UNIQUE when the FK is NOT NULL (1,1 on both ends)', () => {
+    const m = emptyModel()
+    const a = ent(m, 'Seat')
+    const b = ent(m, 'Ticket')
+    addRelationship(m, a.id, b.id, { name: 'holds', cardinalityA: CARD.oneOne, cardinalityB: CARD.oneOne })
+    const p = generatePdm(m)
+    expect(table(p, 'TICKET').alternateKeys).toMatchObject([{ columns: ['seat_id'] }])
   })
 
   it('skips the UNIQUE when the FK already is the whole PK (dependent 1:1, Scooter Sharing ratings)', () => {

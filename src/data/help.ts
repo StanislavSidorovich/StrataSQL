@@ -180,6 +180,7 @@ export const HELP_CARDS: HelpCard[] = [
     oneLiner: 'Max 1 on both ends. The FK goes to one side and gets a UNIQUE constraint.',
     body: [
       'Either table could hold the FK. Prefer the side that **must** have a partner: its FK can be `NOT NULL`. The UNIQUE on the FK is what keeps it one-to-one.',
+      'If the FK may be `NULL`, it gets no UNIQUE: SQL Server allows only one `NULL` in a UNIQUE key, so the second row without a partner would be refused. Then one-to-one is up to the application.',
       'Ask whether the two entities are really separate: a 1:1 with mandatory ends on both sides is often one entity drawn twice.',
     ],
     whenToUse: ['“each … has at most one …, and each … belongs to exactly one …”', 'Optional extra data with its own life cycle (a passport for a person)'],

@@ -32,7 +32,7 @@ export interface Reference {
   identifying: boolean
   /** NOT NULL — the target end has min 1. */
   mandatory: boolean
-  /** One-to-one: the FK columns get a UNIQUE constraint. */
+  /** One-to-one: the FK columns get a UNIQUE constraint (unless they are nullable). */
   unique: boolean
   /** Column prefix (`from` → `from_stop_id`) when needed to tell two references apart. */
   prefix: string | null
@@ -428,8 +428,13 @@ class Generator {
         const col = set.columns.find((x) => x.name === c)!
         usedBy.set(col, [...(usedBy.get(col) ?? []), fk.name])
       }
-      if (ref.unique && !sameColumns(fk.columns, key.map((c) => set.byOrigin(c.origin)?.name ?? c.name)))
-        table.alternateKeys.push({ name: this.constraintName(`AK_${ref.label}_${name}`), columns: fk.columns, source: ref.source })
+      if (ref.unique && !sameColumns(fk.columns, key.map((c) => set.byOrigin(c.origin)?.name ?? c.name))) {
+        // An optional 1:1 leaves the FK NULL in many rows: SQL Server's UNIQUE takes only one NULL,
+        // so the key is left out and the one-to-one rests on the application ✱.
+        if (fk.columns.some((c) => set.columns.find((x) => x.name === c)?.nullable))
+          this.note('info', `${fk.name} is optional, so it gets no UNIQUE (SQL Server allows only one NULL in a UNIQUE key): one-to-one is up to the application.`, name, ref.source)
+        else table.alternateKeys.push({ name: this.constraintName(`AK_${ref.label}_${name}`), columns: fk.columns, source: ref.source })
+      }
     }
     for (const [col, fks] of usedBy)
       if (fks.length > 1)

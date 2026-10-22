@@ -5,7 +5,8 @@ import { generateSqlServer } from '../src/core/ddl/sqlserver'
 import { arrowStyle, compactLayout, crossed, entitySize, exportPowerDesigner, pdCode, pdTypeCode, routeAround, routeOrthogonal, UNITS } from '../src/core/export/powerdesigner'
 import { importPowerDesigner } from '../src/core/import/powerdesigner'
 import { parseXml } from '../src/core/import/xml'
-import type { Model } from '../src/core/metamodel'
+import { CARD, emptyModel, type Model } from '../src/core/metamodel'
+import { addEntity, addRelationship, setForeignKeySide } from '../src/core/ops'
 import { integrityProblems } from '../src/core/serialize'
 import { CASES } from '../src/data/cases'
 
@@ -65,6 +66,30 @@ describe('PowerDesigner .cdm export', () => {
           }
         }
     }
+  })
+
+  it('writes a dominant role for every one-to-one, so PD migrates it one way only (Vet: Billing)', () => {
+    const m = emptyModel('x')
+    const appt = addEntity(m, { name: 'Appointment', position: { x: 0, y: 0 } })
+    const invoice = addEntity(m, { name: 'Invoice', position: { x: 300, y: 0 } })
+    const order = addEntity(m, { name: 'Order', position: { x: 0, y: 200 } })
+    const line = addEntity(m, { name: 'Line', position: { x: 300, y: 200 } })
+    // Automatic side: the Invoice end must have a partner, so INVOICE holds the FK and Appointment (A) dominates.
+    const billing = addRelationship(m, appt.id, invoice.id, { name: 'Billing', cardinalityA: CARD.oneOne, cardinalityB: CARD.zeroOne })
+    const chosen = addRelationship(m, order.id, line.id, { name: 'Chosen', cardinalityA: CARD.oneOne, cardinalityB: CARD.zeroOne })
+    setForeignKeySide(m, chosen.id, 'A')
+    addRelationship(m, order.id, invoice.id, { name: 'Many', cardinalityA: CARD.zeroOne, cardinalityB: CARD.zeroMany })
+    const { xml } = exportPowerDesigner(m)
+    const dominantOf = (name: string) =>
+      xml.split('<o:Relationship ').find((r) => r.includes(`<a:Name>${name}</a:Name>`))!.split('</o:Relationship>')[0].match(/<a:DominantRole>(\w)<\/a:DominantRole>/)?.[1]
+    expect(dominantOf('Billing')).toBe('A')
+    expect(dominantOf('Chosen')).toBe('B')
+    expect(dominantOf('Many')).toBeUndefined()
+    // Read back: the automatic side stays automatic, the chosen one stays chosen.
+    const back = roundTrip(m).model
+    expect(back.relationships.find((r) => r.name === 'Billing')!.foreignKeySide).toBeUndefined()
+    expect(back.relationships.find((r) => r.name === 'Chosen')!.foreignKeySide).toBe('A')
+    expect(billing.foreignKeySide).toBeUndefined()
   })
 
   it('warns about what a PD CDM cannot hold', () => {

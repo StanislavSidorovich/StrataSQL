@@ -9,6 +9,7 @@
 //   them PD takes larger fonts, stretches the entities to the text and the line ends fall inside them;
 // - diagram coordinates are in 1/100 mm with the y axis pointing up.
 
+import { foreignKeyHolder, relationshipKind } from '../cdm2pdm'
 import { PD_DISPLAY_PREFERENCES } from './pdDisplayPreferences'
 import { DATA_TYPE_CODES, TYPES_WITH_LENGTH, TYPES_WITH_PRECISION, formatCardinality, type Attribute, type Cardinality, type DataType, type Entity, type Model, type Point } from '../metamodel'
 
@@ -522,7 +523,11 @@ ${named(a.name, unique)}${comment(a.comment)}${typeXml(dom ?? a)}${dom ? `<c:Dom
 
   const nameOf = (eid: string) => model.entities.find((e) => e.id === eid)?.name ?? '?'
   const rels = model.relationships.map((r) => {
-    const dominant = r.foreignKeySide ? `<a:DominantRole>${r.foreignKeySide === 'B' ? 'A' : 'B'}</a:DominantRole>\n` : ''
+    // Without a dominant role PD migrates a one-to-one both ways (FK columns in both tables).
+    // The dominant side is the parent: the other side from the one that holds the FK. Checked on a PD-saved
+    // file: “Appointment -> Invoice” on Billing (Appointment = Entity1 = our A) is stored as A.
+    const holder = relationshipKind(r) === 'one-to-one' ? foreignKeyHolder(r) : null
+    const dominant = holder ? `<a:DominantRole>${holder === 'B' ? 'A' : 'B'}</a:DominantRole>\n` : ''
     // Our roles are FK column prefixes; PD roles are verb phrases that do not name columns. Keep ours in the comment.
     const roles = [r.roleA && `${nameOf(r.entityA)}: ${r.roleA}`, r.roleB && `${nameOf(r.entityB)}: ${r.roleB}`].filter(Boolean).join(', ')
     if (roles) warnings.push(`${r.name}: the role names (${roles}) are kept only in the comment; PowerDesigner names the foreign key columns itself.`)

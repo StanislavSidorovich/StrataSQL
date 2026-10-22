@@ -8,6 +8,7 @@
 // - attribute names and types live in shared data items, an entity attribute points to one;
 // - diagram coordinates are in 1/100 mm with the y axis pointing up.
 
+import { foreignKeyHolder, relationshipKind } from '../cdm2pdm'
 import { CARD, emptyModel, parseCardinality, type Cardinality, type DataType, type Entity, type Model, type Point, type Side } from '../metamodel'
 import { addAttribute, addDomain, addEntity, addIdentifier, addInheritance, addRelationship, setForeignKeySide } from '../ops'
 import { child, children, descendants, parseXml, textOf, type XmlElement } from './xml'
@@ -249,7 +250,10 @@ export function importPowerDesigner(src: string, fileName = ''): ImportResult {
         comment: [textOf(pr, 'a:Comment'), roles.length ? `PowerDesigner roles: ${roles.join(' / ')}` : ''].filter(Boolean).join('\n') || undefined,
       })
       const dominant = textOf(pr, 'a:DominantRole')
-      if (dominant === 'A' || dominant === 'B') setForeignKeySide(m, rel.id, dominant === 'A' ? 'B' : 'A')
+      // The dominant side is the parent; keep the choice only where it differs from the automatic one
+      // (the export writes it for every one-to-one).
+      const holder: Side | null = dominant === 'A' ? 'B' : dominant === 'B' ? 'A' : null
+      if (holder && relationshipKind(rel) === 'one-to-one' && foreignKeyHolder(rel) !== holder) setForeignKeySide(m, rel.id, holder)
     } catch (err) {
       warnings.push(`Relationship ${name}: ${(err as Error).message}`)
     }
