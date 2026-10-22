@@ -3105,3 +3105,43 @@ a.btn.disabled {
     animation: none;
   }
 }
+
+/* Story editor (#31) */
+.story-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 4px 0 8px;
+}
+.story-editor-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--story);
+  border-radius: 8px;
+  background: var(--story-soft);
+}
+.story-editor-card textarea {
+  resize: vertical;
+}
+.story-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: default;
+}
+.story-chip button {
+  line-height: 1;
+  padding: 0 2px;
+  color: inherit;
+}
+.story-add {
+  width: auto;
+  font-size: 12px;
+  padding: 0 4px;
+}
+.story-editor-error {
+  font-size: 12px;
+  color: var(--danger);
+}

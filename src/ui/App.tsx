@@ -1,5 +1,5 @@
 import { ReactFlowProvider, useReactFlow } from '@xyflow/react'
-import { BookOpen, Check, FilePen, GitCompare, CircleHelp, Database, Download, FileDown, FilePlus, FolderOpen, GraduationCap, Image as ImageIcon, Info, Keyboard, Link2, MessageSquare, Play, RefreshCw, Save, SaveAll, X } from 'lucide-react'
+import { BookOpen, Check, FilePen, GitCompare, CircleHelp, Database, Download, FileDown, FilePlus, FolderOpen, GraduationCap, Image as ImageIcon, Info, Keyboard, Link2, MessageSquare, Play, Presentation, RefreshCw, Save, SaveAll, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { emptyModel, type Model } from '../core/metamodel'
 import { addEntity, removeEntity, removeInheritance, removeRelationship } from '../core/ops'
@@ -25,7 +25,7 @@ import { PdmPanel } from './pdm/PdmPanel'
 import { fileBaseName, SqlView } from './pdm/SqlView'
 import { SandboxView } from './sandbox/SandboxView'
 import { AppearanceButton } from './Appearance'
-import { exportCdm, exportPdm, saveModel, saveModelAs } from './fileSave'
+import { exportCdm, exportPdm, saveModel, saveModelAs, saveStory } from './fileSave'
 import { SideDock } from './SideDock'
 import { usePortrait } from './viewport'
 import { duplicateSelectedEntity, useEditor, type View } from './store'
@@ -40,7 +40,7 @@ import { MyTaskDialog, openMyTask } from './trainer/MyTask'
 import { confirmDiscardTask, continueTask, isVeiled, leaveTrainer, openCaseFile, savedTaskLabel, useTrainer } from './trainer/trainerStore'
 import { isCaseFile } from '../data/caseFile'
 import { isStoryFile } from '../data/story'
-import { openStoryFile, useStory } from './story/storyStore'
+import { newStoryFromModel, openStoryFile, useStory } from './story/storyStore'
 import { PresenterBar, StoryPane, useStoryKeys } from './story/StoryPane'
 
 declare const __APP_VERSION__: string
@@ -134,7 +134,7 @@ function deleteSelection() {
 
 /** Before New / Open / an example: a running story and trainer task close first. False = cancelled. */
 function leaveModes(): boolean {
-  if (useStory.getState().story) useStory.getState().exit()
+  if (useStory.getState().story && !useStory.getState().exit()) return false
   return leaveTrainer()
 }
 
@@ -331,8 +331,9 @@ function Editor() {
     return () => clearTimeout(t)
   }, [notice])
 
+  // During a story the canvas holds one beat of the model: Save writes the story instead.
   const save = (as: boolean) =>
-    (as ? saveModelAs() : saveModel()).then((msg) => msg && setNotice(msg)).catch((err: Error) => showError(`Could not save: ${err.message}`))
+    (useStory.getState().story ? saveStory() : as ? saveModelAs() : saveModel()).then((msg) => msg && setNotice(msg)).catch((err: Error) => showError(`Could not save: ${err.message}`))
 
   const openFile = async (file: File) => {
     try {
@@ -490,6 +491,15 @@ Cancel: open it as an ordinary model.`)) {
                 ? [{ label: 'Stop comparing', icon: <X size={ICON} />, onSelect: () => useEditor.getState().setChangesBase(null) }]
                 : []),
               {
+                label: 'New story from this model',
+                icon: <Presentation size={ICON} />,
+                disabled: trainerOn || model.entities.length === 0,
+                onSelect: () => {
+                  if (newStoryFromModel())
+                    setNotice('A first story, one beat per entity: write what each beat should say, reorder, then Save story. ⛶ Present shows it.')
+                },
+              },
+              {
                 label: 'Copy share link',
                 icon: <Link2 size={ICON} />,
                 disabled: model.entities.length === 0,
@@ -565,7 +575,7 @@ Cancel: open it as an ordinary model.`)) {
           data-tour="trainer"
           className={`btn btn-icon keep-label ${trainerOn ? 'btn-primary' : 'btn-accent'}`}
           onClick={() => {
-            if (storyOn) useStory.getState().exit()
+            if (storyOn && !useStory.getState().exit()) return
             useTrainer.getState().openPicker(!useTrainer.getState().pickerOpen)
           }}
           title="Practise on the course cases: watch it built, worked example, text tagging, complete the model, build it yourself with hints"

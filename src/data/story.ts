@@ -6,8 +6,8 @@
 // Elements are named, not referenced by id, so a story can be written by hand and still fits a model
 // whose ids changed (the same model saved again, or a story file without a model of its own).
 
-import { MODEL_FORMAT, type Id, type Model, type Relationship } from '../core/metamodel'
-import { ModelFormatError, parseModel } from '../core/serialize'
+import { MODEL_FORMAT, type Id, type Model, type Relationship, type Side } from '../core/metamodel'
+import { ModelFormatError, parseModel, serializeModel } from '../core/serialize'
 
 export const STORY_FORMAT = 'strata-story'
 export const STORY_VERSION = 1
@@ -293,4 +293,141 @@ function snapshot(model: Model, entities: Set<Id>, rels: Set<Id>, inhs: Set<Id>)
 export function untold(story: Story, model: Model = story.model!): string[] {
   const told = new Set(story.beats.flatMap((b) => b.show ?? []))
   return model.entities.filter((e) => !told.has(e.name)).map((e) => e.name)
+}
+
+// ---- Editing (#31): a draft from the model, beat edits, the file ----
+
+/** The story as a file: empty fields left out, the model inside (a story file can be sent alone). */
+export function serializeStory(story: Story): string {
+  const beats = story.beats.map((b) => {
+    const out: Record<string, unknown> = {}
+    for (const [k, v] of Object.entries(b)) {
+      if (v === undefined || v === false || v === '' || (Array.isArray(v) && !v.length)) continue
+      out[k] = Array.isArray(v) && v.length === 1 && (k === 'quote' || k === 'text') ? v[0] : v
+    }
+    return out
+  })
+  const out: Record<string, unknown> = { format: STORY_FORMAT, version: STORY_VERSION, title: story.title }
+  if (story.model) out.model = JSON.parse(serializeModel(story.model)) as unknown
+  out.beats = beats
+  return JSON.stringify(out, null, 2) + '\n'
+}
+
+/**
+ * A first story over a model: an intro, one beat per entity in an order a reader can follow (an
+ * entity comes after the ones it hangs on — the “1” side of a 1:n, the parent of a dependent or of an
+ * inheritance — and next to what is already on screen), and the whole model at the end. The children
+ * of an inheritance come together. Entity comments become the beats' text; the rest is for the author.
+ */
+export function draftStory(model: Model): Story {
+  const parents = new Map<Id, Set<Id>>(model.entities.map((e) => [e.id, new Set<Id>()]))
+  const links = new Map<Id, Set<Id>>(model.entities.map((e) => [e.id, new Set<Id>()]))
+  for (const r of model.relationships) {
+    if (r.entityA === r.entityB) continue
+    links.get(r.entityA)?.add(r.entityB)
+    links.get(r.entityB)?.add(r.entityA)
+    const parentSide: Side | null = r.dependentSide
+      ? r.dependentSide === 'A' ? 'B' : 'A'
+      : r.cardinalityA.max === 1 && r.cardinalityB.max === 'n' ? 'A'
+        : r.cardinalityB.max === 1 && r.cardinalityA.max === 'n' ? 'B'
+          : null
+    if (parentSide === 'A') parents.get(r.entityB)?.add(r.entityA)
+    if (parentSide === 'B') parents.get(r.entityA)?.add(r.entityB)
+  }
+  for (const inh of model.inheritances)
+    for (const c of inh.childIds) {
+      parents.get(c)?.add(inh.parentId)
+      links.get(c)?.add(inh.parentId)
+      links.get(inh.parentId)?.add(c)
+    }
+
+  const told = new Set<Id>()
+  const order: Id[][] = []
+  const index = new Map(model.entities.map((e, i) => [e.id, i]))
+  while (told.size < model.entities.length) {
+    let best: Id | null = null
+    let bestKey: number[] = []
+    for (const e of model.entities) {
+      if (told.has(e.id)) continue
+      const ps = [...parents.get(e.id)!]
+      const key = [
+        ps.every((p) => told.has(p)) ? 1 : 0,
+        [...links.get(e.id)!].filter((x) => told.has(x)).length,
+        // When nothing ties it to the screen yet: the entity most other things hang on first.
+        links.get(e.id)!.size,
+        -index.get(e.id)!,
+      ]
+      const k = key.findIndex((v, j) => v !== bestKey[j])
+      if (!best || (k >= 0 && key[k] > bestKey[k])) {
+        best = e.id
+        bestKey = key
+      }
+    }
+    const inh = model.inheritances.find((i) => i.childIds.includes(best!))
+    const group = inh ? inh.childIds.filter((c) => !told.has(c)) : [best!]
+    group.forEach((g) => told.add(g))
+    order.push(group)
+  }
+
+  const name = (id: Id) => model.entities.find((e) => e.id === id)!.name
+  const beats: StoryBeat[] = [
+    { title: model.name || 'The model', ...(model.comment ? { text: model.comment } : {}) },
+    ...order.map((group) => {
+      const comments = group.map((id) => model.entities.find((e) => e.id === id)!.comment).filter((c): c is string => !!c)
+      return { title: group.map(name).join(', '), show: group.map(name), ...(comments.length ? { text: comments } : {}) }
+    }),
+    { title: 'The whole model', overview: true },
+  ]
+  return { title: model.name || 'Story', model, beats }
+}
+
+/** An empty beat after beat `at`. */
+export function insertBeat(story: Story, at: number): Story {
+  const beats = story.beats.slice()
+  beats.splice(at + 1, 0, { title: 'New beat' })
+  return { ...story, beats }
+}
+
+/**
+ * Removes beat `at`. Its entities are not lost: they move to the next beat (to the previous one when
+ * it was the last), so the story still shows the whole model. Its held lines, ghosts and focus go.
+ */
+export function removeBeat(story: Story, at: number): Story {
+  if (story.beats.length <= 1) return story
+  const gone = story.beats[at]
+  const beats = story.beats.filter((_, k) => k !== at)
+  if (gone.show?.length) {
+    const to = at < beats.length ? at : at - 1
+    beats[to] = { ...beats[to], show: [...gone.show, ...(beats[to].show ?? [])] }
+  }
+  return { ...story, beats }
+}
+
+/** Swaps beat `at` with the one before (`-1`) or after (`1`). */
+export function moveBeat(story: Story, at: number, dir: -1 | 1): Story {
+  const to = at + dir
+  if (to < 0 || to >= story.beats.length) return story
+  const beats = story.beats.slice()
+  ;[beats[at], beats[to]] = [beats[to], beats[at]]
+  return { ...story, beats }
+}
+
+export function updateBeat(story: Story, at: number, patch: Partial<StoryBeat>): Story {
+  return { ...story, beats: story.beats.map((b, k) => (k === at ? { ...b, ...patch } : b)) }
+}
+
+/** Puts an entity into beat `at`, taking it out of the beat that showed it before. */
+export function showIn(story: Story, at: number, entity: string): Story {
+  const beats = story.beats.map((b, k) =>
+    k === at ? { ...b, show: [...(b.show ?? []).filter((n) => n !== entity), entity] } : b.show?.includes(entity) ? { ...b, show: b.show.filter((n) => n !== entity) } : b,
+  )
+  return { ...story, beats }
+}
+
+/** Texts written in one box, one per paragraph (a blank line between them). */
+export function splitParagraphs(text: string): string[] {
+  return text
+    .split(/\n\s*\n/)
+    .map((p) => p.trim())
+    .filter(Boolean)
 }

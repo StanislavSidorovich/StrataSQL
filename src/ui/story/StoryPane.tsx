@@ -1,9 +1,13 @@
 // Story pane: the beats as a table of contents, Back / Next and Present. The words of each beat are on
 // the canvas, next to what they explain; this column is for the presenter. While presenting, the
-// columns and the toolbar hide and a small bar at the bottom keeps the controls.
+// columns and the toolbar hide and a small bar at the bottom keeps the controls. ✎ Edit opens the
+// beat editor (StoryEditor) above the list of beats.
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { untold } from '../../data/story'
+import { saveStory } from '../fileSave'
+import { useEditor } from '../store'
+import { StoryEditor } from './StoryEditor'
 import { useStory } from './storyStore'
 
 /** ← → (also Space, PageUp/PageDown, the clicker keys), Home / End; Esc leaves full screen. */
@@ -39,15 +43,34 @@ export function StoryPane() {
   const story = useStory((s) => s.story)
   const frames = useStory((s) => s.frames)
   const beat = useStory((s) => s.beat)
-  const { goTo, setPresenting, exit } = useStory.getState()
+  const editing = useStory((s) => s.editing)
+  const dirty = useStory((s) => s.dirty)
+  const [saved, setSaved] = useState<string | null>(null)
+  const { goTo, setPresenting, setEditing, exit } = useStory.getState()
   if (!story) return null
   const last = frames.length - 1
-  const missing = story.model ? untold(story) : []
+  const missing = untold(story, story.model ?? useEditor.getState().trainerBackup ?? useEditor.getState().model)
+  const onSave = () =>
+    saveStory()
+      .then((msg) => msg && setSaved(msg))
+      .catch((err: Error) => useEditor.getState().showError(`Could not save the story: ${err.message}`))
   return (
     <aside className="trainer-pane" aria-label="Story">
       <div className="trainer-header">
         <h2>▶ {story.title}</h2>
-        <button type="button" className="btn btn-small ml-auto" onClick={exit} title="Close the story and get your own model back">
+        <button
+          type="button"
+          className={`btn btn-small ml-auto ${editing ? 'btn-primary' : ''}`}
+          onClick={() => setEditing(!editing)}
+          aria-pressed={editing}
+          title="Edit the beats: their words, what each one brings in, their order"
+        >
+          ✎ Edit
+        </button>
+        <button type="button" className="btn btn-small" onClick={onSave} title="Save the story with its model as a .strata-story.json file (Ctrl+S)">
+          Save{dirty ? ' •' : ''}
+        </button>
+        <button type="button" className="btn btn-small" onClick={exit} title="Close the story and get your own model back">
           Exit
         </button>
       </div>
@@ -65,13 +88,15 @@ export function StoryPane() {
           <button type="button" className="btn" onClick={() => goTo(beat - 1)} disabled={beat === 0} title="Previous beat (←)">
             ← Back
           </button>
-          <button type="button" className="btn btn-primary" onClick={() => goTo(beat + 1)} disabled={beat === last} title="Next beat (→ or Space)" autoFocus>
+          <button type="button" className="btn btn-primary" onClick={() => goTo(beat + 1)} disabled={beat === last} title="Next beat (→ or Space)" autoFocus={!editing}>
             {beat === 0 ? 'Start →' : 'Next →'}
           </button>
           <button type="button" className="btn ml-auto" onClick={() => setPresenting(true)} title="Full screen without the toolbar and columns: for showing the story or recording it">
             ⛶ Present
           </button>
         </div>
+        {saved && !dirty && <p className="muted text-xs">{saved}</p>}
+        {editing && <StoryEditor />}
         <ol className="story-beats">
           {frames.map((f, k) => (
             <li key={k}>
@@ -84,7 +109,7 @@ export function StoryPane() {
           ))}
         </ol>
         {missing.length > 0 && (
-          <p className="muted text-xs">Not in any beat (never shown): {missing.join(', ')}.</p>
+          <p className="muted text-xs">Not in any beat (never shown): {missing.join(', ')}.{editing && ' Add them to a beat with + entity.'}</p>
         )}
         <p className="muted text-xs">
           Keys: ← → or Space, Home / End. <b>Present</b> hides everything but the diagram (Esc to leave); a screen recorder in that mode gives a video of

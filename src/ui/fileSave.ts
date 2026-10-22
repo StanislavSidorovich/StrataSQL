@@ -7,8 +7,10 @@
 import { exportPowerDesigner } from '../core/export/powerdesigner'
 import { exportPowerDesignerPdm } from '../core/export/powerdesigner-pdm'
 import { FILE_EXTENSION, serializeModel, type SavedTask } from '../core/serialize'
+import { STORY_EXTENSION } from '../data/story'
 import { fileBaseName } from './pdm/SqlView'
 import { useEditor } from './store'
+import { currentStoryText, markStorySaved, useStory } from './story/storyStore'
 import { useTrainer } from './trainer/trainerStore'
 
 interface WritableFile {
@@ -94,6 +96,8 @@ export const FILE_KINDS = {
   sql: { description: 'SQL script', accept: { 'text/plain': ['.sql'] } },
   png: { description: 'PNG image', accept: { 'image/png': ['.png'] } },
   svg: { description: 'SVG image', accept: { 'image/svg+xml': ['.svg'] } },
+  // The dialog takes single-word extensions only: the name suggested carries `.strata-story.json`.
+  story: { description: 'StrataSQL story', accept: { 'application/json': ['.json'] } },
 } as const
 
 /**
@@ -140,4 +144,14 @@ export async function exportPdm(): Promise<string | null> {
   const name = await saveExport(`${fileBaseName(model.name)}.pdm`, 'pdm', () => new Blob([xml], { type: 'application/xml' }))
   if (!name) return null
   return `Exported ${name} — open it in PowerDesigner (File → Open).` + (warnings.length ? `\n${warnings.join('\n')}` : '')
+}
+
+/** Save story (#31): the story with its model, as `*.strata-story.json`. Returns a message, or null when cancelled. */
+export async function saveStory(): Promise<string | null> {
+  const story = useStory.getState().story
+  if (!story) return null
+  const name = await saveExport(`${fileBaseName(story.title)}${STORY_EXTENSION}`, 'story', () => new Blob([currentStoryText()], { type: 'application/json' }))
+  if (!name) return null
+  markStorySaved()
+  return `Saved the story to ${name}. File → Open plays it again, here or on another computer.`
 }
