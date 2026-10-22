@@ -43,6 +43,31 @@ describe('PowerDesigner .pdm export', () => {
         expect(b.foreignKeys.map((f) => [f.parent, f.columns, f.parentColumns])).toEqual(t.foreignKeys.map((f) => [f.refTable, f.columns, f.refColumns]))
       }
     })
+    it(`draws lines before tables and around the tables they do not join: ${name}`, () => {
+      const { xml, warnings } = exportPowerDesignerPdm(build())
+      const nums = (s: string) => s.match(/-?\d+/g)!.map(Number)
+      const rects = new Map<string, { x1: number; y1: number; x2: number; y2: number }>()
+      for (const m of xml.matchAll(/<o:TableSymbol Id="(o\d+)">[\s\S]*?<a:Rect>(.*?)<\/a:Rect>/g)) {
+        const [x1, y1, x2, y2] = nums(m[2])
+        rects.set(m[1], { x1, y1, x2, y2 })
+      }
+      expect(xml.lastIndexOf('<o:ReferenceSymbol Id=')).toBeLessThan(xml.indexOf('<o:TableSymbol Id='))
+      const through: string[] = []
+      for (const m of xml.matchAll(/<o:ReferenceSymbol Id="(o\d+)">[\s\S]*?<\/o:ReferenceSymbol>/g)) {
+        const ps = nums(m[0].match(/<a:ListOfPoints>(.*?)<\/a:ListOfPoints>/)![1])
+        const pts = Array.from({ length: ps.length / 2 }, (_, i) => ({ x: ps[2 * i], y: ps[2 * i + 1] }))
+        const own = [...m[0].matchAll(/<o:TableSymbol Ref="(o\d+)"/g)].map((x) => x[1])
+        for (const [sid, r] of rects) {
+          if (own.includes(sid)) continue
+          for (let i = 1; i < pts.length; i++) {
+            const [p, q] = [pts[i - 1], pts[i]]
+            if (Math.min(p.x, q.x) < r.x2 && Math.max(p.x, q.x) > r.x1 && Math.min(p.y, q.y) < r.y2 && Math.max(p.y, q.y) > r.y1) through.push(`${m[1]} through ${sid}`)
+          }
+        }
+      }
+      expect(through).toEqual([])
+      expect(warnings.filter((w) => /crosses/.test(w))).toEqual([])
+    })
   }
 
   it('says what it leaves out (check constraints)', () => {

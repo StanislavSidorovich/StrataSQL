@@ -12,9 +12,9 @@
 
 import { generatePdm } from '../cdm2pdm'
 import { sqlServerType } from '../ddl/sqlserver'
-import type { Model } from '../metamodel'
+import type { Model, Point } from '../metamodel'
 import { tablePosition, type PdmKey, type PdmTable } from '../pdm'
-import { UNITS, border, boundsOf, center, esc, pdCode, points, randomGuid, rectText, type ExportResult, type Rect } from './powerdesigner'
+import { UNITS, boundsOf, center, compactLayout, crossed, esc, pdCode, points, randomGuid, rectText, routeAround, type ExportResult, type Rect } from './powerdesigner'
 
 /** PD's definition of Microsoft SQL Server 2008, as referenced by the course's .pdm files. */
 const SQLSERVER_2008 = { name: 'Microsoft SQL Server 2008', code: 'MSSQLSRV2008', id: 'F5C20738-B05A-4F70-BC90-9B5EB9437766', classId: '4BA9F647-DAB1-11D1-9944-006097355D9B', url: 'file:///%_DBMS%/sqlsv2k8.xdb' }
@@ -54,15 +54,15 @@ export function exportPowerDesignerPdm(model: Model, opts: { guid?: () => string
   for (const t of pdm.tables) for (const k of [...(t.primaryKey ? [t.primaryKey] : []), ...t.alternateKeys]) keyIds.set(k, id())
   const refs = pdm.tables.flatMap((t) => t.foreignKeys.map((fk) => ({ t, fk, rid: id() })))
 
-  // Diagram: the PDM view's layout, y up, centred on (0, 0) like the .cdm export.
-  const rects = new Map<string, Rect>()
-  for (const t of pdm.tables) {
-    const { w, h } = tableSize(t)
-    const p = tablePosition(model, t)
-    const x1 = Math.round(p.x * UNITS)
-    const y2 = -Math.round(p.y * UNITS)
-    rects.set(t.name, { x1, y1: y2 - h, x2: x1 + w, y2 })
-  }
+  // Diagram: the PDM view's layout pulled together like a PD-drawn one (compactLayout), y up, centred
+  // on (0, 0) like the .cdm export.
+  const placed = compactLayout(
+    pdm.tables.map((t) => {
+      const p = tablePosition(model, t)
+      return { x: Math.round(p.x * UNITS), y: Math.round(p.y * UNITS), ...tableSize(t) }
+    }),
+  )
+  const rects = new Map<string, Rect>(pdm.tables.map((t, i) => [t.name, { x1: placed[i].x, y1: -placed[i].y - placed[i].h, x2: placed[i].x + placed[i].w, y2: -placed[i].y }]))
   const corners = [...rects.values()].flatMap((r) => [{ x: r.x1, y: r.y1 }, { x: r.x2, y: r.y2 }])
   const mid = corners.length ? center(boundsOf(corners)) : { x: 0, y: 0 }
   for (const r of rects.values()) {
@@ -71,17 +71,27 @@ export function exportPowerDesignerPdm(model: Model, opts: { guid?: () => string
     r.y1 -= mid.y
     r.y2 -= mid.y
   }
+  // Lines first, tables after (PD paints in file order); each line goes around the tables it does not join.
   const symbols: string[] = []
+  // Reflexive: a loop out of the right side and back over the top. Taken first, so the other lines keep off it.
+  const loop = (r: Rect): Point[] => {
+    const out = { x: r.x2, y: center(r).y }
+    return [out, { x: r.x2 + 2000, y: out.y }, { x: r.x2 + 2000, y: r.y2 + 2000 }, { x: center(r).x, y: r.y2 + 2000 }, { x: center(r).x, y: r.y2 }]
+  }
+  const taken: Point[][] = refs.filter(({ t, fk }) => t.name === fk.refTable).map(({ t }) => loop(rects.get(t.name)!))
   for (const { t, fk, rid } of refs) {
     const child = rects.get(t.name)!
     const parent = rects.get(fk.refTable)
     if (!parent) continue
-    let path
-    if (child === parent) {
-      // Reflexive: a loop out of the right side and back over the top.
-      const out = { x: child.x2, y: center(child).y }
-      path = [out, { x: child.x2 + 2000, y: out.y }, { x: child.x2 + 2000, y: child.y2 + 2000 }, { x: center(child).x, y: child.y2 + 2000 }, { x: center(child).x, y: child.y2 }]
-    } else path = [border(child, center(parent)), border(parent, center(child))]
+    let path: Point[]
+    if (child === parent) path = loop(child)
+    else {
+      const others = [...rects].filter(([name]) => name !== t.name && name !== fk.refTable)
+      path = routeAround(child, parent, others.map(([, r]) => r), taken)
+      const through = crossed(path, others.map(([, r]) => r)).map((i) => others[i][0])
+      if (through.length) warnings.push(`Reference ${fk.name}: no free way around, so its line crosses ${through.join(', ')} in the PowerDesigner diagram. Move the tables apart, or route the line by hand in PowerDesigner.`)
+      taken.push(path)
+    }
     symbols.push(
       `<o:ReferenceSymbol Id="${id()}">\n<a:CreationDate>${now}</a:CreationDate>\n<a:ModificationDate>${now}</a:ModificationDate>\n<a:Rect>${rectText(boundsOf(path))}</a:Rect>\n<a:ListOfPoints>${points(path)}</a:ListOfPoints>\n<a:CornerStyle>1</a:CornerStyle>\n<a:ArrowStyle>1</a:ArrowStyle>\n<a:LineColor>11184640</a:LineColor>\n<a:ShadowColor>12632256</a:ShadowColor>\n<c:SourceSymbol>\n<o:TableSymbol Ref="${tableSymIds.get(t.name)}"/>\n</c:SourceSymbol>\n<c:DestinationSymbol>\n<o:TableSymbol Ref="${tableSymIds.get(fk.refTable)}"/>\n</c:DestinationSymbol>\n<c:Object>\n<o:Reference Ref="${rid}"/>\n</c:Object>\n</o:ReferenceSymbol>`,
     )
