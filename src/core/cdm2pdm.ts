@@ -308,7 +308,11 @@ class Generator {
     const inh = this.childInh.get(id)
     if (inh) {
       // An inheritance child is identified like its parent.
-      key = this.keyOf(inh.parentId).map((c) => ({ ...c, migrated: c.migrated || inh.generation === 'both' }))
+      // With a table of its own the child's key is a FK to the parent's row: it takes the parent's
+      // number and does not count by itself (one IDENTITY per table in SQL Server).
+      key = this.keyOf(inh.parentId).map((c) =>
+        inh.generation === 'both' ? { ...c, migrated: true, dataType: c.dataType === 'Serial' ? 'Integer' : c.dataType } : c,
+      )
       if (primaryIdentifier(e)?.attributeIds.length)
         this.note('info', `${e.name} inherits the identifier of ${this.entity(inh.parentId).name}; its own primary identifier becomes an alternate key.`, undefined, { kind: 'entity', id })
     } else {
