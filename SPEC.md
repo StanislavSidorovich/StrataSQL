@@ -173,6 +173,10 @@ A model told as a story, to present a design to a group (#30). **File → Open**
 - `quote` / `text`: a text or a list of texts; `text` takes `**bold**`, `*italic*`, `` `code` ``.
 - `ghosts`: dashed boxes for what the task asks for and the model does not hold yet, with dashed lines to their `links`; without `position` a ghost goes to the right of its first link. `ghostRows`: dashed planned rows inside an existing entity. Ghosts never enter the model, the PDM or the SQL.
 
+### 10.2 Share as file and `#s=` (v0.14.0)
+
+A model or a story travels as **one small file**; no server. **File → Share as file…** (and **Share** in the story pane) writes `<name>.model.html`: a page with no external resource holding the title, "Opening in Quaera Model…", `location.replace(<link>)`, a big **Open in Quaera Model** link with the same URL and one line saying the content stays in the link after the `#`. The link is `https://model.quaera.app/#m=<data>[&b=<data>]` for a model (the earlier format, unchanged: compact JSON with short ids, deflate-raw, base64url; `b` is the version it is compared with) or `#s=<data>` for a story: the story file of §10.1 with its model inside (ids shortened; a story without a model gets the open one), as compact JSON packed the same way. Old `#m=` links keep opening. Over about 1.5 MB of URL a soft warning is shown. `?sharehere` on the page address makes the file point at that origin (testing).
+
 ## 11. Tech stack
 
 - **React + TypeScript + Vite**

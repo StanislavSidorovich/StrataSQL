@@ -6,7 +6,7 @@ import { addEntity, removeEntity, removeInheritance, removeRelationship } from '
 import { importPowerDesigner } from '../core/import/powerdesigner'
 import { modelFromSqlFile, modelFromStrataLab } from './sqlImport'
 import { FILE_EXTENSION, parseModel, readSavedBase, readSavedTask } from '../core/serialize'
-import { BASE_PARAM, decodeShare, NAME_PARAM, SHARE_PARAM, shareDataFromHash, shareUrl, SQL_PARAM, sqlLinkFromHash, unpackText } from '../core/shareLink'
+import { BASE_PARAM, decodeShare, decodeStoryShare, storyDataFromHash, NAME_PARAM, SHARE_PARAM, shareDataFromHash, shareUrl, SQL_PARAM, sqlLinkFromHash, unpackText } from '../core/shareLink'
 import { diffModels } from '../core/changes'
 import { ChangesDock } from './changes/ChangesPanel'
 import { FEEDBACK_URL } from './AuthorLinks'
@@ -39,10 +39,11 @@ import { LESSONS } from '../data/lessons'
 import { MyTaskDialog, openMyTask } from './trainer/MyTask'
 import { confirmDiscardTask, continueTask, isVeiled, leaveTrainer, openCaseFile, savedTaskLabel, useTrainer } from './trainer/trainerStore'
 import { isCaseFile } from '../data/caseFile'
-import { isStoryFile } from '../data/story'
+import { isStoryFile, serializeStory } from '../data/story'
 import { bindSavedFile, type SavedFile } from './savedFile'
 import { closeTab, newModel, openModel, reopenClosed, useDocs } from './docs'
 import { Tabs } from './Tabs'
+import { shareFileNow } from './shareFile'
 import { newStoryFromModel, openStoryFile, useStory } from './story/storyStore'
 import { PresenterBar, StoryPane, useStoryKeys } from './story/StoryPane'
 
@@ -247,9 +248,26 @@ function Editor() {
         showError(`Could not open the tables from Quaera Lab: ${(e as Error).message}`)
       }
     }
+    const openSharedStory = async (data: string) => {
+      history.replaceState(null, '', window.location.pathname + window.location.search)
+      try {
+        const shared = await decodeStoryShare(data)
+        if (!leaveModes()) return
+        useOnboarding.setState({ welcome: false })
+        const opened = openStoryFile(serializeStory(shared))
+        if (!opened) return
+        setView('cdm')
+        fit()
+        setNotice(`Opened the shared story “${opened.title}”: ← → step through it, ⛶ Present for full screen. Leaving the story brings your own model back.`)
+      } catch (e) {
+        showError(`Could not open the shared story: ${(e as Error).message}`)
+      }
+    }
     const openShared = async () => {
       const link = sqlLinkFromHash(window.location.hash)
       if (link) return openFromLab(link)
+      const storyData = storyDataFromHash(window.location.hash)
+      if (storyData) return openSharedStory(storyData)
       const data = shareDataFromHash(window.location.hash)
       if (!data) return
       const params = new URLSearchParams(window.location.hash.slice(1))
@@ -522,6 +540,13 @@ Cancel: open it as an ordinary model.`)) {
                 icon: <Link2 size={ICON} />,
                 disabled: model.entities.length === 0,
                 onSelect: () => void copyShareLink(),
+              },
+              {
+                label: 'Share as file…',
+                icon: <Link2 size={ICON} />,
+                hint: '.model.html',
+                disabled: model.entities.length === 0,
+                onSelect: () => void shareFileNow(setNotice),
               },
               'separator',
               ...([['.cdm', exportCdm, 'CDM'], ['.pdm', exportPdm, 'PDM']] as const).map(([hint, run, what]) => ({

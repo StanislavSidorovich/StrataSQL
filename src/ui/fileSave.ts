@@ -124,6 +124,7 @@ export const FILE_KINDS = {
   sql: { description: 'SQL script', accept: { 'text/plain': ['.sql'] } },
   png: { description: 'PNG image', accept: { 'image/png': ['.png'] } },
   svg: { description: 'SVG image', accept: { 'image/svg+xml': ['.svg'] } },
+  html: { description: 'Quaera Model share file', accept: { 'text/html': ['.html'] } },
   // The dialog takes single-word extensions only: the name suggested carries `.strata-story.json`.
   story: { description: 'StrataSQL story', accept: { 'application/json': ['.json'] } },
 } as const

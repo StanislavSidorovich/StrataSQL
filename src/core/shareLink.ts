@@ -3,6 +3,7 @@
 
 import type { Model } from './metamodel'
 import { parseModel, serializeModel } from './serialize'
+import { parseStory, serializeStory, type Story } from '../data/story'
 
 /** The fragment key: `https://model.quaera.app/#m=<data>`. */
 export const SHARE_PARAM = 'm'
@@ -94,6 +95,70 @@ export async function shareUrl(m: Model, base: string, comparedWith?: Model | nu
   url.search = ''
   url.hash = `${SHARE_PARAM}=${await encodeShare(m)}` + (comparedWith ? `&${BASE_PARAM}=${await encodeShare(comparedWith)}` : '')
   return url.toString()
+}
+
+/** A story travels as `#s=<data>`: the story file (model inside, short ids) as compact JSON, packed like a model. */
+export const STORY_PARAM = 's'
+/** The address a shared file always points at. */
+export const LIVE_ORIGIN = 'https://model.quaera.app'
+/** Above this many characters of URL some browsers cut the link. */
+export const SOFT_URL_LIMIT = 1_500_000
+export const SHARE_EXTENSION = '.model.html'
+
+/** The story as a URL-safe string; `model` is the one told when the story carries none. Stories name elements, so ids may be shortened. */
+export async function encodeStoryShare(story: Story, model: Model): Promise<string> {
+  const text = serializeStory({ ...story, model: withShortIds(story.model ?? model) })
+  return packText(JSON.stringify(JSON.parse(text)))
+}
+
+/** The story back from {@link encodeStoryShare}; a damaged link throws a readable error. */
+export async function decodeStoryShare(data: string): Promise<Story> {
+  let text: string
+  try {
+    text = new TextDecoder().decode(await pipe(fromBase64Url(data), new DecompressionStream('deflate-raw')))
+  } catch {
+    throw new Error('The link is damaged or incomplete (it may have been cut when it was copied).')
+  }
+  return parseStory(text)
+}
+
+/** The story data in a URL fragment, or null when the fragment holds none. */
+export function storyDataFromHash(hash: string): string | null {
+  return new URLSearchParams(hash.replace(/^#/, '')).get(STORY_PARAM) || null
+}
+
+/** The full link to a story on `origin`. */
+export async function storyShareUrl(story: Story, model: Model, origin = LIVE_ORIGIN): Promise<string> {
+  return `${origin.replace(/\/+$/, '')}/#${STORY_PARAM}=${await encodeStoryShare(story, model)}`
+}
+
+const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+
+/** The tiny page that carries the link: redirects by script, shows a big link as the fallback. Nothing external. */
+export function shareHtml(title: string, url: string, what: 'model' | 'story' = 'model'): string {
+  const t = esc(title.trim() || 'Shared from Quaera Model')
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${t}</title>
+<style>
+body{font:16px/1.5 system-ui,sans-serif;max-width:34rem;margin:12vh auto;padding:0 1.25rem;color:#1f2430}
+h1{font-size:1.4rem;margin:0 0 .5rem}
+a.go{display:block;margin:1.5rem 0;padding:1rem 1.25rem;background:#2563eb;color:#fff;border-radius:10px;text-align:center;font-size:1.25rem;font-weight:600;text-decoration:none}
+p{color:#4a5160}
+</style>
+</head>
+<body>
+<h1>${t}</h1>
+<p>Opening in Quaera Model…</p>
+<a class="go" id="go" href="${esc(url)}">Open in Quaera Model</a>
+<p>This file holds ${what === 'story' ? 'a story' : 'a data model'} from Quaera Model (CDM → PDM → SQL, part of Quaera). The whole content is inside the link after the # sign, which stays in your browser and is never sent to a server. If nothing opens, press the button.</p>
+<script>location.replace(${JSON.stringify(url).replace(/</g, '\\u003c')})</script>
+</body>
+</html>
+`
 }
 
 /** StrataLab, the SQL workbench of the Quaera family (DuckDB in the browser). */

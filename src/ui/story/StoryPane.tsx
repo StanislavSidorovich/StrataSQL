@@ -6,6 +6,7 @@
 import { useEffect, useState } from 'react'
 import { untold } from '../../data/story'
 import { saveStory } from '../fileSave'
+import { shareFileNow } from '../shareFile'
 import { useEditor } from '../store'
 import { StoryEditor } from './StoryEditor'
 import { useStory } from './storyStore'
@@ -46,6 +47,7 @@ export function StoryPane() {
   const editing = useStory((s) => s.editing)
   const dirty = useStory((s) => s.dirty)
   const [saved, setSaved] = useState<string | null>(null)
+  const [shared, setShared] = useState<string | null>(null)
   const { goTo, setPresenting, setEditing, exit } = useStory.getState()
   if (!story) return null
   const last = frames.length - 1
@@ -91,11 +93,15 @@ export function StoryPane() {
           <button type="button" className="btn btn-primary" onClick={() => goTo(beat + 1)} disabled={beat === last} title="Next beat (→ or Space)" autoFocus={!editing}>
             {beat === 0 ? 'Start →' : 'Next →'}
           </button>
-          <button type="button" className="btn ml-auto" onClick={() => setPresenting(true)} title="Full screen without the toolbar and columns: for showing the story or recording it">
+          <button type="button" className="btn ml-auto" onClick={() => void shareFileNow(setShared)} title="Save the story as one small .model.html file that opens it in Quaera Model: nothing is uploaded">
+            Share
+          </button>
+          <button type="button" className="btn" onClick={() => setPresenting(true)} title="Full screen without the toolbar and columns: for showing the story or recording it">
             ⛶ Present
           </button>
         </div>
         {saved && !dirty && <p className="muted text-xs">{saved}</p>}
+        {shared && <p className="muted text-xs">{shared}</p>}
         {editing && <StoryEditor />}
         <ol className="story-beats">
           {frames.map((f, k) => (
